@@ -47,3 +47,5 @@ m0/downloads/*.zip
 .idea/
 .DS_Store
 Thumbs.db
+
+m0/probe/
