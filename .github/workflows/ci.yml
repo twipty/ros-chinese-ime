@@ -1,3 +1,6 @@
+# RosPinyin - Simplified Chinese pinyin IME for ReactOS
+# SPDX-License-Identifier: MIT
+# See LICENSE and NOTICE.txt at the repository root.
 name: CI
 
 on:
@@ -8,10 +11,18 @@ on:
 
 jobs:
   engine-smoke:
-    name: Engine smoke test (Linux, platform-independent layer)
+    name: Engine tests + M1 contract (Linux)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: IME source syntax check (host Win32 ABI stub)
+        # Verifies ime/*.cpp and the installer compile syntactically without
+        # needing MinGW: no linking, no Windows SDK, no binary output.
+        run: >-
+          g++ -std=c++17 -fsyntax-only
+          -Itools/syntax_stub -Iengine/include
+          ime/dllmain.cpp ime/imm_entry.cpp ime/ui_server.cpp
+          tools/install-rospinyin/install.cpp
       - name: Configure
         run: cmake -S . -B build -DROSPINYIN_BUILD_TESTS=ON
       - name: Build
@@ -19,8 +30,8 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure
 
-  windows-configure:
-    name: Windows/ReactOS target configure
+  windows-build:
+    name: Windows/ReactOS targets (rospinyin.ime + installer)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,8 +39,13 @@ jobs:
         run: cmake -S . -B build-standalone -A Win32
       - name: Configure (in-tree target)
         run: cmake -S . -B build-intree -A Win32 -DROSPINYIN_IN_TREE=ON
-      - name: Build
+      - name: Build (standalone)
         run: cmake --build build-standalone --config Release --parallel
-
-# The IMM32 .ime DLL target is added in M1 tasks 2.2/2.4; until then the
-# Windows job verifies that both product-form build targets configure.
+      - name: Build (in-tree target)
+        run: cmake --build build-intree --config Release --parallel
+      - name: Verify artefact names
+        run: |
+          $f = Get-ChildItem -Recurse -Filter "rospinyin.ime" build-standalone
+          if (-not $f) { throw "rospinyin.ime was not produced" }
+          $f | Select-Object -ExpandProperty FullName
+        shell: pwsh
