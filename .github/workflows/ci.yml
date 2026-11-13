@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  engine-smoke:
+    name: Engine smoke test (Linux, platform-independent layer)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DROSPINYIN_BUILD_TESTS=ON
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  windows-configure:
+    name: Windows/ReactOS target configure
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure (standalone)
+        run: cmake -S . -B build-standalone -A Win32
+      - name: Configure (in-tree target)
+        run: cmake -S . -B build-intree -A Win32 -DROSPINYIN_IN_TREE=ON
+      - name: Build
+        run: cmake --build build-standalone --config Release --parallel
+
+# The IMM32 .ime DLL target is added in M1 tasks 2.2/2.4; until then the
+# Windows job verifies that both product-form build targets configure.
