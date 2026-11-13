@@ -97,7 +97,7 @@
 ### 蓝本 mzimeja 1.0.1.1 在 ReactOS 0.4.16 上开箱即崩（实测）
 
 - **现象**：mzimeja 安装成功 → 重启 → BSOD **STOP 0x000000F4**（CRITICAL_OBJECT_TERMINATION，挂在 ntoskrnl.exe）。复位后系统可正常引导（注册表被回滚，仅剩孤儿 `system32\mzimeja.ime`）；随后用户实测**任务栏 EN 可切换、输入法实际可用并可输入日文**（中途曾出现「可切换但输入无效」的短时窗口）。→ 引擎本体在 ReactOS 上能跑，问题集中在**注册/预载路径与登录初始化时序**。蓝屏现场存证：`m0/vm/reactos.bsod-evidence.qcow2`，截图与 OCR 在 `m0/vm/logs/bsod*`。
-- **解释**：0xF4 = 关键用户进程（csrss/winlogon 级）意外退出。ReactOS 的 IMM32 服务端位于 csrss：登录路径会加载已注册的 .ime DLL，DLL/注册在 ReactOS 上不兼容时连带杀死 csrss → 整机蓝屏。**这与立项时预判的头号风险完全吻合，现已从"预测"升级为"实证"。**
+- **解释**：0xF4 = 关键用户进程（csrss/winlogon 级）意外退出。ReactOS 的 IMM32 服务端位于 csrss：登录路径会加载已注册的 .ime DLL，DLL/注册在 ReactOS 上不兼容时连带杀死 csrss → 整机蓝屏。**这与立项时预判的头号风险完全吻合，现已从「预测」升级为「实证」。**
 - **安装器解剖**（宿主侧完成，见 `m0/extract/`）：mzimeja setup = Inno Setup（2018-06-14）；数据流为 `zlb\x1a` + RAW LZMA1。内含 mzimeja.ime（x86/x64）、ime_setup32/64.exe、imepad.exe、verinfo.exe、五套词典。ime_setup32 逻辑：`ImmInstallIMEW` → 写 `SYSTEM\...\Keyboard Layouts\<HKL>`（IME File/Layout Text=MZ-IME/Layout Display Name）→ 写 `Keyboard Layout\Preload` → 写 `SOFTWARE\Katayama Hirofumi MZ\mzimeja`（字典路径等）。HKL 由系统动态生成（`%08X`），非固定常量。
 - **对 M1 的设计红线（本实测直接触发）**：
   1. 拼音 IME DLL 必须先在 Windows 参照机验证「纯 LoadLibrary 无害」后再进 ReactOS；
