@@ -1,0 +1,51 @@
+# Build outputs
+/build/
+/build-*/
+/out/
+*.o
+*.obj
+*.lib
+*.exp
+*.pdb
+*.dll
+*.ime
+*.exe
+*.ilk
+*.idb
+
+# M0 VM assets (large binaries / runtime state; keep only scripts)
+m0/vm/*.qcow2
+m0/vm/monitor.sock
+m0/vm/novnc.tar.gz
+m0/vm/noVNC-*/
+m0/vm/logs/*.ppm
+m0/vm/logs/*.png
+m0/vm/logs/*-big.png
+m0/vm/logs/*.txt
+m0/vm/logs/rosdbg.log
+m0/downloads/*.iso
+m0/downloads/*.exe
+m0/extract/*.bin
+m0/probe/reactos/
+m0/share/*.exe
+vendor/*.tar.gz
+
+# Third-party reference source: local extraction only, reproduce with
+# vendor/fetch-vendor.sh (do not commit upstream code into this repo)
+vendor/mzimeja-ref/
+
+# M0 scratch logs and intermediate artifacts (keep probe evidence + vm scripts)
+m0/logs/
+m0/extract/
+m0/reactos/
+m0/vm/logs/
+m0/downloads/*.zip
+
+# Editors / OS
+.vs/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+m0/probe/
