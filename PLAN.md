@@ -33,18 +33,18 @@
   - 2.1.2 ✅ 许可证已落定（D1，2026-11-13）：本项目 MIT（`LICENSE`）；蓝本 mzimeja v1.0.0.3 为 PDS（`vendor/LICENSE-NOTICE.txt`）；第三方与数据分层授权见 `NOTICE.txt`；源码文件头统一加 MIT 声明
   - 2.1.3 CI 骨架（GitHub Actions：Windows 构建 + 引擎单测）
   - 2.1.4 双构建目标：独立安装包 + ReactOS `modules/optional` in-tree 目标（产品形态决策：软件包为主，系统组件化留门，in-tree 只需 CMake 条件分支）
-- **2.2 剥离日语逻辑**
-  - 2.2.1 移除假名转换/罗马字表/日语词典，保留 IMM32 状态机与 UI 框架
-  - 2.2.2 资源全替换（名称「中文(简体) - RosPinyin」、图标、版本信息）
-  - 2.2.3 版本信息符合 ImmLoadLayout 校验（FILETYPE=VFT_DRV, FILESUBTYPE=VFT2_DRV_INPUTMETHOD, 正确的 codepage/language/FileDescription）
-- **2.3 中文注册 ✓**
-  - 2.3.1 **由 `ImmInstallIME` 动态分配 HKL 并记录返回值**（D3 已依 M0 解剖结论修正，不再硬编码 0xE0100804）；注册表 script 只写 `HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layouts\<HKL>`（Layout File=rospinyin.ime, Layout Text, IME 文件）；**逐键分步注册 + 每步重启验证**，**禁止写 Preload 第一项**（M0 的 0xF4 红线）
-  - 2.3.2 ImmInstallIME 安装工具 `install-rospinyin.exe`
-  - 2.3.3 验证 kbswitch 出现简体中文项并切换
-- **2.4 空输入法直通 ✓**
-  - 2.4.1 ImeProcessKey 全直通、ImeInquire/ImeSelect/ImeSetActiveContext/NotifyIME 返回正确
-  - 2.4.2 切换激活/停用 50 次压测，无崩溃无泄漏
-  - 2.4.3 双机（XP/ReactOS）行为比对记录
+- **2.2 剥离日语逻辑 ✅ 宿主侧已完成 2026-11-13，见 M1-REPORT.md**
+  - 2.2.1 ✅ `ime/` 全量新写（不复制蓝本），16 个 IMM32 导出齐全；假名/罗马字/日语词典零残留，由 `tools/check_m1.py` 自动扫描
+  - 2.2.2 ✅ 资源全替换：`ime/rospinyin_res.rc` 中文/英文字符串表、布局文本「中文(简体) - RosPinyin」、IDS 1024 供 Layout Display Name 引用；图标留待 M3（WBS 4.5）
+  - 2.2.3 ✅ 版本信息：`FILETYPE=0x3 (VFT_DRV)`、`FILESUBTYPE=0xB (VFT2_DRV_INPUTMETHOD)`、`Translation 0x0804/1200`、`OriginalFilename=rospinyin.ime`，静态校验入 CI
+- **2.3 中文注册 ✓**（源码完成，VM 分步验证待做）
+  - 2.3.1 ✅ **由 `ImmInstallIMEW` 动态分配 HKL 并记录返回值**（D3，不硬编码 0xE0100804）；注册表只写 `HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layouts\<HKL>` 的 Layout Text / Layout Display Name；**逐键分步注册 + 每步重启验证**，**禁止写 Preload 第一项**（M0 的 0xF4 红线）；检查脚本剥离注释后扫描违规调用
+  - 2.3.2 ✅ 安装工具 `tools/install-rospinyin/install.cpp`：`/step1`…`/step4` / `/i` / `/status` / `/u`
+  - 2.3.3 ⬜ 验证 kbswitch 出现简体中文项并切换（需 VM）
+- **2.4 空输入法直通 ✓**（宿主侧完成，VM 压测待做）
+  - 2.4.1 ✅ `ImeProcessKey` 返回 FALSE 全直通、`ImeToAsciiEx` 零消息、`ImeInquire/ImeSelect/ImeSetActiveContext/NotifyIME` 返回正确；宿主 `g++ -fsyntax-only` 零告警
+  - 2.4.2 ✅ 引擎层 50 次 select/deselect 循环单测（`tests/session_test.cpp`）；⬜ ReactOS VM 内 50 次激活/停用压测与泄漏观察
+  - 2.4.3 ⬜ 双机（XP/ReactOS）行为比对记录
 
 ## 3. M2 单字引擎（估 22-30 人日）★核心里程碑
 

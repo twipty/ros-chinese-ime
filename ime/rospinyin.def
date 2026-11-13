@@ -1,0 +1,26 @@
+; RosPinyin - Simplified Chinese pinyin IME for ReactOS
+; SPDX-License-Identifier: MIT
+; See LICENSE and NOTICE.txt at the repository root.
+;
+; The 16 IMM32 IME exports. Order is irrelevant; the set is verified by
+; tools/check_m1.py against IMM32's mandatory export list.
+
+LIBRARY ROSPINYIN
+
+EXPORTS
+    ImeConversionList
+    ImeConfigure
+    ImeDestroy
+    ImeEscape
+    ImeInquire
+    ImeProcessKey
+    ImeSelect
+    ImeSetActiveContext
+    ImeToAsciiEx
+    NotifyIME
+    ImeRegisterWord
+    ImeUnregisterWord
+    ImeGetRegisterWordStyle
+    ImeEnumRegisterWord
+    ImeSetCompositionString
+    ImeGetImeMenuItems

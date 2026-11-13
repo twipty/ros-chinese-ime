@@ -29,6 +29,8 @@ v0.1「墨」→ v0.2「联」→ v0.3「全」→ v1.0「正」
 细节：以 mzimeja **v1.0.0.3（公共领域）** 源码为只读蓝本 → rospinyin；剥离假名/罗马字逻辑，保留 IMM32 状态机与 UI 窗口框架；**用 `ImmInstallIME` 动态分配 HKL 并记录返回值**（D3 已修正，不再硬编码 0xE0100804），且**绝不写 Preload 第一项**；ImeInquire/ImeSelect/ImeSetActiveContext/ImeProcessKey/NotifyIME 等导出函数接通；kbswitch 列表出现「简体中文」并可切换；ImeProcessKey 直通直出。
 退出标准：Ctrl+Space（或备用键）切到该 IME 不崩溃，任务栏指示正确，普通按键直通。
 
+**M1 进展（2026-11-13）**：宿主侧骨架完成——新写 16 个 IMM32 导出的直通实现、中文资源与合规版本信息、动态 HKL 且不写 Preload 的**分步安装器**、引擎 API 契约与 25 项静态契约检查 + Linux 语法编译 + 3/3 单测通过。尚未取得可运行的 `.ime` 二进制（本机无 Windows 工具链），VM 分步注册与切换压测待做；详见 **[M1-REPORT.md](M1-REPORT.md)**。
+
 ## M2 单字引擎（4-6 周）★核心
 
 **目标：拼音→单字转换流畅可用，本项目最大价值在此落地。**

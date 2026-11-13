@@ -1,0 +1,58 @@
+// RosPinyin - Simplified Chinese pinyin IME for ReactOS
+// SPDX-License-Identifier: MIT
+// See LICENSE and NOTICE.txt at the repository root.
+//
+// WBS 2.2.3: version resource must satisfy ImmLoadLayout checks:
+//   FILETYPE    = VFT_DRV             (0x3)
+//   FILESUBTYPE = VFT2_DRV_INPUTMETHOD(0xB)
+//   Translation = 0x0804 / 1200      (zh-CN / Unicode)
+// The layout display name is resource ID 1024 so the keyboard layout can
+// reference it without duplicating the translated string in the registry.
+
+#include "resource.h"
+#include <windows.h>
+#pragma code_page(65001) // UTF-8
+
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+
+1 VERSIONINFO
+FILEVERSION     0, 0, 1, 0
+PRODUCTVERSION  0, 0, 1, 0
+FILEFLAGSMASK   0x3fL
+FILEOS          0x40004L
+FILETYPE        0x3L
+FILESUBTYPE     0xBL
+{
+    BLOCK "StringFileInfo"
+    {
+        BLOCK "080404b0"
+        {
+            VALUE "CompanyName",      "RosPinyin contributors\0"
+            VALUE "FileDescription", "中文(简体) - RosPinyin\0"
+            VALUE "FileVersion",     "0.0.1-m1\0"
+            VALUE "InternalName",    "rospinyin\0"
+            VALUE "LegalCopyright",  "Copyright (c) 2026 RosPinyin contributors. MIT.\0"
+            VALUE "OriginalFilename", "rospinyin.ime\0"
+            VALUE "ProductName",     "RosPinyin\0"
+            VALUE "ProductVersion",  "0.0.1-m1\0"
+        }
+    }
+    BLOCK "VarFileInfo"
+    {
+        VALUE "Translation", 0x804, 1200
+    }
+}
+
+STRINGTABLE
+{
+    IDS_LAYOUT_TEXT, "中文(简体) - RosPinyin"
+    IDS_IME_NAME,    "RosPinyin 拼音输入法"
+}
+
+LANGUAGE LANG_ENGLISH, SUBLANG_DEFAULT
+
+STRINGTABLE
+{
+    IDS_LAYOUT_TEXT, "Chinese (Simplified) - RosPinyin"
+    IDS_IME_NAME,    "RosPinyin Pinyin IME"
+}

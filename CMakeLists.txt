@@ -12,17 +12,25 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Platform-independent pinyin engine (M2). Header-only placeholder at M1:
-# no platform APIs, no Windows headers, so it builds and tests on Linux CI.
-add_library(rospinyin-engine INTERFACE)
-target_include_directories(rospinyin-engine INTERFACE
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/engine/include>")
-target_compile_features(rospinyin-engine INTERFACE cxx_std_17)
+if(WIN32)
+    # .rc version/string resources of rospinyin.ime need the RC language.
+    enable_language(RC)
+endif()
 
-# IMM32 layer is Windows/ReactOS only and is added in M1 tasks 2.2/2.4.
-# Guarded by EXISTS so the M0 baseline tree configures cleanly everywhere.
+# Platform-independent pinyin engine. Contains no Windows headers, so it
+# builds and is unit-tested on Linux CI. M2 grows this into the real engine.
+add_library(rospinyin-engine STATIC engine/src/session.cpp)
+target_include_directories(rospinyin-engine PUBLIC
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/engine/include>")
+target_compile_features(rospinyin-engine PUBLIC cxx_std_17)
+
+# IMM32 layer and the standalone installer are Windows/ReactOS only.
 if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ime/CMakeLists.txt")
     add_subdirectory(ime)
+endif()
+if(WIN32 AND NOT ROSPINYIN_IN_TREE AND
+   EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/install-rospinyin/CMakeLists.txt")
+    add_subdirectory(tools/install-rospinyin)
 endif()
 
 if(ROSPINYIN_BUILD_TESTS)

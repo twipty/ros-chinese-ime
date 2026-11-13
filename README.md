@@ -2,6 +2,7 @@
 
 **项目章程 / Project Charter**
 状态：已立项（2026-11-12）｜路线：B（以 mzimeja 为蓝本新写 IMM32 拼音 IME）｜目标平台：ReactOS 0.4.16+（IMM32 架构）
+当前阶段：**M1 骨架替换**（宿主侧代码完成，VM 实测待做，见 [M1-REPORT.md](M1-REPORT.md)）
 仓库：https://github.com/twipty/ros-chinese-ime（public, main）｜代码许可证：**MIT**（D1 已定，2026-11-13）｜第三方与数据分层授权见 `NOTICE.txt`
 
 ## 1. 一句话使命
@@ -117,3 +118,15 @@
 - 对 M1 的操作建议：以 `vendor/fetch-vendor.sh` 复现 mzimeja **`v1.0.0.3`** 只读参考树（非 master，带 SHA256 校验，上游源码不入库）；IME 核心引擎（romanic conversion/dic/UI）借鉴，部署层（Inno/ime_setup/ImmInstallIME 路径）按 M0 红线全部重写。
 
 > 完整的实测记录、证据清单、范围偏差与 M1 交接见 **[M0-REPORT.md](M0-REPORT.md)**。
+
+## 10. M1 进展（2026-11-13）
+
+骨架替换的宿主侧工作已完成，详见 **[M1-REPORT.md](M1-REPORT.md)**：
+
+- `ime/` 从零新写 IMM32 骨架：16 个导出全部实现，M1 语义为「空 IME 直通」（`ImeProcessKey` 全放行、`ImeToAsciiEx` 零消息）；`DllMain` 只注册窗口类，保证裸 `LoadLibrary` 在登录路径无害（M0 红线 #1）。
+- 中文资源与版本信息落定：`FILETYPE=VFT_DRV` / `FILESUBTYPE=VFT2_DRV_INPUTMETHOD`、`Translation 0x0804/1200`、布局文本「中文(简体) - RosPinyin」。
+- `tools/install-rospinyin/install.cpp` 按 M0 红线重写注册链路：**动态 HKL**、**不写 Preload**、**`/step1`…`/step4` 逐键分步注册**（ReactOS 每步重启验证）、自带 `/status` 与 `/u`。
+- 引擎契约 `engine/include/rospinyin/engine.hpp` 定型，M2 替换实现时 API 不变；`ui/` 给出窗口分层约定。
+- 质量闸门：`tools/check_m1.py`（25 项：日语残留、导出表、版本字段、M0 红线、命名一致性）+ Linux 下用 `tools/syntax_stub` 对 Windows 源码做零链接语法编译；本机 `ctest` 3/3 通过。
+
+**尚未完成**：真实 Windows/MinGW 构建产物、Windows 参照机裸加载验证、ReactOS VM 分步注册与 50 次切换压测。本机为 Linux 无 Windows 工具链，**当前仓库不含可运行的 `rospinyin.ime` 二进制**；Windows CI job 已接线，推送后应先确认其产物。
