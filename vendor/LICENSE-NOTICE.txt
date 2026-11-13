@@ -1,0 +1,33 @@
+RosPinyin — vendor reference notice
+===================================
+
+Directory: vendor/mzimeja-ref/
+Upstream : https://github.com/katahiromz/mzimeja
+Tag      : v1.0.0.3 (commit 8a12aab657, 2026-01-03T06:47:50Z)
+Obtained : 2026-11-13, from codeload.github.com tarball
+License  : Public Domain Software (PDS), per LICENSE.txt in that tag:
+           "This software is public domain software (PDS). ...
+            Copyright (C) 2016-2017 Katayama Hirofumi MZ"
+
+Purpose
+-------
+Read-only architectural reference for M1 (IMM32 state machine, IME UI
+window framework, .def export list, CMake layout). This tree is NOT built,
+NOT linked into rospinyin.ime, and NOT shipped in any release package.
+
+Why this tag
+------------
+Upstream relicensed on 2026-01-12 22:30 UTC (commit fbc986d71) from PDS
+to GPLv3. The README.md GPLv3 statement appeared even earlier
+(2026-01-04/05, Vibrato integration). v1.0.0.3 is the last tag whose
+LICENSE.txt is PDS and whose README carries no GPL statement at all:
+unambiguous, and its ime/ skeleton is complete (34 files) without Vibrato.
+
+DO NOT copy code, resources or dictionary data from:
+  - v1.0.0.4+ / v1.0.0.6 (README already says GPLv3, LICENSE conflicts)
+  - v1.0.0.7+ (LICENSE.txt is GPLv3)
+  - v1.0.1.1 (the GPLv3 binary used only for M0 black-box testing)
+...unless decision D1 is explicitly changed to "accept GPLv3", in which
+case this notice and the project's own license must be updated together.
+
+See: ../M0-REPORT.md section 5.2 and ../README.md section 9.
