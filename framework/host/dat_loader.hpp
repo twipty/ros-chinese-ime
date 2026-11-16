@@ -4,7 +4,11 @@
 // Lazy data loading for the host side. The scheme's .dat file is an optional,
 // separately updatable file in the system directory; when it is missing or
 // corrupt the scheme's fallback table keeps the IME usable on a bare
-// installation.
+// installation. A scheme that owns its data entirely (G2) returns nullptr
+// from dat_filename() and false from load_fallback(): the framework then
+// runs with an empty table that the scheme's engine simply ignores, and the
+// scheme manages loading/switching its own packs. Data and sessions can be
+// reloaded at runtime via reload_sessions() (session_store.hpp).
 
 #pragma once
 

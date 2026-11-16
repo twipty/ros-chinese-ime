@@ -57,6 +57,18 @@ public:
         LeaveCriticalSection(&cs_);
     }
 
+    // Framework gap G2 hot path: drop the shared table and every session so
+    // the next key reloads data from scratch. Engines hold references into
+    // the shared table, so sessions must go first. In-flight compositions
+    // are discarded — acceptable after a configuration change.
+    void reload() {
+        EnterCriticalSection(&cs_);
+        states_.clear();
+        table_.clear();
+        table_loaded_ = false;
+        LeaveCriticalSection(&cs_);
+    }
+
 private:
     CRITICAL_SECTION cs_;
     bool table_loaded_ = false;
@@ -78,5 +90,7 @@ ImeSessionState* acquire_session(rpimm::InputContext hIMC) {
 }
 
 void release_session(rpimm::InputContext hIMC) { store().release(hIMC); }
+
+void reload_sessions() { store().reload(); }
 
 }  // namespace imfw

@@ -29,11 +29,14 @@ struct Candidate {
 
 struct Result {
     Action action = Action::Passthrough;
-    std::string composition;             // raw input shown to the user
+    // Raw input shown to the user in the composition window. UTF-8 — ASCII
+    // input works unchanged, but an engine may also emit CJK text (framework
+    // gap G4 used to limit compositions to ASCII by byte-wise conversion).
+    std::string composition;
     std::vector<Candidate> candidates;
     // How the engine split the composition into lookup units (pinyin:
-    // syllables [zhong][guo]; shape IMEs: typed codes). The composition
-    // window underlines these boundaries.
+    // syllables [zhong][guo]; shape IMEs: typed codes), UTF-8 like the
+    // composition. The composition window underlines these boundaries.
     std::vector<std::string> segments;
     std::u32string commit_text;          // text to insert on Commit
 };

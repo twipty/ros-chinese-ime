@@ -3,9 +3,12 @@
 //
 // Generic IMM32 entry points. The 16 exports keep the same ABI for every
 // assembled IME; key handling routes through the Scheme (imfw/scheme.hpp):
-//   * the framework owns paging (- = , .), selection (digits/space),
-//     backspace and Esc, plus commit via WM_IME_CHAR;
-//   * the scheme owns the input alphabet and the engine behind it.
+//   * the framework owns backspace and Esc plus commit via WM_IME_CHAR
+//     (multi-codepoint, see imfw/emit_text.hpp) and resolves selection /
+//     paging keys using the Scheme's key policy (G4) — only while a
+//     composition with candidates is on screen, otherwise those keys reach
+//     the application;
+//   * the scheme owns the input alphabet, the key policy and the engine.
 //
 // Design notes:
 //   * ImeProcessKey only decides ownership; ImeToAsciiEx does the work.
@@ -21,29 +24,14 @@
 #include "session_store.hpp"
 
 #include <imfw/candidate_pager.hpp>
+#include <imfw/emit_text.hpp>
 #include <imfw/scheme.hpp>
+#include <imfw/utf8.hpp>
 
 #include <algorithm>
 #include <cstdint>
 #include <cwchar>
 #include <string>
-
-#ifndef WM_IME_CHAR
-#define WM_IME_CHAR 0x0286
-#endif
-
-#ifndef VK_OEM_PLUS
-#define VK_OEM_PLUS 0xBB
-#endif
-#ifndef VK_OEM_COMMA
-#define VK_OEM_COMMA 0xBC
-#endif
-#ifndef VK_OEM_MINUS
-#define VK_OEM_MINUS 0xBD
-#endif
-#ifndef VK_OEM_PERIOD
-#define VK_OEM_PERIOD 0xBE
-#endif
 
 namespace {
 
@@ -60,37 +48,41 @@ bool modifier_down(const BYTE* lpbKeyState, KeyIndex index, BYTE bit) {
            (lpbKeyState[static_cast<int>(index)] & bit) != 0;
 }
 
-// Framework-managed keys: candidate selection and paging. Input-alphabet
-// keys are translated by the Scheme.
+// Translate the framework-managed virtual keys to their character. The
+// policy deciding which of these are selection / paging keys lives in the
+// Scheme (G4); the input alphabet is also translated by the Scheme.
 char32_t framework_key_char(UINT vk) {
     if (vk >= '0' && vk <= '9') return static_cast<char32_t>(vk);
     switch (vk) {
     case VK_SPACE:      return U' ';
-    case VK_OEM_MINUS:  return U'-';   // previous page
-    case VK_OEM_PLUS:   return U'=';   // next page
-    case VK_OEM_COMMA:  return U',';   // previous page
-    case VK_OEM_PERIOD: return U'.';   // next page
+    case VK_OEM_MINUS:  return U'-';
+    case VK_OEM_PLUS:   return U'=';
+    case VK_OEM_COMMA:  return U',';
+    case VK_OEM_PERIOD: return U'.';
     case VK_SUBTRACT:   return U'-';   // numpad minus
     case VK_ADD:        return U'=';   // numpad plus
     default:            return 0;
     }
 }
 
-bool is_page_key(char32_t ch) {
-    return ch == U'-' || ch == U'=' || ch == U',' || ch == U'.';
+// Commit text as WM_IME_CHAR TRANSMESSAGEs (G1: one message per UTF-16 code
+// unit, surrogate pairs for non-BMP). The UTF-16 logic lives in
+// imfw-engine (imfw/emit_text.hpp) so it is unit-tested on the host; the
+// slot struct is layout-compatible with TRANSMESSAGE, guarded below.
+UINT emit_text(rpimm::TransMsg* messages, const std::u32string& text) {
+    static_assert(sizeof(imfw::TransMsgSlot) == sizeof(rpimm::TransMsg),
+                  "TRANSMESSAGE must stay layout-compatible with "
+                  "imfw::TransMsgSlot");
+    return imfw::emit_text(
+        reinterpret_cast<imfw::TransMsgSlot*>(messages),
+        imfw::kMaxEmitMessages, text);
 }
 
-bool is_selection_key(char32_t ch) {
-    return ch == U' ' || (ch >= U'1' && ch <= U'9');
-}
-
-std::wstring to_wide(const std::string& text) {
-    std::wstring result;
-    result.reserve(text.size());
-    for (const char c : text) {
-        result.push_back(static_cast<wchar_t>(static_cast<unsigned char>(c)));
-    }
-    return result;
+void refresh_ui(rpimm::InputContext hIMC, ImeSessionState& state) {
+    // Composition is UTF-8 (G4 connected conclusion: engines may show CJK
+    // in the composition window, not just ASCII codes).
+    const std::wstring text = imfw::utf8_to_wide(state.composition);
+    imfw::UiShow(hIMC, text.c_str(), state.segments, state.pager);
 }
 
 // Decide whether the IME should consume this key. Called by IMM32 before
@@ -111,46 +103,13 @@ bool should_consume_key(ImeSessionState* state, UINT vk,
     if (ch == 0) {
         return vk == VK_BACK || vk == VK_ESCAPE ? state->composing : false;
     }
-    // Selection and paging keys are only meaningful mid-composition.
-    return state->composing && !state->pager.empty();
-}
-
-// Generate WM_IME_CHAR TRANSMESSAGEs for a committed text (framework gap G1:
-// single-codepoint commits made word candidates impossible). One message per
-// UTF-16 code unit keeps non-BMP characters correct (surrogate pairs). The
-// IMM32 DDK contract allows up to 256 messages per ImeToAsciiEx call; cap
-// well below that — no pinyin/shape candidate comes anywhere near.
-UINT emit_text(rpimm::TransMsg* messages, const std::u32string& text) {
-    constexpr UINT kMaxEmitMessages = 32;
-    if (messages == nullptr || text.empty()) return 0;
-
-    UINT written = 0;
-    for (const char32_t cp : text) {
-        if (cp <= 0xFFFF) {
-            if (written >= kMaxEmitMessages) break;
-            messages[written].uMsg = WM_IME_CHAR;
-            messages[written].wParam = static_cast<WPARAM>(cp);
-            messages[written].lParam = 0;
-            ++written;
-        } else {
-            if (written + 2 > kMaxEmitMessages) break;
-            const std::uint32_t v = static_cast<std::uint32_t>(cp) - 0x10000u;
-            messages[written].uMsg = WM_IME_CHAR;
-            messages[written].wParam = static_cast<WPARAM>(0xD800u + (v >> 10));
-            messages[written].lParam = 0;
-            ++written;
-            messages[written].uMsg = WM_IME_CHAR;
-            messages[written].wParam = static_cast<WPARAM>(0xDC00u + (v & 0x3FFu));
-            messages[written].lParam = 0;
-            ++written;
-        }
+    // Selection and paging keys (policy owned by the Scheme, G4) are only
+    // meaningful mid-composition with candidates on screen; otherwise they
+    // pass through to the application (e.g. space in an empty editor).
+    if (scheme.is_selection_key(ch) || scheme.page_key(ch) != 0) {
+        return state->composing && !state->pager.empty();
     }
-    return written;
-}
-
-void refresh_ui(rpimm::InputContext hIMC, ImeSessionState& state) {
-    const std::wstring text = to_wide(state.composition);
-    imfw::UiShow(hIMC, text.c_str(), state.segments, state.pager);
+    return false;
 }
 
 void finish_composition(rpimm::InputContext hIMC, ImeSessionState& state) {
@@ -173,11 +132,14 @@ UINT process_key(rpimm::InputContext hIMC, UINT vk, const BYTE* lpbKeyState,
     ImeSessionState* state = imfw::acquire_session(hIMC);
     if (state == nullptr || state->engine == nullptr) return 0;
 
+    const imfw::Scheme& scheme = imfw::scheme_instance();
     const char32_t ch = framework_key_char(vk);
 
     // Digit / space selection is resolved by the pager so page 2 digit 1
-    // selects candidate 10, not candidate 1.
-    if (is_selection_key(ch)) {
+    // selects candidate 10, not candidate 1. Which keys select is the
+    // Scheme's policy (G4); digits map to page-relative indices, any other
+    // selection key picks the first candidate.
+    if (ch != 0 && scheme.is_selection_key(ch)) {
         std::size_t digit = 0;
         if (ch >= U'1' && ch <= U'9') {
             digit = static_cast<std::size_t>(ch - U'1');
@@ -189,12 +151,15 @@ UINT process_key(rpimm::InputContext hIMC, UINT vk, const BYTE* lpbKeyState,
         return emit_text(lpTransMsg, commit_text);
     }
 
-    if (is_page_key(ch)) {
-        const bool moved = (ch == U'-' || ch == U',')
-                               ? state->pager.prev_page()
-                               : state->pager.next_page();
-        if (moved) refresh_ui(hIMC, *state);
-        return 0;
+    // Paging direction is likewise the Scheme's policy (G4).
+    if (ch != 0) {
+        const int page = scheme.page_key(ch);
+        if (page != 0) {
+            const bool moved = page < 0 ? state->pager.prev_page()
+                                        : state->pager.next_page();
+            if (moved) refresh_ui(hIMC, *state);
+            return 0;
+        }
     }
 
     if (vk == VK_BACK) {
@@ -212,7 +177,6 @@ UINT process_key(rpimm::InputContext hIMC, UINT vk, const BYTE* lpbKeyState,
         return 0;
     }
 
-    const imfw::Scheme& scheme = imfw::scheme_instance();
     const char32_t input = scheme.input_char(vk);
     if (input == 0 || !scheme.is_input_char(input)) return 0;
 
@@ -271,8 +235,18 @@ DWORD WINAPI ImeConversionList(rpimm::InputContext hIMC, LPCWSTR lpSource,
 }
 
 BOOL WINAPI ImeConfigure(HKL hKL, HWND hWnd, DWORD dwMode, LPVOID lpData) {
-    (void)hKL; (void)hWnd; (void)dwMode; (void)lpData;
-    return FALSE;  // configuration UI is M6
+    (void)hKL; (void)dwMode; (void)lpData;
+    // Framework gap G3: ImeConfigure used to decline unconditionally, so
+    // users had to reach the configuration tool from the start menu or the
+    // command line. A Scheme that provides configuration handling now gets
+    // the call; after a successful configure the data and all sessions are
+    // reloaded (G2 hot path: the tool may have swapped packs or rewritten
+    // the .dat). Schemes without a handler keep the old behaviour.
+    if (imfw::scheme_instance().configure(hWnd)) {
+        imfw::reload_sessions();
+        return TRUE;
+    }
+    return FALSE;
 }
 
 BOOL WINAPI ImeDestroy(UINT uForce) {

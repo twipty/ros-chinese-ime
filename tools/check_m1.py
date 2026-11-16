@@ -166,6 +166,33 @@ def run(root: Path) -> int:
     c.check("G1: commit path handles multi-codepoint text (words)",
             "emit_text(lpTransMsg, commit_text)" in entry and
             "chosen->text[0]" not in entry)
+    # G1 hardening: the emission logic is host-testable in imfw-engine, and
+    # the host delegates instead of re-implementing the UTF-16 conversion.
+    c.check("G1: WM_IME_CHAR emission lives in imfw-engine (host-tested)",
+            (root / "framework/include/imfw/emit_text.hpp").is_file() and
+            (root / "framework/src/emit_text.cpp").is_file() and
+            "imfw::emit_text" in entry and
+            "sizeof(imfw::TransMsgSlot) == sizeof(rpimm::TransMsg)" in entry)
+
+    # 4b. Framework gap dispositions (xingma/XINGMA-PLAN.md 3.4).
+    configure_body = function_body(entry, r"BOOL\s+WINAPI\s+ImeConfigure\s*\([^)]*\)")
+    c.check("G3: ImeConfigure delegates to the Scheme configure hook",
+            configure_body is not None and
+            "scheme_instance().configure" in configure_body)
+    c.check("G3+G2: successful configure reloads data and sessions",
+            configure_body is not None and
+            "reload_sessions()" in configure_body and
+            "return TRUE" in configure_body)
+    c.check("G4: selection/page key policy comes from the Scheme",
+            "scheme.is_selection_key(ch)" in entry and
+            "scheme.page_key(ch)" in entry and
+            "bool is_page_key" not in entry)
+    store_hpp = read(root, "framework/host/session_store.hpp")
+    c.check("G2: sessions and shared table reload at runtime",
+            "void reload_sessions()" in store_hpp)
+    composition_ui = read(root, "framework/ui/composition_window.cpp")
+    c.check("G4: compositions decode as UTF-8 (CJK allowed)",
+            "utf8_to_wide" in entry and "utf8_to_wide" in composition_ui)
     # Regression guard: PinyinSession::feed() is a no-op until on_select(true),
     # so a missing activation makes the IME silently swallow every pinyin key.
     select_body = function_body(entry, r"BOOL\s+WINAPI\s+ImeSelect\s*\([^)]*\)")

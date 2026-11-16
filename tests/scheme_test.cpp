@@ -53,6 +53,30 @@ int main() {
     check(!scheme.is_input_char(U'0') && !scheme.is_input_char(U' '),
           "digits and space are not input chars");
 
+    // G4: selection / paging key policy defaults (a scheme may override).
+    check(scheme.is_selection_key(U' ') && scheme.is_selection_key(U'1') &&
+              scheme.is_selection_key(U'9'),
+          "space and digits 1-9 are selection keys by default");
+    check(!scheme.is_selection_key(U'0') && !scheme.is_selection_key(U'-'),
+          "0 and - are not selection keys");
+    check(scheme.page_key(U'-') == -1 && scheme.page_key(U',') == -1,
+          "- and , page back by default");
+    check(scheme.page_key(U'=') == 1 && scheme.page_key(U'.') == 1,
+          "= and . page forward by default");
+    check(scheme.page_key(U' ') == 0 && scheme.page_key(U'x') == 0,
+          "non-paging keys report 0");
+    check(!scheme.is_selection_key(0) && scheme.page_key(0) == 0,
+          "null key reports neither selection nor paging");
+
+    // G3: the configure hook defaults to declining (ImeConfigure then keeps
+    // returning FALSE); schemes with configuration UI override it.
+    check(!scheme.configure(nullptr),
+          "configure() declines by default");
+
+    // G2 documentation contract: a scheme that owns its data returns a
+    // dat filename; the pinyin scheme uses the framework dat.
+    check(scheme.dat_filename() != nullptr, "pinyin uses the framework dat");
+
     // Engine factory: the engine must reject input until selected (the
     // imm_entry regression guard depends on this contract).
     imfw::CodeTable table;

@@ -40,4 +40,13 @@ ImeSessionState* acquire_session(rpimm::InputContext hIMC);
 // Drop the state for hIMC (called on ImeSelect(FALSE)).
 void release_session(rpimm::InputContext hIMC);
 
+// Framework gap G2: forget the loaded table and every per-HIMC session so
+// the next key reloads data (scheme .dat rewritten, packs swapped by a
+// configuration tool — see ImeConfigure). Thread-safe, never called from
+// DllMain. Same hazard note as release_session(): a thread already inside
+// process_key keeps its engine until the key completes; IMM32 serializes
+// calls per input context, so only a cross-HIMC reload can race, in which
+// case the next key for that context transparently rebuilds its session.
+void reload_sessions();
+
 }  // namespace imfw

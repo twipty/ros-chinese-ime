@@ -167,18 +167,18 @@ rosxingma.ime
 
 ### 3.4 框架能力缺口与处置
 
-框架已交付，实读源码后确认四个缺口。**只有 G1 是阻塞项**。
+框架已交付，实读源码后确认四个缺口。**2026-11-16 更新：四个缺口已全部在框架侧解决**（见 `framework/README.md`「框架能力缺口的处置记录」），形码无需自建宿主层，按下表「框架侧落地」接入即可。
 
-| # | 缺口 | 实际影响 | 处置 |
+| # | 缺口（原始记录） | 实际影响 | 框架侧落地（已完成） |
 |---|---|---|---|
-| **G1** | 宿主层只上屏**一个码点**：`process_key` 取 `commit_text[0]`，选字取 `chosen->text[0]`；`emit_char` 只写 `messages[0]` 并返回 1 | **词无法上屏**——候选窗能看到词，选中只输出首字，形码词库等于失效 | 优先请框架把 `emit_char` 扩展为「按码点数写 N 条 `WM_IME_CHAR`、返回 N」；W2 开工仍未提供则形码自建宿主层（见下） |
-| **G2** | 框架只加载 `GetSystemDirectoryW()\<dat_filename>` 单一 `CodeTable`，且 `Store::table_loaded_` 首次加载后不再重载 | 无法多表、无法热切换、无法存词 | 无需框架改动：形码自带 `ShapeStore`；`ShapeScheme::create_engine` 忽略框架传入的表；`dat_filename` 返回一个不随包分发的名字，`load_fallback` 返回 `false`（形码不使用框架表） |
-| **G3** | `ImeConfigure` 恒返回 `FALSE`，语言栏菜单亦未实现 | 用户需从开始菜单或命令行打开配置工具 | 不阻塞：安装器建开始菜单快捷方式并写 `HKLM\...\Install\ConfigExe`；待框架开放该回调后再接上 |
-| **G4** | 空格与 `-` `=` `,` `.` 被宿主固定为选字/翻页键，引擎收不到 | 「无候选时空格上屏原文」无法实现；标点也不能进组合串 | 改为引擎侧规则：无候选且已达最大码长时自动提交原文（`Action::Commit`），不依赖空格；标点由应用直接接收 |
+| **G1** | 宿主层只上屏**一个码点**：`process_key` 取 `commit_text[0]`，选字取 `chosen->text[0]`；`emit_char` 只写 `messages[0]` 并返回 1 | **词无法上屏**——候选窗能看到词，选中只输出首字，形码词库等于失效 | `imfw::emit_text()`（`framework/include/imfw/emit_text.hpp`，imfw-engine 内、Linux 单测覆盖）按 UTF-16 码单元逐条写 `WM_IME_CHAR`，非 BMP 走代理对，上限 32 条。选字与 Commit 路径均全量上屏，词组候选完整输出 |
+| **G2** | 框架只加载 `GetSystemDirectoryW()\<dat_filename>` 单一 `CodeTable`，且 `Store::table_loaded_` 首次加载后不再重载 | 无法多表、无法热切换、无法存词 | 方案自管数据成为正式契约：`ShapeScheme::dat_filename()` 返回 `nullptr`、`load_fallback()` 返回 `false`，框架运行在空表上、`create_engine` 忽略之，`ShapeStore` 全权负责多表与切换。另提供 `imfw::reload_sessions()`：丢弃共享表与全部会话、下次按键重建（`ImeConfigure` 成功后自动调用），配置工具换包后即刻生效 |
+| **G3** | `ImeConfigure` 恒返回 `FALSE`，语言栏菜单亦未实现 | 用户需从开始菜单或命令行打开配置工具 | `Scheme::configure(void* parent)` 回调已接入 `ImeConfigure`：返回 `true` 即视为已处理并触发会话重载。形码在回调内拉起配置工具（进程内 UI 或 `CreateProcess` 外部 exe 均可）；开始菜单快捷方式与 `HKLM\...\Install\ConfigExe` 仍照旧写入，作为冗余入口。语言栏菜单项仍留待框架 M6 |
+| **G4** | 空格与 `-` `=` `,` `.` 被宿主固定为选字/翻页键，引擎收不到 | 「无候选时空格上屏原文」无法实现；标点也不能进组合串 | 选字/翻页键策略下放 Scheme：`is_selection_key()` / `page_key()`（默认即经典行为，形码按需覆盖）；框架仅在「组合中且有候选」时拦截这些键，否则直达应用。**组合串与 `segments` 契约改为 UTF-8**（`imfw::utf8_to_wide` 解码渲染、坏字节按字节兜底），「未安装码表」中文提示可以放进组合串，不再受 ASCII 限制。「无候选且达最大码长自动提交原文」仍按本计划 4.x 由 `ShapeSession` 用 `Action::Commit` 实现——框架保证此时空格/标点直达应用，两者配合即达成「空格上屏原文」的等效体验 |
 
-> **G1 的降级说明**：自建宿主层 `xingma/host/imm_entry_shape.cpp` 按框架 `imm_entry.cpp` 复制按键路由，只把上屏段改为「N 个码点 → N 条消息」，并保持 `Scheme` 契约不变；框架补齐后删除该文件即可回到共享实现。代价是约 360 行宿主代码需要跟随框架演进而同步，因此优先走框架侧。
+> **G1 的降级说明（已作废）**：原计划在框架未补齐时自建宿主层 `xingma/host/imm_entry_shape.cpp`。框架已按上述方案补齐（含 `tests/emit_text_test.cpp` 回归测试与 `check_m1.py` 静态断言），**该降级路径取消**，形码直接复用共享宿主层。
 >
-> **G4 的连带结论**：**组合串只允许 ASCII 编码字符**（宿主按字节直转宽字符），因此「未安装码表」这类中文提示不得放进组合串，改为开始菜单、配置工具空状态与首启提示承担。
+> **G4 的连带结论（已放宽）**：组合串原限制为 ASCII（宿主按字节直转宽字符）。框架现按 UTF-8 解码（Windows 侧 wchar 为 UTF-16、非 BMP 走代理对），CJK 提示与形码字根显示均可进组合串；空态提示仍建议由开始菜单、配置工具与首启提示承担。
 
 ---
 
@@ -277,23 +277,25 @@ HKCU\SOFTWARE\RosXingMa\
 1. 组合串长度受 `max_code_len` 约束：达到上限后不再追加（返回不含新字符的 `Result`）。注意宿主在 `should_consume_key` 阶段已按字母表判定吃键，因此该键不会落到应用——这与拼音侧行为一致，缓解见 5.4。
 2. 每次输入后取**存在精确候选的最长前缀**：`q` 有简码即显示；续打 `r` 后 `qr` 无候选则回退显示 `q` 的候选，组合串仍显示 `qr`。
 3. 空格、`1`–`9`、翻页键、退格、Esc 由框架处理，引擎不重复实现；引擎只负责 `feed` / `backspace` / `cancel` 的状态。
-4. 无候选且组合已达 `max_code_len`：按 `EmitRawOnNoMatch` 提交原文（`Action::Commit`），避免用户输入丢失。这是「空格上屏原文」的替代路径（见 G4）。
+4. 无候选且组合已达 `max_code_len`：按 `EmitRawOnNoMatch` 提交原文（`Action::Commit`），避免用户输入丢失。这是「空格上屏原文」的替代路径（见 G4；框架已保证无候选时空格/标点直达应用）。
 5. 唯一候选：码长已满且仅 1 个候选时按 `AutoCommitUnique` 决定是否直接提交，默认关闭。
 6. 通配键：先按普通字母参与查表；W4 实现运行时区间扫描（遍历前缀全部编码做后缀匹配），**不做构建期笛卡尔展开**。
-7. 上屏多字词依赖 G1；在 G1 未解决前，`ShapeSession` 仍完整返回词的 `commit_text`，由宿主侧决定截断（降级为单字）或全量输出。
+7. 上屏多字词依赖 G1；**G1 已在框架侧解决**（`imfw::emit_text`，见 3.4），`ShapeSession` 完整返回词的 `commit_text` 即可全量上屏，无需降级。
 
 ### 5.2 `ShapeScheme`
 
 | 方法 | 返回值 | 理由 |
 |---|---|---|
-| `dat_filename()` | `L"rosxingma.dat"` | 满足契约；该文件不随包分发，形码不走框架表 |
+| `dat_filename()` | `nullptr` | G2 框架契约：方案自管数据，框架不触碰系统目录、运行在空表上 |
 | `ui_server_class()` | `L"RosXingMaUI"` | 与拼音窗口类名互不冲突，两个 IME 可同进程共存 |
 | `composition_class()` / `candidate_class()` / `toolbar_class()` | `L"RosXingMaComp"` / `L"RosXingMaCand"` / `L"RosXingMaBar"` | 同上 |
 | `toolbar_label()` | `L"形"` | 固定单字标签，与拼音的「拼」区分 |
 | `input_char(vk)` | 字母键 → 小写码点，其余 `0` | 大小写归一由此完成 |
 | `is_input_char(cp)` | 当前表字母表内为 `true`；**无表时恒 `false`** | 无表即透传，不吞键 |
-| `create_engine(table)` | `ShapeSession`（忽略传入的 `CodeTable`，从 `ShapeStore` 取当前表） | 见 G2 |
+| `is_selection_key()` / `page_key()` | 不覆盖（用框架默认） | G4：默认空格+数字选字、`-`/`=`/`,`/`.` 翻页即形码所需 |
+| `create_engine(table)` | `ShapeSession`（忽略传入的空 `CodeTable`，从 `ShapeStore` 取当前表） | 见 G2 |
 | `load_fallback(table)` | `false` | 形码不使用框架表；空表不影响宿主 |
+| `configure(parent)` | 拉起配置工具后返回 `true` | G3：接管 `ImeConfigure`，成功后框架自动 `reload_sessions()` |
 
 ### 5.3 表切换
 
@@ -489,15 +491,15 @@ RosXingMa-Pack-Shape86-v1.0.0/
 |---|---|---|---|---|
 | **W0** | 立项与合规 | 双轨分发定稿；数据包署名与免责文本；「新世纪不分发」决策记录；命名与文案避让 | `docs/` 三份规范与 `NOTICE.txt` 第 8 节齐备，无待决法务项 | 1–2 |
 | **W1** | 引擎与 dat 内核 | `shape_dat_format.hpp`、`ShapeTable`、`ShapeSession`；`libtableio` 的 CSV/TSV 读取与 `dat_writer`；`mkdat-shape`；自造样例表跑通全链路 | `ctest` 全绿；CSV→dat 两次构建字节一致；自造表可查表并在 host 测试中上屏（含词） | 12–16 |
-| **W2** | 装配与宿主集成 | `rosxingma.ime` 装配（scheme_reg、def、资源）；`ShapeScheme`、`ShapeStore`、`ShapeDatLoader`；**G1 解决**（框架多码点上屏或自建宿主层）；自带安装器（`.ime` 进 system32、工具进程序文件夹）与 `HKLM` 安装信息 | VM 中可安装；无表不吞键不崩溃；导入演示表后可输入、可选词上屏；开始菜单能拉起配置工具 | 9–13 |
+| **W2** | 装配与宿主集成 | `rosxingma.ime` 装配（scheme_reg、def、资源）；`ShapeScheme`、`ShapeStore`、`ShapeDatLoader`（G1 已由框架解决，直接复用共享宿主层，无自建 `imm_entry_shape`）；自带安装器（`.ime` 进 system32、工具进程序文件夹）与 `HKLM` 安装信息 | VM 中可安装；无表不吞键不崩溃；导入演示表后可输入、可选词上屏；开始菜单能拉起配置工具 | 6–9 |
 | **W3** | 配置工具与切换 | `rosxingma-config.exe`（列表/导入向导/预览/详情/移除/排序）、`rosxingma-table.exe`（全子命令）、注册表模型、revision 自检与延迟换表、LRU；数据包安装流程 | 导入多张表并来回切换；装数据包一次点击完成；组合中途切换不丢字；CLI 退出码矩阵符合规范 | 14–20 |
 | **W4** | 格式兼容与完整度 | fcitx 5、ibus-table 适配器；PC 端 `rime2csv.py` / `ibusdb2csv.py` / `bz2csv.py`；反导出；`z` 通配；唯一候选自动上屏；标点与全半角 | 三类文本格式各导入一份真实表并正确上屏；Rime 文件得到明确引导；导出可被 fcitx 5 / ibus 回读 | 10–15 |
 | **W5** | 验收与发布 | VM 端到端、CI 扩展、文档定稿、构建并发布 86/98 数据包、安装包与发布说明 | 主包无码表可安装；两份数据包可导入/卸载/溯源；全仓库无旧名残留 | 7–11 |
-| | | | **合计** | **53–77 人日** |
+| | | | **合计** | **50–73 人日** |
 
-> 人日为粗估，不含法务沟通等待。W2 的浮动取决于 G1 由框架侧还是形码侧解决。
+> 人日为粗估，不含法务沟通等待。G1–G4 已全部由框架侧解决（2026-11-16，见 3.4），W2 不再含缺口浮动。
 
-**阶段顺序依赖**：W1 完成前 W2 无法装配（缺 `ShapeTable`）；W2 的 G1 结论决定 W3 是否需要为「只能单字上屏」临时降级界面文案；W4 的适配器依赖 W3 的 `libtableio` 稳定。
+**阶段顺序依赖**：W1 完成前 W2 无法装配（缺 `ShapeTable`）；W4 的适配器依赖 W3 的 `libtableio` 稳定。
 
 ---
 
@@ -530,7 +532,6 @@ xingma/host/scheme_reg_shape.cpp               # 定义 imfw::scheme_instance()
 xingma/host/shape_dat_loader.{hpp,cpp}
 xingma/host/shape_demo_table.hpp               # 自造演示编码表，仅自检/CI
 xingma/host/rosxingma.def                      # 16 个 IMM32 导出
-xingma/host/imm_entry_shape.cpp                # 仅当 G1 未解决时启用
 xingma/res/{resource.h,rosxingma.rc,rosxingma.ico}
 xingma/tools/table-io/{CMakeLists.txt,format_detect.*,csv_reader.*,fcitx_reader.*,
                        ibus_reader.*,pack_reader.*,dat_writer.*,dat_reader.*,
@@ -603,7 +604,7 @@ xingma/tests/{shape_table_test,shape_session_test,shape_switch_test,
 
 | 风险 | 等级 | 缓解 |
 |---|---|---|
-| G1 未解决导致词只能显示不能上屏 | **高** | W2 首要任务；优先请框架侧扩展（改动局部）；否则自建宿主层，保持 `Scheme` 契约不变 |
+| ~~G1 未解决导致词只能显示不能上屏~~ | ~~高~~（**已消解**） | G1 已由框架 `imfw::emit_text` 解决并有单测与 `check_m1.py` 断言（2026-11-16） |
 | 热切换在个别宿主进程中不生效 | 中 | 两处自检（`on_select` / 组合起点）+ 组合期延迟换表；`SwitchMode=1` 提供确定性模式；文案不夸大 |
 | IMM32 每进程独立，无法全局原子换表 | 高（已由设计消解） | 不做广播依赖；revision 自检；切换只在安全时机发生 |
 | 配置工具在 ReactOS 上的控件兼容性 | 中 | 仅用 user32/comctl32 基础控件；W2 早测 `ListView`，必要时退 `ListBox`；不自绘 |
@@ -620,10 +621,10 @@ xingma/tests/{shape_table_test,shape_session_test,shape_switch_test,
 
 | # | 事项 | 备选 | 影响 |
 |---|---|---|---|
-| Q1 | **G1 的责任方** | 框架侧扩展多码点上屏（首选） / 形码自建宿主层 | 决定 W2 范围与长期维护成本；若走自建，需评估何时切回 |
+| Q1 | ~~G1 的责任方~~ | ~~框架侧扩展 / 形码自建宿主层~~ | **已决（2026-11-16）**：框架侧 `imfw::emit_text`，形码直接复用共享宿主层 |
 | Q2 | 数据包下载渠道 | GitHub Releases 附件 / 独立站点 | 均不进主安装包，只影响发布位置与更新指引 |
 | Q3 | 便携模式优先级 | W3 必做 / 延至 W5 | 影响工具参数与测试矩阵 |
-| Q4 | 是否请求框架开放 `ImeConfigure` 回调 | 请求（体验最佳） / 维持开始菜单入口 | 影响用户发现路径，不阻塞功能 |
+| Q4 | ~~是否请求框架开放 `ImeConfigure` 回调~~ | ~~请求（体验最佳） / 维持开始菜单入口~~ | **已决（2026-11-16）**：框架已开放 `Scheme::configure`，形码 W2/W3 接入，开始菜单入口保留为冗余 |
 
 ---
 
