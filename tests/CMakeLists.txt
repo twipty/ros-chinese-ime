@@ -7,6 +7,7 @@ target_link_libraries(rospinyin-smoke PRIVATE rospinyin-engine)
 add_test(NAME smoke COMMAND rospinyin-smoke)
 
 # WBS 2.4 host-side counterpart: passthrough semantics + 50 switch cycles.
+# The passthrough session and build id are framework-owned (imfw-engine).
 add_executable(rospinyin-session session_test.cpp)
 target_link_libraries(rospinyin-session PRIVATE rospinyin-engine)
 add_test(NAME session COMMAND rospinyin-session)
@@ -21,10 +22,15 @@ add_executable(rospinyin-pinyin-session pinyin_session_test.cpp)
 target_link_libraries(rospinyin-pinyin-session PRIVATE rospinyin-engine)
 add_test(NAME pinyin-session COMMAND rospinyin-pinyin-session)
 
-# M2 UI logic: 9-candidate paging and digit selection.
+# M2 UI logic: 9-candidate paging and digit selection (framework-owned).
 add_executable(rospinyin-candidate-pager candidate_pager_test.cpp)
-target_link_libraries(rospinyin-candidate-pager PRIVATE rospinyin-engine)
+target_link_libraries(rospinyin-candidate-pager PRIVATE imfw-engine)
 add_test(NAME candidate-pager COMMAND rospinyin-candidate-pager)
+
+# M2.5 framework extraction: the Scheme plugin contract (reuse seam).
+add_executable(rospinyin-scheme scheme_test.cpp)
+target_link_libraries(rospinyin-scheme PRIVATE rospinyin-engine)
+add_test(NAME pinyin-scheme COMMAND rospinyin-scheme)
 
 # Static M1 contract checks (exports, version resource, M0 red lines).
 find_program(ROSPINYIN_PYTHON NAMES python3 python QUIET)

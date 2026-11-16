@@ -32,20 +32,20 @@ void check_equal(const std::string& actual, const char* expected,
     }
 }
 
-rospinyin::PinyinTable make_table() {
-    rospinyin::PinyinTable table;
+imfw::CodeTable make_table() {
+    imfw::CodeTable table;
     // reading, codepoint, rank (lower = more frequent)
-    table.add(U'中', 7, "zho1ng");
-    table.add(U'钟', 500, "zho1ng");
-    table.add(U'种', 501, "zho1ng");
-    table.add(U'国', 8, "guo2");
-    table.add(U'的', 1, "de");
-    table.add(U'女', 4, "nv3");
-    table.add(U'律', 5, "lv4");
-    table.add(U'略', 6, "lve4");
-    table.add(U'西', 100, "xi1");
-    table.add(U'安', 200, "an1");
-    table.add(U'先', 50, "xia1n");
+    rospinyin::add_reading(table, U'中', 7, "zho1ng");
+    rospinyin::add_reading(table, U'钟', 500, "zho1ng");
+    rospinyin::add_reading(table, U'种', 501, "zho1ng");
+    rospinyin::add_reading(table, U'国', 8, "guo2");
+    rospinyin::add_reading(table, U'的', 1, "de");
+    rospinyin::add_reading(table, U'女', 4, "nv3");
+    rospinyin::add_reading(table, U'律', 5, "lv4");
+    rospinyin::add_reading(table, U'略', 6, "lve4");
+    rospinyin::add_reading(table, U'西', 100, "xi1");
+    rospinyin::add_reading(table, U'安', 200, "an1");
+    rospinyin::add_reading(table, U'先', 50, "xia1n");
     table.build_index();
     return table;
 }
@@ -60,7 +60,8 @@ void feed_string(rospinyin::PinyinSession& session, const char* text) {
 
 int main() {
     using namespace rospinyin;
-    const PinyinTable table = make_table();
+    using namespace imfw;
+    const imfw::CodeTable table = make_table();
 
     // Segmentation: longest match, backtracking, apostrophe boundary.
     const auto zhongguo = segment_syllables("zhongguo", table);

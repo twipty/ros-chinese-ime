@@ -3,7 +3,7 @@
 //
 // Host-side tests for the 9-candidate paging logic used by the M2 UI.
 
-#include <rospinyin/candidate_pager.hpp>
+#include <imfw/candidate_pager.hpp>
 
 #include <cstdio>
 #include <vector>
@@ -19,10 +19,10 @@ void check(bool condition, const char* what) {
     }
 }
 
-std::vector<rospinyin::Candidate> make_candidates(int count) {
-    std::vector<rospinyin::Candidate> result;
+std::vector<imfw::Candidate> make_candidates(int count) {
+    std::vector<imfw::Candidate> result;
     for (int i = 0; i < count; ++i) {
-        rospinyin::Candidate candidate;
+        imfw::Candidate candidate;
         candidate.text.assign(1, static_cast<char32_t>(U'一' + i));
         candidate.score = 1000 - i;
         result.push_back(std::move(candidate));
@@ -33,7 +33,7 @@ std::vector<rospinyin::Candidate> make_candidates(int count) {
 }  // namespace
 
 int main() {
-    using rospinyin::CandidatePager;
+    using imfw::CandidatePager;
 
     CandidatePager empty;
     check(empty.empty(), "fresh pager is empty");
