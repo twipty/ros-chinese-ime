@@ -37,7 +37,9 @@ using LPCVOID  = const void*;
 using WPARAM   = std::uintptr_t;
 using LPARAM   = std::intptr_t;
 using LRESULT  = std::intptr_t;
+using LONG_PTR = std::intptr_t;
 using ATOM     = std::uint16_t;
+using COLORREF = DWORD;
 
 using HANDLE    = void*;
 using HINSTANCE = void*;
@@ -48,6 +50,8 @@ using HDC       = void*;
 using HICON     = void*;
 using HCURSOR   = void*;
 using HBRUSH    = void*;
+using HGDIOBJ   = void*;
+using HFONT     = void*;
 using HMENU     = void*;
 
 using LPSTR  = char*;
@@ -74,8 +78,55 @@ using LPCSTR = const char*;
 #define ERROR_SUCCESS  0
 #define INVALID_FILE_ATTRIBUTES 0xFFFFFFFFu
 
+// File I/O (imedat_loader.cpp).
+#define GENERIC_READ          0x80000000u
+#define FILE_SHARE_READ       0x00000001u
+#define OPEN_EXISTING         3u
+#define FILE_ATTRIBUTE_NORMAL 0x00000080u
+#define INVALID_HANDLE_VALUE  reinterpret_cast<HANDLE>(static_cast<std::uintptr_t>(-1))
+#define INVALID_FILE_SIZE     0xFFFFFFFFu
+
+// Virtual keys used by imm_entry.cpp.
+#define VK_BACK        0x08
+#define VK_ESCAPE      0x1B
+#define VK_SPACE       0x20
+#define VK_ADD         0x6B
+#define VK_SUBTRACT    0x6D
+#define VK_OEM_7       0xDE
+#define VK_OEM_PLUS    0xBB
+#define VK_OEM_COMMA   0xBC
+#define VK_OEM_MINUS   0xBD
+#define VK_OEM_PERIOD  0xBE
+
+#define SM_CXSCREEN 0
+#define SM_CYSCREEN 1
+#define HWND_TOPMOST reinterpret_cast<HWND>(static_cast<std::intptr_t>(-1))
+#define RGB(r, g, b) (static_cast<COLORREF>((r) | ((g) << 8) | ((b) << 16)))
+
 #define HKEY_CURRENT_USER  reinterpret_cast<HKEY>(static_cast<std::uintptr_t>(0x80000001u))
 #define HKEY_LOCAL_MACHINE reinterpret_cast<HKEY>(static_cast<std::uintptr_t>(0x80000002u))
+
+struct POINT { LONG x; LONG y; };
+struct SIZE  { LONG cx; LONG cy; };
+struct RECT  { LONG left; LONG top; LONG right; LONG bottom; };
+
+struct PAINTSTRUCT {
+    HDC   hdc;
+    BOOL  fErase;
+    RECT  rcPaint;
+    BOOL  fRestore;
+    BOOL  fIncUpdate;
+    BYTE  rgbReserved[32];
+};
+
+struct CRITICAL_SECTION {
+    void*         DebugInfo;
+    LONG          LockCount;
+    LONG          RecursionCount;
+    HANDLE        OwningThread;
+    HANDLE        LockSemaphore;
+    std::uintptr_t SpinCount;
+};
 
 struct WNDCLASSEXW {
     UINT      cbSize;
@@ -105,6 +156,52 @@ BOOL   WINAPI CopyFileW(LPCWSTR, LPCWSTR, BOOL);
 BOOL   WINAPI DeleteFileW(LPCWSTR);
 DWORD  WINAPI GetFileAttributesW(LPCWSTR);
 DWORD  WINAPI GetLastError(void);
+
+// File I/O (ime/dat_loader.cpp).
+HANDLE WINAPI CreateFileW(LPCWSTR, DWORD, DWORD, LPVOID, DWORD, DWORD, HANDLE);
+BOOL   WINAPI ReadFile(HANDLE, LPVOID, DWORD, DWORD*, LPVOID);
+BOOL   WINAPI CloseHandle(HANDLE);
+DWORD  WINAPI GetFileSize(HANDLE, DWORD*);
+
+// Win32 critical section (ime/session_store.cpp, ui/ime_ui.cpp).
+void WINAPI InitializeCriticalSection(CRITICAL_SECTION*);
+void WINAPI DeleteCriticalSection(CRITICAL_SECTION*);
+void WINAPI EnterCriticalSection(CRITICAL_SECTION*);
+void WINAPI LeaveCriticalSection(CRITICAL_SECTION*);
+
+// Caret / cursor anchoring (ui/ime_ui.cpp).
+HWND WINAPI GetFocus(void);
+BOOL WINAPI GetCaretPos(POINT*);
+BOOL WINAPI GetCursorPos(POINT*);
+BOOL WINAPI ClientToScreen(HWND, POINT*);
+int  WINAPI GetSystemMetrics(int);
+
+// Window + GDI surface (ui/*.cpp).
+HWND     WINAPI CreateWindowExW(DWORD, LPCWSTR, LPCWSTR, DWORD, int, int, int,
+                                int, HWND, HMENU, HINSTANCE, LPVOID);
+BOOL     WINAPI DestroyWindow(HWND);
+BOOL     WINAPI ShowWindow(HWND, int);
+BOOL     WINAPI SetWindowPos(HWND, HWND, int, int, int, int, UINT);
+LONG_PTR WINAPI GetWindowLongPtrW(HWND, int);
+LONG_PTR WINAPI SetWindowLongPtrW(HWND, int, LONG_PTR);
+
+HDC      WINAPI GetDC(HWND);
+int      WINAPI ReleaseDC(HWND, HDC);
+HGDIOBJ  WINAPI SelectObject(HDC, HGDIOBJ);
+BOOL     WINAPI DeleteObject(HGDIOBJ);
+HFONT    WINAPI CreateFontW(int, int, int, int, int, DWORD, DWORD, DWORD,
+                            DWORD, DWORD, DWORD, DWORD, DWORD, LPCWSTR);
+int      WINAPI GetTextFaceW(HDC, int, LPWSTR);
+HDC      WINAPI BeginPaint(HWND, PAINTSTRUCT*);
+BOOL     WINAPI EndPaint(HWND, const PAINTSTRUCT*);
+BOOL     WINAPI GetClientRect(HWND, RECT*);
+int      WINAPI FillRect(HDC, const RECT*, HBRUSH);
+HGDIOBJ  WINAPI GetStockObject(int);
+int      WINAPI SetBkMode(HDC, int);
+COLORREF WINAPI SetTextColor(HDC, COLORREF);
+BOOL     WINAPI TextOutW(HDC, int, int, LPCWSTR, int);
+BOOL     WINAPI GetTextExtentPoint32W(HDC, LPCWSTR, int, SIZE*);
+BOOL     WINAPI InvalidateRect(HWND, const RECT*, BOOL);
 
 LSTATUS WINAPI RegCreateKeyExW(HKEY, LPCWSTR, DWORD, LPWSTR, DWORD, REGSAM,
                                LPVOID, HKEY*, DWORD*);

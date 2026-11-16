@@ -145,13 +145,29 @@ def run(root: Path) -> int:
     c.check("all 16 exports implemented in imm_entry.cpp", not impl_missing,
             ", ".join(sorted(impl_missing)))
 
-    # 4. M1 passthrough semantics (WBS 2.4.1).
+    # 4. IME key-handling contract.
+    # M1 shipped an inert passthrough IME (WBS 2.4.1) where ImeProcessKey
+    # always returned FALSE and ImeToAsciiEx returned 0. M2 replaces that
+    # behaviour with real pinyin key handling: ImeProcessKey decides key
+    # ownership via should_consume_key(), and ImeToAsciiEx dispatches to
+    # process_key() which emits WM_IME_CHAR TRANSMESSAGEs on commit. The
+    # historical M1 snapshot is no longer the shipping behaviour, so assert
+    # the live M2 wiring instead of the obsolete unconditional returns.
     process_body = function_body(entry, r"BOOL\s+WINAPI\s+ImeProcessKey\s*\([^)]*\)")
     ascii_body = function_body(entry, r"UINT\s+WINAPI\s+ImeToAsciiEx\s*\([^)]*\)")
-    c.check("ImeProcessKey consumes no key (returns FALSE)",
-            process_body is not None and "return FALSE;" in process_body)
-    c.check("ImeToAsciiEx generates no messages (returns 0)",
-            ascii_body is not None and "return 0;" in ascii_body)
+    c.check("ImeProcessKey delegates key ownership to should_consume_key",
+            process_body is not None and "should_consume_key" in process_body)
+    c.check("ImeProcessKey no longer unconditionally returns FALSE",
+            process_body is not None and "return FALSE;" not in process_body)
+    c.check("ImeToAsciiEx dispatches key processing to process_key",
+            ascii_body is not None and "process_key" in ascii_body)
+    c.check("M2 commits text through WM_IME_CHAR TRANSMESSAGEs",
+            "WM_IME_CHAR" in entry and "emit_char" in entry)
+    # Regression guard: PinyinSession::feed() is a no-op until on_select(true),
+    # so a missing activation makes the IME silently swallow every pinyin key.
+    select_body = function_body(entry, r"BOOL\s+WINAPI\s+ImeSelect\s*\([^)]*\)")
+    c.check("ImeSelect activates the engine session on select",
+            select_body is not None and "on_select(true)" in select_body)
 
     # 5. Version resource (WBS 2.2.3).
     rc = read(root, "ime/rospinyin_res.rc")
