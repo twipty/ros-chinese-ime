@@ -26,6 +26,11 @@ set_target_properties(rospinyin-ime PROPERTIES
     OUTPUT_NAME "rospinyin.ime")
 
 # Do not drag a compiler runtime DLL onto a ReactOS installation.
+if(MSVC)
+    # ReactOS has no vcruntime140.dll: link the CRT statically.
+    set_property(TARGET rospinyin-ime PROPERTY
+        MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_link_options(rospinyin-ime PRIVATE -static-libgcc -static-libstdc++)
 endif()
