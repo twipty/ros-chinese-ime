@@ -81,7 +81,11 @@ jobs:
     permissions:
       contents: write
     steps:
+      # Full history: the shallow default (depth 1) made git operations that
+      # switch onto origin/m1-artifacts fail intermittently (exit 128).
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
           name: rospinyin-m1-win32
@@ -105,4 +109,6 @@ jobs:
             "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > INFO.txt
           git add -f rospinyin.ime install-rospinyin.exe INFO.txt
           git commit -m "M1 Win32 binaries from ${GITHUB_SHA::7}" || echo "no changes"
-          git push origin m1-artifacts
+          # Force push: this branch is a binary drop zone, newest run wins.
+          # Also removes non-fast-forward failures from concurrent runs.
+          git push --force origin m1-artifacts
