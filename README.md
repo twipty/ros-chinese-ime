@@ -68,7 +68,7 @@
 |---|---|---|---|
 | IME 代码 | 自研（蓝本 mzimeja v1.0.0.3 PDS） | **MIT**（D1 已定） | OSI 认证 + 跨法域可执行 + 与 ReactOS GPLv2+ 兼容；见 `LICENSE` 与 `NOTICE.txt` |
 | 字级拼音映射 | Unicode Unihan `kMandarin` | Unicode License（自由使用） | 唯一权威来源 |
-| 字频 | Jun Da 现代汉语字频表，或开放语料自算 | 待核（决策点 D2） | 不可用时回退：Unihan + 手工分级频度 |
+| 字频 | 建议 hanziDB.csv（MIT，基于 Jun Da 排名）；Jun Da 原始表因商用限制已排除 | hanziDB MIT + Unihan License 双署名 | 预研见 `m2/M2-DATA-PLAN.md`；备选：Unihan `kHanyuPinlu` / Tatoeba 自算 |
 | 词组词典（v0.2） | CC-CEDICT | CC-BY-SA | 若采用须与主代码分开分发（GPL/CC-BY-SA 单独打包） |
 
 ## 6. 上游协调
@@ -88,7 +88,7 @@
 | 编号 | 决策 | 默认倾向 | 决定时机 |
 |---|---|---|---|
 | D1 | 代码许可证 | ~~公共领域~~ → **MIT** | ✅ **已定（2026-11-13）**：蓝本锁定 PDS 的 `v1.0.0.3`，本项目代码用 MIT；理由见 `NOTICE.txt` 第 1 条与 `M0-REPORT.md` 第 6.2 节 |
-| D2 | 字频数据来源 | Jun Da（核 License 后定） | M2 前 |
+| D2 | 字频数据来源 | ~~Jun Da 原始表~~（License 限研究/教学、商用需书面许可，与 MIT 冲突，已排除）→ 建议 **hanziDB.csv（MIT）主源 + Unihan `kHanyuPinlu` 辅源** | M2 前（预研已完成，待 Owner 拍板；见 `m2/M2-DATA-PLAN.md`） |
 | D3 | IME HKL 布局 ID | ~~硬编码 0xE0100804~~ → **由 `ImmInstallIME` 动态分配并记录返回值**（M0 解剖实证：mzimeja 用 `%08X` 接收系统分配值）；0xE0100804 仅作冲突排查参考 | M1 前（结论已定） |
 | D4 | v0.1 是否含词组 | 不含（单字流畅 + 连续输入即可） | M2 末 |
 | D5 | 是否以 modules/optional 进官方树 | 仅评估不承诺（v1.0 后视质量与上游意愿） | v1.0 后 |

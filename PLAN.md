@@ -26,7 +26,7 @@
   - 1.5.1 复核 CORE-19455/20799 现状（热键）——若已修，M3 减一坑
   - 1.5.2 订阅 CORE-19268，向 Katayama 通报立项意图（获取指导，避免闭门造车）
 
-## 2. M1 骨架替换（估 15-20 人日）
+## 2. M1 骨架替换（估 15-20 人日）— ✅ 已完成 2026-11-16，见 M1-REPORT.md
 
 - **2.1 代码库改造 ✓**
   - 2.1.1 复制 mzimeja → rospinyin，确立目录：`engine/`（纯 C++ 核心）、`ime/`（IMM32 接口层）、`ui/`（窗口）、`tools/`（数据工具）、`tests/`
@@ -37,14 +37,14 @@
   - 2.2.1 ✅ `ime/` 全量新写（不复制蓝本），16 个 IMM32 导出齐全；假名/罗马字/日语词典零残留，由 `tools/check_m1.py` 自动扫描
   - 2.2.2 ✅ 资源全替换：`ime/rospinyin_res.rc` 中文/英文字符串表、布局文本「中文(简体) - RosPinyin」、IDS 1024 供 Layout Display Name 引用；图标留待 M3（WBS 4.5）
   - 2.2.3 ✅ 版本信息：`FILETYPE=0x3 (VFT_DRV)`、`FILESUBTYPE=0xB (VFT2_DRV_INPUTMETHOD)`、`Translation 0x0804/1200`、`OriginalFilename=rospinyin.ime`，静态校验入 CI
-- **2.3 中文注册 ✓**（源码完成，VM 分步验证待做）
+- **2.3 中文注册 ✓**（源码完成，VM 分步验证 2026-11-16 已完成，见 M1-REPORT.md 第二轮更新）
   - 2.3.1 ✅ **由 `ImmInstallIMEW` 动态分配 HKL 并记录返回值**（D3，不硬编码 0xE0100804）；注册表只写 `HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layouts\<HKL>` 的 Layout Text / Layout Display Name；**逐键分步注册 + 每步重启验证**，**禁止写 Preload 第一项**（M0 的 0xF4 红线）；检查脚本剥离注释后扫描违规调用
   - 2.3.2 ✅ 安装工具 `tools/install-rospinyin/install.cpp`：`/step1`…`/step4` / `/i` / `/status` / `/u`
-  - 2.3.3 ⬜ 验证 kbswitch 出现简体中文项并切换（需 VM）
-- **2.4 空输入法直通 ✓**（宿主侧完成，VM 压测待做）
+  - 2.3.3 ✅ 验证 kbswitch 出现简体中文项并切换（VM 实测：`Chinese (Simplified) - RosPinyin`，HKL=`e0210804`；托盘「中」字图标 + Alt+Shift 切换均已确认，见 `m0/vm/evidence/m1-2.5/`、`m1-altshift/`）
+- **2.4 空输入法直通 ✓**（宿主侧完成，VM 压测 2026-11-16 已完成，见 M1-REPORT.md 第二轮更新）
   - 2.4.1 ✅ `ImeProcessKey` 返回 FALSE 全直通、`ImeToAsciiEx` 零消息、`ImeInquire/ImeSelect/ImeSetActiveContext/NotifyIME` 返回正确；宿主 `g++ -fsyntax-only` 零告警
-  - 2.4.2 ✅ 引擎层 50 次 select/deselect 循环单测（`tests/session_test.cpp`）；⬜ ReactOS VM 内 50 次激活/停用压测与泄漏观察
-  - 2.4.3 ⬜ 双机（XP/ReactOS）行为比对记录
+  - 2.4.2 ✅ 引擎层 50 次 select/deselect 循环单测（`tests/session_test.cpp`）；✅ ReactOS VM 内 50 次激活/停用压测完成、无崩溃无泄漏（证据 `m0/vm/evidence/m1-2.4/`）
+  - 2.4.3 ⬜ 双机（XP/ReactOS）行为比对记录 —— **环境所限搁置**：本机 Linux 无 Windows 参照机，且 M0 阶段已决定跳过 XP VM；非技术缺口。若日后具备 Windows 环境再补。
 
 ## 3. M2 单字引擎（估 22-30 人日）★核心里程碑
 
