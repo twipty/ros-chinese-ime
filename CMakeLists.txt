@@ -12,6 +12,14 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Source files are UTF-8 without BOM (checked in CI) and contain non-ASCII
+# string literals (Chinese layout names). Without this flag MSVC on an en-US
+# host interprets them as CP1252, and every L"..." literal with Chinese text
+# is mojibake at compile time (showed up as wrong characters in kbswitch).
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
+
 if(WIN32)
     # .rc version/string resources of rospinyin.ime need the RC language.
     enable_language(RC)
