@@ -48,7 +48,7 @@
 
 ## 3. M2 单字引擎（估 22-30 人日）★核心里程碑 — 🚧 进行中（2026-11-16 起步）
 
-> 进展：D2 已拍板 A；共用归一化库、`mkdat` 编译器、`rospinyin.dat` v1 格式、运行时表与单字引擎骨架已落地。2026-11-16 完成 M2 剩余工程部分：候选分页器、`rospinyin.dat` 延迟加载、按 HIMC 会话管理、IMM32 键处理（组合/翻页/数字选字/上屏/回删/Esc）以及组合串窗口与候选窗（`ui/`）；宿主 ctest **7/7**、语法检查通过。实测加载真实 dat 后 `zhongguo` → `[zhong][guo]` / 首选 `国`（U+56FD），`nv` → 女、`lv` → 律、`lve` → 略、`nve` → 虐。ReactOS 记事本验收操作单见 `m2/M2-ACCEPTANCE.md`，待 CI 产出新 `.ime` 后在 VM 执行（见 `m2/M2-DATA-PLAN.md` 第 8/9 节）。
+> 进展：D2 已拍板 A；共用归一化库、`mkdat` 编译器、`rospinyin.dat` v1 格式、运行时表与单字引擎骨架已落地。2026-11-16 完成 M2 剩余工程部分：候选分页器、`rospinyin.dat` 延迟加载、按 HIMC 会话管理、IMM32 键处理（组合/翻页/数字选字/上屏/回删/Esc）以及组合串窗口与候选窗（`ui/`）；宿主 ctest **7/7**、语法检查通过。实测加载真实 dat 后 `zhongguo` → `[zhong][guo]` / 首选 `国`（U+56FD），`nv` → 女、`lv` → 律、`lve` → 略、`nve` → 虐。ReactOS 记事本验收操作单见 `m2/M2-ACCEPTANCE.md`，待 CI 产出新 `.ime` 后在 VM 执行（见 `m2/M2-DATA-PLAN.md` 第 8/9 节）。2026-11-16 变更目标：框架抽取完成（见 3.6），M2 工程部分全部落地，宿主 ctest 8/8。
 
 - **3.1 引擎库 `pinyin-core` ✓**
   - 3.1.1 音节数据结构（415 左右合法音节 + 声调变体）
@@ -79,6 +79,13 @@
   - 3.5.1 全流程测试操作单：`m2/M2-ACCEPTANCE.md`（15 项用例）
   - 3.5.2 长时间输入会话（30 分钟）稳定性
   - 3.5.3 **v0.1 预览版发布**（提前收集社区反馈，不等 M3）
+- **3.6 框架抽取：引擎宿主 / UI / 工具条可复用化 ✅（2026-11-16 变更目标）**
+  - 3.6.1 目录重组：`framework/`（imfw：engine 契约、CodeTable/dat、CandidatePager、IMM32 host、UI 窗口）+ `pinyin/`（拼音插件）+ `ime/`（装配）；`engine/`、`ui/` 消失
+  - 3.6.2 Scheme 插件接口（`imfw/scheme.hpp`）：字母表/码表名/窗口类名/工具条标签/引擎工厂/兜底表；`scheme_instance()` 由装配模块定义
+  - 3.6.3 `Result.segments` 通用切分视图：组合串下划线对拼音/形码通用
+  - 3.6.4 通用 `CodeTable`：键名改由 dat 自带 SylEntry 名提供，框架不含拼音知识（check_m1 新增防污染断言 + `pinyin-scheme` 契约测试）
+  - 3.6.5 **输入法工具条**（`framework/ui/toolbar.*`）：右下角浮动、Scheme 标签（RosPinyin 显示「拼」）、`ImeSelect` 驱动显隐；M3 再扩展中/英与全/半角
+  - 3.6.6 验证：宿主 ctest 8/8；ziglang(x86-windows-gnu) 真实 MinGW 头交叉语法检查 12/12；真实 dat 链路复验（zhongguo→国、nv/lv/lve/nve）通过
 
 ## 4. M3 中文体验补齐（估 10-14 人日）
 

@@ -36,6 +36,8 @@ v0.1「墨」→ v0.2「联」→ v0.3「全」→ v1.0「正」
 **目标：拼音→单字转换流畅可用，本项目最大价值在此落地。**
 
 **已落地（2026-11-16）**：D2 拍板 A（hanziDB MIT 主源 + Unihan kHanyuPinlu 辅源），`ü` 用 `v` 键输入；共用归一化库 + `mkdat` + `rospinyin.dat`（902,768 B / 418 音节 / 44,355 字，字节级可复现）+ 运行时表 + 单字引擎骨架。M2 剩余工程部分同日完成：候选分页器、`dat` 延迟加载、按 HIMC 会话、IMM32 键处理（组合/翻页/数字选字/上屏/回删/Esc）、组合串窗口与候选窗（`ui/`）。宿主 ctest **7/7** + 语法检查通过；真实 dat 实测 `zhongguo` → 国、`nv/lv/lve/nve` 全部命中预期字。详见 `m2/M2-DATA-PLAN.md` 第 8/9 节。剩余：CI 产出新 `.ime` 后在 ReactOS VM 执行 `m2/M2-ACCEPTANCE.md`。
+
+**框架抽取（2026-11-16 变更目标，已完成）**：输入法引擎宿主（不含拼音码表与选字逻辑）、UI 窗口层与**输入法工具条**独立为可复用的 `framework/`（imfw），拼音退居 `pinyin/` 插件，`ime/` 只做装配。复用缝是 `imfw::Scheme` 插件接口（字母表、码表文件、窗口类名、工具条标签、引擎工厂、兜底表）；框架拥有 IMM32 通用键处理（翻页/选字/退格/Esc/上屏）与全部窗口渲染，`Result.segments` 让组合串窗口对拼音/形码通用。宿主 ctest 8/8（含新增 `pinyin-scheme` 契约测试）、ziglang 真实 MinGW 头交叉检查 12/12、真实 dat 链路复验通过。形码产品线 RosXingMa（`xingma/XINGMA-PLAN.md`）将作为第二个插件接入；其 G1 缺口（多码点/词组上屏）已由框架补齐。复用指南：`framework/README.md`。
 细节：
 - 独立平台无关引擎库 `pinyin-core`：音节切分（最长匹配 + 歧义处理，如 xian → xi'an）→ 候选生成 → 频度排序；平台无关，PC 端单元测试全覆盖；
 - 数据工具链：从 Unicode Unihan `kMandarin` 提取字→拼音映射 + 声调（决策点 D2 定字频源），编译成紧凑二进制 `rospinyin.dat`，非核心 IME 文件可单独更新；

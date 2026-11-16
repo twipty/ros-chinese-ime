@@ -16,15 +16,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: IME source syntax check (host Win32 ABI stub)
-        # Verifies ime/*.cpp, ui/*.cpp and the installer compile syntactically
-        # without needing MinGW: no linking, no Windows SDK, no binary output.
+        # Verifies framework/host + framework/ui + the assembly glue and the
+        # installer compile syntactically without needing MinGW: no linking,
+        # no Windows SDK, no binary output.
         run: >-
           g++ -std=c++17 -fsyntax-only
-          -Itools/syntax_stub -Iengine/include -Iime -Iui
-          ime/dllmain.cpp ime/imm_entry.cpp ime/ui_server.cpp
-          ime/dat_loader.cpp ime/session_store.cpp
-          ui/ime_ui.cpp ui/ui_window.cpp
-          ui/composition_window.cpp ui/candidate_window.cpp
+          -Itools/syntax_stub -Iframework/include -Iframework/host
+          -Iframework/ui -Ipinyin/include -Iime
+          framework/host/dllmain.cpp framework/host/imm_entry.cpp
+          framework/host/ui_server.cpp framework/host/dat_loader.cpp
+          framework/host/session_store.cpp
+          framework/ui/ime_ui.cpp framework/ui/ui_window.cpp
+          framework/ui/composition_window.cpp framework/ui/candidate_window.cpp
+          framework/ui/toolbar.cpp ime/scheme_reg.cpp
           tools/install-rospinyin/install.cpp
       - name: Configure
         run: cmake -S . -B build -DROSPINYIN_BUILD_TESTS=ON

@@ -137,3 +137,7 @@ install-rospinyin.exe /step4     # Layout Display Name → 重启 → 任务栏�
 ---
 
 _下一步：把本轮改动提交并推送到 `twipty/ros-chinese-ime`，观察 Windows CI；随后进入 VM 分步注册与切换压测。_
+
+---
+
+**补注（2026-11-16 框架抽取）**：本文记录的 `ime/dllmain.cpp`、`ime/imm_entry.cpp`、`ime/ui_server.cpp`、`engine/`、`ui/` 路径已迁移至 `framework/host/`、`framework/include/imfw/`、`framework/src/`、`framework/ui/`（拼音部分在 `pinyin/`），见 `framework/README.md`。M1 契约（16 导出、红线、注册链路）语义完全不变，`tools/check_m1.py` 已更新路径。

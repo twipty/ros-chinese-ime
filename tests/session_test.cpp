@@ -6,16 +6,16 @@
 // through, keep no composition state, and survive repeated layout switches.
 // The in-VM 50-switch stress test is still required before closing M1.
 
-#include <rospinyin/engine.hpp>
-#include <rospinyin/session.hpp>
+#include <imfw/engine.hpp>
+#include <imfw/session.hpp>
 #include <rospinyin/version.hpp>
 #include <cstdio>
 #include <cstring>
 
 namespace {
 
-bool is_empty_result(const rospinyin::Result& r) {
-    return r.action == rospinyin::Action::Passthrough &&
+bool is_empty_result(const imfw::Result& r) {
+    return r.action == imfw::Action::Passthrough &&
            r.composition.empty() && r.candidates.empty() &&
            r.commit_text.empty();
 }
@@ -28,7 +28,7 @@ int fail(const char* what) {
 }  // namespace
 
 int main() {
-    rospinyin::PassthroughSession session;
+    imfw::PassthroughSession session;
 
     if (session.active()) {
         return fail("session must start deselected");
@@ -39,7 +39,7 @@ int main() {
 
     session.on_select(true);
     for (int i = 0; i < 1000; ++i) {
-        const rospinyin::Result r = session.feed(static_cast<char32_t>(U'a' + i % 26));
+        const imfw::Result r = session.feed(static_cast<char32_t>(U'a' + i % 26));
         if (!is_empty_result(r)) {
             return fail("feed must always passthrough at M1");
         }
@@ -72,7 +72,7 @@ int main() {
     }
 
     // engine_build_id() must be a real symbol from the linked engine library.
-    if (std::strlen(rospinyin::engine_build_id()) == 0) {
+    if (std::strlen(imfw::engine_build_id()) == 0) {
         return fail("engine static library not linked");
     }
 
