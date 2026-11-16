@@ -57,3 +57,49 @@ RosPinyin — Third-party notices / 第三方许可声明
    ReactOS 是 GPLv2-or-later 项目。本仓库为**独立软件包**，只调用公开的
    IMM32 API，不链接也不复制 ReactOS 源码；若未来以 modules/optional
    进入官方构建树，MIT 代码可被 GPLv2 项目吸收（保留本版权声明即可）。
+
+8. 形码码表（规划中，命名 RosXingMa；全部文件在 xingma/ 目录）
+   ------------------------------------------------------------------------
+   相关文档：xingma/XINGMA-PLAN.md、xingma/README.md、
+             xingma/docs/TABLE-LICENSE-RESEARCH.md、xingma/docs/TABLE-IMPORT-SPEC.md、
+             xingma/docs/DATA-PACK-SPEC.md
+   结论：形码编码方案相关发明专利均已届满，但**字根表与字码对照表仍受著作权保护**
+   （拆字规则/编码方案本身属于操作方法，不受保护）；专利到期不影响著作权。
+   因此本项目的形码发行采用**双轨**，三层授权严格分离：
+
+   (a) 引擎、IME、UI、码表配置/导入工具（rosxingma-config / rosxingma-table）、
+       shape.dat 与 CSV/TSV/fcitx 5/ibus 格式规范：MIT（同第 1 条）。
+       上述工具是通用「码表编译器」，不内置任何具体码表，属中立工具。
+       Rime dict.yaml 仅由 PC 端脚本（xingma/tools/table-convert/rime2csv.py）转换，
+       设备端不解析；fcitx 4（.mb 二进制/文本）不在支持范围内。
+   (b) 可选数据包（单独下载，不与主包合并授权单元）：
+       - 86 版：KyleBing/rime-wubi86-jidian，MIT（2026-10-29 起）。
+         该项目只能许可其自有部分，上游来源（极点码表）权利完整性未获担保。
+       - 98 版：yanhuacuo/98wubi-tables，Unlicense（作者本人 2024-01-20 加入）。
+       形式为「可导入包 + 预配置清单」：目录内含 pack.ini（名称/码长/字母表/
+       许可证/来源/上游提示）、table.csv、LICENSE、NOTICE.md、SHA256SUMS。
+       规范见 xingma/docs/DATA-PACK-SPEC.md。两份包各自附许可证与署名，可整体替换
+       或删除；删除后软件进入「未安装码表」状态，功能不受损。
+       仓库 xingma/packs/ 目录仅存放 pack.ini.in 模板、LICENSE 与 NOTICE.md，
+       不含码表数据（table.csv 由构建脚本按固定 commit 生成）。
+   (c) 用户自行导入的码表（含从 fcitx 5 / ibus / Rime 等框架导入的表）：
+       **不在 MIT 覆盖范围**，由用户自行确保合法性；
+       本项目不内置、不自动下载、不提供指向未授权码表的链接。
+
+   命名说明：本项目产品与全部构件统一命名为 RosXingMa（rosxingma.ime、
+   rosxingma-config.exe、rosxingma-table.exe、HKCU\SOFTWARE\RosXingMa、
+   %ProgramFiles%\RosXingMa），代码、路径、界面与文档不使用其它名称。
+   目录说明：形码专属的文档、数据包、工具与源码统一放在仓库的 xingma/ 目录，
+   与拼音产品的文件分开存放；形码侧不修改 ros-pinyin 的构建文件与说明文档。
+   本文件及全文中出现的上游仓库名（rime-wubi86-jidian、98wubi-tables 等）、
+   上游产品名（极点五笔）与商标名（五笔字型）均为**事实引用**，用于指明
+   数据来源与声明避让范围，不构成本项目名称的一部分。
+
+   永不随包分发：新世纪版码表（公开来源或为转载者给的 GPL、或明写
+   「版权归王码公司、请勿商用」）、字根键位图、助记口诀、王码名称与图标。
+   产品名与界面不使用「王码」「五笔字型」商标，仅以「86 版/98 版/新世纪版」
+   描述编码方案。
+
+   仓库内不得存放任何真实码表（含片段）；测试数据一律自造。
+
+   本节为工程级尽调结论，不构成法律意见；商业发布前须经执业律师复核。
