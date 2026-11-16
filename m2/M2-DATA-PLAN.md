@@ -203,3 +203,38 @@ rospinyin.dat = 882 KB（目标 < 2 MB ✅）
 `nv` → 女（U+5973，rank 224）、`lv` → 律（U+5F8B，rank 526）、`lve` → 略（U+7565，rank 704）。
 
 版本标识已从 `0.0.1-m1` 升为 `0.0.2-m2-dev`（`version.hpp` 与 `ime/rospinyin_res.rc` 同步）。
+
+---
+
+## 9. M2 剩余部分落地（2026-11-16）
+
+| 落点 | 文件 | 状态 |
+|---|---|---|
+| 候选分页 | `engine/include/rospinyin/candidate_pager.hpp`、`engine/src/candidate_pager.cpp`、`tests/candidate_pager_test.cpp` | ✅ 9 候选/页、翻页、数字按当前页解释、越界安全 |
+| dat 延迟加载 | `ime/dat_loader.hpp/.cpp` | ✅ `GetSystemDirectoryW` 定位 `rospinyin.dat`；损坏/缺失时回退内置表；不在 DllMain 调用 |
+| 会话管理 | `ime/session_store.hpp/.cpp` | ✅ 按 HIMC 持有 `PinyinSession` + `CandidatePager`；Win32 `CRITICAL_SECTION`，不引入 `libwinpthread` |
+| UI 桥接 | `ime/ime_ui.h`、`ui/ime_ui.cpp` | ✅ `UiShow`/`UiHide`/`UiDestroy`，函数内静态 store，惰性建窗 |
+| 窗口层 | `ui/ui_window.*`、`ui/composition_window.*`、`ui/candidate_window.*` | ✅ 组合串音节下划线、候选窗 9 项编号与页码、跟随插入符、边缘避让、CJK 字体兜底链 |
+| IMM32 入口 | `ime/imm_entry.cpp` | ✅ M1 passthrough → M2 键处理；`ImeSelect(TRUE)` 调用 `on_select(true)`（关键集成修复） |
+| 构建/CI | `ime/CMakeLists.txt`、`tools/syntax_stub/windows.h`、`.github/workflows/ci.yml`、`tools/check_m1.py` | ✅ 接入 engine 与 UI 源、扩展语法桩、CI 生成并发布 dat、contract 断言随 M2 语义更新 |
+| VM 验收 | `m2/M2-ACCEPTANCE.md`、`m0/share/rospinyin.dat` | 🧪 操作单与数据就位，待新 `.ime` 产出后执行 |
+
+验证结果：
+
+```text
+宿主 g++ -fsyntax-only（ime + ui + installer）: PASS
+cmake build: PASS
+ctest: 7/7 PASS（smoke, session, pinyin, pinyin-session, candidate-pager, m1-contract, mkdat-e2e）
+真实 dat 加载: 44355 entries
+zhongguo -> syl=2 cand=136 top=U+56FD(国)
+nv       -> syl=1 cand=18  top=U+5973(女)
+lv       -> syl=1 cand=122 top=U+5F8B(律)
+lve      -> syl=1 cand=26  top=U+7565(略)
+nve      -> syl=1 cand=8   top=U+8650(虐)
+zhong    -> syl=1 cand=108 top=U+4E2D(中)
+rospinyin.dat: 902768 bytes, sha256 ce7ca6e0185c5cbd09146f77dbf16ebe29a2f44ba52990fa6a34af1466b9ddfd
+```
+
+> 关键教训：`PinyinSession::feed()` 在 `on_select(true)` 之前是 no-op。
+> M2 IMM32 集成最初漏掉 `ImeSelect(TRUE)` 里的激活调用，导致「IME 吃掉
+> 拼音键但永远不出组合串」。已在 `tools/check_m1.py` 加静态断言防回归。
