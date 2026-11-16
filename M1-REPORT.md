@@ -28,6 +28,12 @@
 >   「中」字图标。证据见 `m0/vm/evidence/m1-2.5/`，操作单见 `NOVNC-GUIDE.md` v6。
 >   排查中固化两个环境事实：本 VM 的 `%SystemRoot%` = `C:\ReactOS`（非 `C:\windows`）；
 >   Playwright 经 noVNC 输入会丢 Shift，URL 的 `:`/大写字母须显式按 Shift。
+> - **Alt+Shift 切换实测（2026-11-16）**：**可靠切换**——按一次从红色「中」字图标
+>   变为 `EN`，再按一次切回「中」字；托盘菜单显示 `中文(简体) - RosPinyin` 带勾选
+>   标记，确认切换的是真实 IME 布局而非仅图标重绘。相比之下 `Ctrl+Space` 在该
+>   ReactOS 0.4.16 VM 上不可靠（M1-2.4 压测结论），**Alt+Shift 是本项目可用的切换热键**，
+>   对应 M3 WBS 4.4「CORE-19455 未修时启用备用热键」的备选方案已实测可行。
+>   证据见 `m0/vm/evidence/m1-altshift/`。
 > - **仍待办**：Windows 参照机裸 LoadLibrary/FreeLibrary 验证、双机行为比对、中文 locale
 >   显示（可选 i18n 优化）。
 
