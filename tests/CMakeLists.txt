@@ -21,6 +21,11 @@ add_executable(rospinyin-pinyin-session pinyin_session_test.cpp)
 target_link_libraries(rospinyin-pinyin-session PRIVATE rospinyin-engine)
 add_test(NAME pinyin-session COMMAND rospinyin-pinyin-session)
 
+# M2 UI logic: 9-candidate paging and digit selection.
+add_executable(rospinyin-candidate-pager candidate_pager_test.cpp)
+target_link_libraries(rospinyin-candidate-pager PRIVATE rospinyin-engine)
+add_test(NAME candidate-pager COMMAND rospinyin-candidate-pager)
+
 # Static M1 contract checks (exports, version resource, M0 red lines).
 find_program(ROSPINYIN_PYTHON NAMES python3 python QUIET)
 if(ROSPINYIN_PYTHON)

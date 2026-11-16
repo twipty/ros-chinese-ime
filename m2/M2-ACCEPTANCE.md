@@ -1,0 +1,86 @@
+# M2 ReactOS 记事本验收操作单
+
+> 版本：v1（2026-11-16）
+> 目标：在 ReactOS 0.4.16 guestOS 中验证 M2 单字拼音引擎的端到端行为
+> 前置：M1 已完成（`ImmInstallIMEW` HKL=`e0210804`，Alt+Shift 可切换到
+> `中文(简体) - RosPinyin`，托盘「中」字图标可见）。见 `m0/vm/NOVNC-GUIDE.md` v7。
+
+## 0. 验收范围与判定口径
+
+| 项 | 判定标准 |
+|---|---|
+| 数据加载 | `rospinyin.dat` 能被 IME 从 `C:\ReactOS\system32\` 读取；44,355 字 / 418 音节生效（以候选数明显多于内置表为准） |
+| 组合串 | 输入 `zhongguo` 显示 8 个字母并在 `[zhong]` / `[guo]` 处有音节下划线 |
+| 候选窗 | 显示 9 条编号候选；`-` / `,` 上一页，`=` / `.` 下一页，页码如 `1/15` |
+| 选字上屏 | 空格选首选；`1`–`9` 选当前页对应候选；翻页后数字按当前页解释 |
+| `v` 键 | `nv` → 女；`lv` → 律；`lve` → 略；`nve` → 虐 |
+| 编辑键 | Backspace 回退组合串；Esc 取消组合串且不上屏 |
+| 稳定性 | 连续 100 字输入无崩溃、无残窗、无组合串卡死 |
+
+## 1. 前置：把 M2 产物放进 guestOS
+
+宿主 HTTP 共享：`http://192.168.0.204:8000/`（以 `m0/share/` 为根目录，
+先 `curl -I` 确认可达）。以下全部在 guestOS 命令行执行，系统目录是
+**`C:\ReactOS\system32`**（不是 `C:\windows\system32`）：
+
+```bat
+cd \
+wget http://192.168.0.204:8000/rospinyin.ime
+wget http://192.168.0.204:8000/rospinyin.dat
+copy /y rospinyin.ime C:\ReactOS\system32\
+copy /y rospinyin.dat C:\ReactOS\system32\
+```
+
+> noVNC 自动化注意：`keyboard.type()` 会丢 Shift，URL 必须逐字符显式注入
+> Shift（`:` = Shift+Semicolon，`/` = 独立 Slash）。见 NOVNC-GUIDE v6。
+
+然后**重启 guestOS**，确保 IMM32 卸载旧 `.ime` 再加载新版本。重启后先确认
+Alt+Shift 仍能切到 `中文(简体) - RosPinyin`，托盘「中」字图标仍在。
+
+## 2. 打开记事本并激活 IME
+
+1. `开始 → 程序 → 附件 → 记事本`（或命令行 `notepad`）。
+2. 在编辑区点一下，按 `Alt+Shift` 直到托盘显示红色「中」字。
+3. 若没切换成功，再按一次 `Alt+Shift`；不要用 `Ctrl+Space`（实测不可靠）。
+
+## 3. 用例
+
+| # | 输入 | 期望 | 实测 | 结果 |
+|---|---|---|---|---|
+| 3.1 | `zhong` | 组合串 `zhong`；候选首项 `中`；页码存在 | | ☐ |
+| 3.2 | 继续 `guo` | 组合串 `zhongguo`；两段下划线；候选首项 `国` | | ☐ |
+| 3.3 | `空格` | 上屏 `国`，组合串/候选窗消失 | | ☐ |
+| 3.4 | `nv` + `空格` | 上屏 `女` | | ☐ |
+| 3.5 | `lv` + `空格` | 上屏 `律` | | ☐ |
+| 3.6 | `lve` + `空格` | 上屏 `略` | | ☐ |
+| 3.7 | `nve` + `空格` | 上屏 `虐` | | ☐ |
+| 3.8 | `shi` 后按 `2` | 上屏当前页第 2 候选（非固定第 2 字） | | ☐ |
+| 3.9 | `zhong` 后按 `=` | 翻到第 2 页，页码 `2/n` | | ☐ |
+| 3.10 | 第 2 页按 `1` | 上屏第 10 个候选 | | ☐ |
+| 3.11 | `-` | 翻回第 1 页 | | ☐ |
+| 3.12 | `hao` 后 `Backspace` ×2 | 组合串变 `ha`，候选随之刷新 | | ☐ |
+| 3.13 | `hao` 后 `Esc` | 组合串清空，不上屏任何字 | | ☐ |
+| 3.14 | 连续输入 100 个字母（混合合法音节） | 无崩溃、无残留窗口、候选窗跟随插入符 | | ☐ |
+| 3.15 | 切到 `EN` 再切回 `中` | 组合串状态清空，可重新输入 | | ☐ |
+
+## 4. 证据归档
+
+截图与日志放到 `m0/vm/evidence/m2-acceptance/`，命名：
+
+```text
+01-notepad-zhong.png       组合串 + 候选窗
+02-page2.png               翻页后页码
+03-v-key.png               nv / lv / lve 候选
+04-after-commit.png        上屏结果
+05-stress-100.png          长输入后状态
+result.md                  上表实测列 + 结论
+```
+
+## 5. 失败回退
+
+- 若组合串不出现：检查 `ImeSelect(TRUE)` 是否触发（引擎在 `on_select(true)`
+  前拒绝 `feed()`）；已加 contract 断言防回归。
+- 若候选是方框：CJK 字体未挂载，安装 `NotoSansSC-subset.ttf` 或改用
+  `Droid Sans Fallback`，见 `ui/README.md`。
+- 若 `.ime` 加载失败：回退到 M1 产物（`m0/share/rospinyin.ime.noicon` 是
+  无图标版，不要用于最终验收），先确认 M1 仍可用再定位 M2 回归。

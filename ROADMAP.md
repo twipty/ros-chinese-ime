@@ -35,7 +35,7 @@ v0.1「墨」→ v0.2「联」→ v0.3「全」→ v1.0「正」
 
 **目标：拼音→单字转换流畅可用，本项目最大价值在此落地。**
 
-**已落地（2026-11-16）**：D2 拍板 A（hanziDB MIT 主源 + Unihan kHanyuPinlu 辅源），`ü` 用 `v` 键输入；共用归一化库 + `mkdat` + `rospinyin.dat`（882 KB / 418 音节 / 44,355 字，字节级可复现）+ 运行时表 + 单字引擎骨架（切分/候选/上屏），宿主 ctest 6/6。详见 `m2/M2-DATA-PLAN.md` 第 8 节。剩余：IMM32 UI 集成、候选窗、ReactOS 记事本验收。
+**已落地（2026-11-16）**：D2 拍板 A（hanziDB MIT 主源 + Unihan kHanyuPinlu 辅源），`ü` 用 `v` 键输入；共用归一化库 + `mkdat` + `rospinyin.dat`（902,768 B / 418 音节 / 44,355 字，字节级可复现）+ 运行时表 + 单字引擎骨架。M2 剩余工程部分同日完成：候选分页器、`dat` 延迟加载、按 HIMC 会话、IMM32 键处理（组合/翻页/数字选字/上屏/回删/Esc）、组合串窗口与候选窗（`ui/`）。宿主 ctest **7/7** + 语法检查通过；真实 dat 实测 `zhongguo` → 国、`nv/lv/lve/nve` 全部命中预期字。详见 `m2/M2-DATA-PLAN.md` 第 8/9 节。剩余：CI 产出新 `.ime` 后在 ReactOS VM 执行 `m2/M2-ACCEPTANCE.md`。
 细节：
 - 独立平台无关引擎库 `pinyin-core`：音节切分（最长匹配 + 歧义处理，如 xian → xi'an）→ 候选生成 → 频度排序；平台无关，PC 端单元测试全覆盖；
 - 数据工具链：从 Unicode Unihan `kMandarin` 提取字→拼音映射 + 声调（决策点 D2 定字频源），编译成紧凑二进制 `rospinyin.dat`，非核心 IME 文件可单独更新；

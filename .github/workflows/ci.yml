@@ -16,12 +16,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: IME source syntax check (host Win32 ABI stub)
-        # Verifies ime/*.cpp and the installer compile syntactically without
-        # needing MinGW: no linking, no Windows SDK, no binary output.
+        # Verifies ime/*.cpp, ui/*.cpp and the installer compile syntactically
+        # without needing MinGW: no linking, no Windows SDK, no binary output.
         run: >-
           g++ -std=c++17 -fsyntax-only
-          -Itools/syntax_stub -Iengine/include
+          -Itools/syntax_stub -Iengine/include -Iime -Iui
           ime/dllmain.cpp ime/imm_entry.cpp ime/ui_server.cpp
+          ime/dat_loader.cpp ime/session_store.cpp
+          ui/ime_ui.cpp ui/ui_window.cpp
+          ui/composition_window.cpp ui/candidate_window.cpp
           tools/install-rospinyin/install.cpp
       - name: Configure
         run: cmake -S . -B build -DROSPINYIN_BUILD_TESTS=ON
@@ -29,6 +32,17 @@ jobs:
         run: cmake --build build --parallel
       - name: Test
         run: ctest --test-dir build --output-on-failure
+      - name: Build rospinyin.dat from pinned sources
+        # Same sha256-verified inputs the VM data plan documents; the dat is
+        # published with the binaries so guestOS can wget it from the share.
+        run: bash tools/mkdat/build_dat.sh build/m2-data
+      - name: Upload M2 data asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: rospinyin-m2-data
+          path: build/m2-data/rospinyin.dat
+          if-no-files-found: error
+          retention-days: 30
 
   windows-build:
     # MinGW-w64 i686, NOT MSVC. MSVC's CRT statically imports
@@ -147,6 +161,10 @@ jobs:
         with:
           name: rospinyin-m1-win32
           path: stage
+      - uses: actions/download-artifact@v4
+        with:
+          name: rospinyin-m2-data
+          path: m2-stage
       - name: Verify IME tray icon resource
         # ReactOS kbswitch only paints a layout icon for IME layouts when the
         # .ime carries an RT_GROUP_ICON resource; otherwise the tray stays
@@ -170,7 +188,8 @@ jobs:
           git config user.email "82503737+twipty@users.noreply.github.com"
           mkdir -p /tmp/binaries
           cp -f stage/rospinyin.ime stage/install-rospinyin.exe \
-                stage/wget.exe stage/curl.exe /tmp/binaries/
+                stage/wget.exe stage/curl.exe m2-stage/rospinyin.dat \
+                /tmp/binaries/
           if git ls-remote --exit-code origin m1-artifacts >/dev/null 2>&1; then
             git fetch origin m1-artifacts
             git checkout -B m1-artifacts origin/m1-artifacts
@@ -180,11 +199,13 @@ jobs:
             git clean -fdx >/dev/null 2>&1 || true
           fi
           cp -f /tmp/binaries/rospinyin.ime /tmp/binaries/install-rospinyin.exe \
-                /tmp/binaries/wget.exe /tmp/binaries/curl.exe .
+                /tmp/binaries/wget.exe /tmp/binaries/curl.exe \
+                /tmp/binaries/rospinyin.dat .
           printf 'source commit: %s\nbuilt: %s\n' \
             "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > INFO.txt
-          git add -f rospinyin.ime install-rospinyin.exe wget.exe curl.exe INFO.txt
-          git commit -m "M1 Win32 binaries from ${GITHUB_SHA::7}" || echo "no changes"
+          git add -f rospinyin.ime install-rospinyin.exe wget.exe curl.exe \
+                    rospinyin.dat INFO.txt
+          git commit -m "M2 Win32 binaries + data from ${GITHUB_SHA::7}" || echo "no changes"
           # Force push: this branch is a binary drop zone, newest run wins.
           # Also removes non-fast-forward failures from concurrent runs.
           git push --force origin m1-artifacts

@@ -39,7 +39,8 @@ add_library(rospinyin-engine STATIC
     engine/src/session.cpp
     engine/src/pinyin.cpp
     engine/src/table.cpp
-    engine/src/pinyin_session.cpp)
+    engine/src/pinyin_session.cpp
+    engine/src/candidate_pager.cpp)
 target_include_directories(rospinyin-engine PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/engine/include>")
 target_compile_features(rospinyin-engine PUBLIC cxx_std_17)

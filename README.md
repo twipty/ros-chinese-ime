@@ -129,4 +129,13 @@
 - 引擎契约 `engine/include/rospinyin/engine.hpp` 定型，M2 替换实现时 API 不变；`ui/` 给出窗口分层约定。
 - 质量闸门：`tools/check_m1.py`（25 项：日语残留、导出表、版本字段、M0 红线、命名一致性）+ Linux 下用 `tools/syntax_stub` 对 Windows 源码做零链接语法编译；本机 `ctest` 3/3 通过。
 
-**尚未完成**：真实 Windows/MinGW 构建产物、Windows 参照机裸加载验证、ReactOS VM 分步注册与 50 次切换压测。本机为 Linux 无 Windows 工具链，**当前仓库不含可运行的 `rospinyin.ime` 二进制**；Windows CI job 已接线，推送后应先确认其产物。
+**尚未完成（此为 2026-11-13 历史状态，后续已更新）**：真实 Windows/MinGW 构建产物、Windows 参照机裸加载验证、ReactOS VM 分步注册与 50 次切换压测。本机为 Linux 无 Windows 工具链，**当前仓库不含可运行的 `rospinyin.ime` 二进制**；Windows CI job 已接线，推送后应先确认其产物。→ 见 [M1-REPORT.md](M1-REPORT.md) 第二轮更新与下文第 11 节。
+
+## 11. M2 进展（2026-11-16）
+
+- **数据决策 D2=A 已落地**：hanziDB.csv（MIT）主源 + Unihan `kHanyuPinlu` 辅源；`ü` 统一用 `v` 键输入。原始数据固定 URL + SHA256，一键编译 `rospinyin.dat`（44,355 字 / 418 音节 / 902,768 B，字节级可复现）。
+- **引擎**：共用拼音归一化库、`mkdat` 编译器、运行时表、`PinyinSession`（最长匹配+回溯切分、连续输入、音节下划线数据）、`CandidatePager`（9 候选、翻页、数字选字）。
+- **IMM32 + UI**：`ime/imm_entry.cpp` 已实现真实键处理（组合、翻页、选字上屏、退格、Esc）；`ui/` 提供组合串窗口与候选窗，字体带 CJK 兜底链；窗口惰性创建，不在 `DllMain` 建窗。
+- **质量闸门**：Linux 语法检查（`ime/` + `ui/` + 安装器）通过；`ctest` **7/7**；真实 dat 端到端验证 `zhongguo → 国`、`nv/lv/lve/nve` 命中预期字。
+- **验收准备**：操作单 `m2/M2-ACCEPTANCE.md` 与数据 `m0/share/rospinyin.dat` 已就位，待 CI 产出含 M2 UI 的新 `.ime` 后在 ReactOS VM 执行。
+- M1 的 passthrough 契约断言已随 M2 语义更新（保留注册/资源/DllMain 红线，新增会话激活断言），详见 `tools/check_m1.py`。
