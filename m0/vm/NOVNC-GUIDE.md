@@ -1,5 +1,17 @@
 # ReactOS M1 分步注册 — noVNC 人机协作操作单
 
+> **v5（2026-11-16 第四轮）**：两件事。
+>
+> 1. **托盘图标修复**：`rospinyin.ime` 现在内嵌 16×16 红色「中」字图标
+>    （`RT_GROUP_ICON`）。原因：ReactOS kbswitch 对 IME 布局不画 `[CH]` 字母
+>    徽章，而是从 `.ime` 里 `EnumResourceNames(RT_GROUP_ICON)` 提取图标；旧版
+>    没有图标资源，所以托盘只有系统绿色铅笔开关、没有布局图标。CI 已加图标
+>    资源断言防止回归。
+> 2. **新增 guestOS 下载工具**：HTTP 共享里放了 `wget.exe` / `curl.exe`（同一
+>    个全静态 MinGW i686 程序的两个名字），只依赖 KERNEL32/msvcrt/WS2_32，
+>    可在裸 ReactOS 0.4.16 上直接跑。**guestOS 内的下载/浏览器操作由你本人执行**，
+>    我只准备工具和 URL，不远程点浏览器。
+>
 > **v4（2026-11-16 第三轮）**：构建工具链从 MSVC 切换为 **MinGW-w64 i686**，
 > 彻底解决 `the procedure entry point initializecriticalsectionex could not be
 > located in the dynamic link library kernel32.dll`。
@@ -13,31 +25,44 @@
 > CP1252 编译，中文串在编译期就坏了（改用 GCC 后从根上不再有此问题）。
 > v2（同日）：修复 vcruntime140.dll 缺失。
 
-## 本轮操作：重新下载 MinGW 版并重跑 step2（无需重启）
+## 本轮操作（v5）：让托盘显示「中」字图标（需你本人操作下载）
 
-在现有 cmd 里逐行执行：
+目标：把内网嵌图标的新 `rospinyin.ime` 覆盖掉 system32 里的旧版，让任务栏
+显示红色「中」字图标（而不是空白/只有绿色铅笔开关）。
 
-```
-del install-rospinyin.exe rospinyin.ime
-wget http://10.0.2.2:8000/install-rospinyin.exe
-wget http://10.0.2.2:8000/rospinyin.ime
-install-rospinyin.exe /step2
-```
+1. 你先在 guestOS 中用浏览器/已放好的 `wget.exe` 拿到新文件（按第 1.5 步）：
+   ```
+   wget http://10.0.2.2:8000/rospinyin.ime -O rospinyin.ime
+   ```
+2. 覆盖 system32（在 cmd 里，需管理员权限的 Administrator 账户）：
+   ```
+   copy /Y rospinyin.ime C:\windows\system32\rospinyin.ime
+   ```
+3. **重启**（开始菜单 → Shutdown → Restart），让 kbswitch 重新从 .ime 加载图标。
+4. 回到桌面后看任务栏托盘：应出现红色「中」字方块图标。
 
-- 新 exe 约 **87 KB**（v3 的 MSVC 版 125 KB、最早的 dynamic-CRT 版 16 KB），可用 `dir` 核对。
-- 这条 `/step2` 会找到之前注册的 HKL（`e0210804`）并**用正确的中文串覆盖 Layout Text**，
-  同时不再使用那个坏掉的 MSVC 产物。
-- 任务栏语言指示器应随即刷新。两种结果都有意义：
-  - 显示「中文(简体) - RosPinyin」→ 入口点与编码问题都解决，进入下面第 3 步流程；
-  - 显示方块「□□□」→ 串已正确但 ReactOS 没有 CJK 字体（Tahoma 无汉字字形），
-    告诉我，我已备好 Noto 字体子集，下一步装字体。
+> 如果之前 step1-4 已完成，注册表无需再动，只换 .ime + 重启即可。
+>
+> 早期 v4 的重跑 step2 命令仍保留作参考（用新 wget 亦可）：
+> ```
+> del install-rospinyin.exe rospinyin.ime
+> wget http://10.0.2.2:8000/install-rospinyin.exe
+> wget http://10.0.2.2:8000/rospinyin.ime
+> install-rospinyin.exe /step2
+> ```
+>
+> 参考核对：新 exe 约 87 KB（MSVC 版 125 KB、最早的 dynamic-CRT 版 16 KB），
+> 新 ime 约 31 KB。`/step2` 会找到已注册的 HKL（`e0210804`）并用正确的中文串
+> 覆盖 Layout Text。任务栏若显示方块「□□□」说明是 CJK 字体缺失（已备好 Noto
+> 字体子集），告诉我下一步装字体。
 
 ## 连接
 
-浏览器打开：
+浏览器打开（任选其一，宿主机 :6080 为 noVNC 服务）：
 
 ```
 http://192.168.0.205:6080/vnc.html?autoconnect=1&resize=remote
+http://127.0.0.1:6080/vnc.html?autoconnect=1&resize=remote
 ```
 
 看到 ReactOS 0.4.16 桌面（800x600，左列一排图标 + 底部任务栏）即连接成功。
@@ -56,6 +81,29 @@ wget http://10.0.2.2:8000/rospinyin.ime
 
 成功标志：两行都出现 `saved as ...` 或类似提示，无 404/超时。
 新 exe 约 87 KB、ime 约 30 KB，可用 `dir` 确认。
+
+## 第 1.5 步（新）：先把 wget / curl 下载到 guestOS
+
+裸 ReactOS 没有 wget/curl/Firefox 命令行下载能力。先把工具本身弄进去
+（这一步需要你在 guestOS 里用浏览器打开下载链接——按约定由你本人操作）：
+
+浏览器访问（本机 noVNC 地址）：
+```
+http://192.168.0.205:6080
+```
+如需直接下载文件，可访问下面两个 URL（浏览器会另存到「My Documents」或下载目录）：
+```
+http://10.0.2.2:8000/wget.exe
+http://10.0.2.2:8000/curl.exe
+```
+把下载到的 `wget.exe` / `curl.exe` 放到你会用的工作目录（例如与 installer 同目录）。
+之后在 cmd 里就能用它们下载了，支持：
+```
+wget http://10.0.2.2:8000/rospinyin.ime
+wget http://10.0.2.2:8000/rospinyin.ime -O rospinyin.ime
+curl -o rospinyin.ime http://10.0.2.2:8000/rospinyin.ime
+```
+（只支持 http://，不支持 https://；这是本地测试共享，够用。）
 
 ## 第 2 步：安装器自检
 
