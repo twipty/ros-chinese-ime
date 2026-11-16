@@ -4,20 +4,28 @@
 #
 # Windows/ReactOS only. Produces rospinyin.ime: a real IMM32 DLL with the
 # 16 mandatory exports and a version resource that ImmLoadLayout accepts.
-# At M1 the module is a passthrough IME (no key is consumed).
+# M1 was an inert passthrough IME; M2 drives the pinyin engine and renders
+# composition/candidate windows.
 
 add_library(rospinyin-ime SHARED
     dllmain.cpp
     imm_entry.cpp
     ui_server.cpp
+    dat_loader.cpp
+    session_store.cpp
+    ../ui/ime_ui.cpp
+    ../ui/ui_window.cpp
+    ../ui/composition_window.cpp
+    ../ui/candidate_window.cpp
     rospinyin.def
     rospinyin_res.rc)
 
 target_include_directories(rospinyin-ime PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${PROJECT_SOURCE_DIR}/ui"
     "${PROJECT_SOURCE_DIR}/engine/include")
 
-target_link_libraries(rospinyin-ime PRIVATE user32 gdi32 imm32)
+target_link_libraries(rospinyin-ime PRIVATE rospinyin-engine user32 gdi32 imm32)
 
 # Output must be exactly "rospinyin.ime" (no lib prefix, no .dll suffix).
 set_target_properties(rospinyin-ime PROPERTIES
@@ -41,6 +49,6 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         -static-libgcc -static-libstdc++ -static)
 endif()
 
-# M2 will link the platform-independent engine here. At M1 the IME layer
-# deliberately has zero dependency on it so registration bugs cannot be
-# confounded with engine bugs.
+# M2 links the platform-independent engine above. It was deliberately kept
+# out of the M1 build so registration bugs could not be confounded with
+# engine bugs; that isolation is no longer needed once M1 is signed off.
