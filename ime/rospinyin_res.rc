@@ -17,6 +17,12 @@
 #pragma code_page(65001) // UTF-8
 #endif
 
+// Tray icon for the ReactOS language bar (kbswitch). See IDI_ROSPINYIN in
+// resource.h: for an IME layout kbswitch extracts the first RT_GROUP_ICON
+// from this module instead of drawing a [CH] abbreviation. Without this
+// icon the tray shows no layout badge at all.
+IDI_ROSPINYIN ICON "rospinyin.ico"
+
 LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
 
 1 VERSIONINFO

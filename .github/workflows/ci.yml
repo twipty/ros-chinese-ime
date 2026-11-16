@@ -49,6 +49,11 @@ jobs:
             mingw-w64-i686-gcc
             mingw-w64-i686-cmake
             mingw-w64-i686-ninja
+      - name: Decode tray icon from base64
+        # push_files only carries text, so the 16x16 ICO is committed as
+        # base64 and restored here before windres compiles rospinyin_res.rc.
+        shell: msys2 {0}
+        run: tr -d '\r' < ime/rospinyin.ico.b64 | base64 -d > ime/rospinyin.ico
       - name: Configure (standalone)
         shell: msys2 {0}
         run: >-
@@ -134,6 +139,23 @@ jobs:
         with:
           name: rospinyin-m1-win32
           path: stage
+      - name: Verify IME tray icon resource
+        # ReactOS kbswitch only paints a layout icon for IME layouts when the
+        # .ime carries an RT_GROUP_ICON resource; otherwise the tray stays
+        # blank. Guard against a future build dropping the icon back out.
+        run: |
+          set -eu
+          RD=$(command -v llvm-readobj || command -v llvm-readobj-18 || command -v llvm-readobj-17 || true)
+          if [ -z "$RD" ]; then
+            echo "llvm-readobj unavailable; skipping icon resource check"
+            exit 0
+          fi
+          echo "using $RD"
+          "$RD" --coff-resources stage/rospinyin.ime | grep -qi 'ICON' || {
+            echo "FATAL: rospinyin.ime has no RT_GROUP_ICON resource (tray icon would be blank)"
+            exit 1
+          }
+          echo "OK: rospinyin.ime carries an icon resource"
       - name: Commit binaries to m1-artifacts branch
         run: |
           git config user.name "twipty"
