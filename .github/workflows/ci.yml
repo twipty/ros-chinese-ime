@@ -83,10 +83,14 @@ jobs:
           set -eu
           IME=$(find build-standalone -type f -name rospinyin.ime | head -n 1)
           EXE=$(find build-standalone -type f -name install-rospinyin.exe | head -n 1)
-          test -n "$IME" && test -n "$EXE"
+          WGET=$(find build-standalone -type f -name wget.exe | head -n 1)
+          CURL=$(find build-standalone -type f -name curl.exe | head -n 1)
+          test -n "$IME" && test -n "$EXE" && test -n "$WGET" && test -n "$CURL"
           echo "IME=$IME"
           echo "EXE=$EXE"
-          for f in "$IME" "$EXE"; do
+          echo "WGET=$WGET"
+          echo "CURL=$CURL"
+          for f in "$IME" "$EXE" "$WGET" "$CURL"; do
             echo "===== imports of $f ====="
             objdump -p "$f" | sed -n '/The Import Tables/,$p'
             if objdump -p "$f" | grep -Eqi 'InitializeCriticalSectionEx'; then
@@ -106,9 +110,13 @@ jobs:
           set -eu
           IME=$(find build-standalone -type f -name rospinyin.ime | head -n 1)
           EXE=$(find build-standalone -type f -name install-rospinyin.exe | head -n 1)
+          WGET=$(find build-standalone -type f -name wget.exe | head -n 1)
+          CURL=$(find build-standalone -type f -name curl.exe | head -n 1)
           mkdir -p stage
           cp "$IME" stage/rospinyin.ime
           cp "$EXE" stage/install-rospinyin.exe
+          cp "$WGET" stage/wget.exe
+          cp "$CURL" stage/curl.exe
           ls -l stage
       - name: Upload VM test assets
         uses: actions/upload-artifact@v4
@@ -161,7 +169,8 @@ jobs:
           git config user.name "twipty"
           git config user.email "82503737+twipty@users.noreply.github.com"
           mkdir -p /tmp/binaries
-          cp -f stage/rospinyin.ime stage/install-rospinyin.exe /tmp/binaries/
+          cp -f stage/rospinyin.ime stage/install-rospinyin.exe \
+                stage/wget.exe stage/curl.exe /tmp/binaries/
           if git ls-remote --exit-code origin m1-artifacts >/dev/null 2>&1; then
             git fetch origin m1-artifacts
             git checkout -B m1-artifacts origin/m1-artifacts
@@ -170,10 +179,11 @@ jobs:
             git rm -rf --cached . >/dev/null 2>&1 || true
             git clean -fdx >/dev/null 2>&1 || true
           fi
-          cp -f /tmp/binaries/rospinyin.ime /tmp/binaries/install-rospinyin.exe .
+          cp -f /tmp/binaries/rospinyin.ime /tmp/binaries/install-rospinyin.exe \
+                /tmp/binaries/wget.exe /tmp/binaries/curl.exe .
           printf 'source commit: %s\nbuilt: %s\n' \
             "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > INFO.txt
-          git add -f rospinyin.ime install-rospinyin.exe INFO.txt
+          git add -f rospinyin.ime install-rospinyin.exe wget.exe curl.exe INFO.txt
           git commit -m "M1 Win32 binaries from ${GITHUB_SHA::7}" || echo "no changes"
           # Force push: this branch is a binary drop zone, newest run wins.
           # Also removes non-fast-forward failures from concurrent runs.
