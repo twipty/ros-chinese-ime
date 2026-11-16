@@ -68,3 +68,39 @@ jobs:
           path: stage/
           if-no-files-found: error
           retention-days: 30
+
+  publish-artifacts-branch:
+    # The sandbox has no GitHub token for artifact download, so CI commits
+    # the binaries to a dedicated branch; the VM test loop reads them back
+    # through the repository contents API. GITHUB_TOKEN pushes do not
+    # retrigger workflows, so this cannot loop.
+    name: Publish VM test binaries (m1-artifacts branch)
+    runs-on: ubuntu-latest
+    needs: windows-build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: rospinyin-m1-win32
+          path: stage
+      - name: Commit binaries to m1-artifacts branch
+        run: |
+          git config user.name "twipty"
+          git config user.email "82503737+twipty@users.noreply.github.com"
+          if git ls-remote --exit-code origin m1-artifacts >/dev/null 2>&1; then
+            git fetch origin m1-artifacts
+            git checkout -B m1-artifacts origin/m1-artifacts
+          else
+            git checkout --orphan m1-artifacts
+            git rm -rf --cached . >/dev/null 2>&1 || true
+            git clean -fdx >/dev/null 2>&1 || true
+          fi
+          cp -f stage/rospinyin.ime stage/install-rospinyin.exe .
+          printf 'source commit: %s\nbuilt: %s\n' \
+            "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > INFO.txt
+          git add -f rospinyin.ime install-rospinyin.exe INFO.txt
+          git commit -m "M1 Win32 binaries from ${GITHUB_SHA::7}" || echo "no changes"
+          git push origin m1-artifacts
