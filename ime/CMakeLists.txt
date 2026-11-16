@@ -2,29 +2,33 @@
 # SPDX-License-Identifier: MIT
 # See LICENSE and NOTICE.txt at the repository root.
 #
-# Windows/ReactOS only. Produces rospinyin.ime: a real IMM32 DLL with the
-# 16 mandatory exports and a version resource that ImmLoadLayout accepts.
-# M1 was an inert passthrough IME; M2 drives the pinyin engine and renders
-# composition/candidate windows.
+# Assembly of rospinyin.ime: framework host + framework UI + pinyin plugin +
+# branding resources. A future shape-based IME assembles its own .ime from the
+# same framework/ and pinyin/ directories with a different scheme_reg.cpp.
 
 add_library(rospinyin-ime SHARED
-    dllmain.cpp
-    imm_entry.cpp
-    ui_server.cpp
-    dat_loader.cpp
-    session_store.cpp
-    ../ui/ime_ui.cpp
-    ../ui/ui_window.cpp
-    ../ui/composition_window.cpp
-    ../ui/candidate_window.cpp
+    scheme_reg.cpp
+    ../framework/host/dllmain.cpp
+    ../framework/host/imm_entry.cpp
+    ../framework/host/ui_server.cpp
+    ../framework/host/session_store.cpp
+    ../framework/host/dat_loader.cpp
+    ../framework/ui/ime_ui.cpp
+    ../framework/ui/ui_window.cpp
+    ../framework/ui/composition_window.cpp
+    ../framework/ui/candidate_window.cpp
+    ../framework/ui/toolbar.cpp
     rospinyin.def
     rospinyin_res.rc)
 
 target_include_directories(rospinyin-ime PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
-    "${PROJECT_SOURCE_DIR}/ui"
-    "${PROJECT_SOURCE_DIR}/engine/include")
+    "${PROJECT_SOURCE_DIR}/framework/host"
+    "${PROJECT_SOURCE_DIR}/framework/include"
+    "${PROJECT_SOURCE_DIR}/framework/ui"
+    "${PROJECT_SOURCE_DIR}/pinyin/include")
 
+# rospinyin-engine brings imfw-engine transitively (PUBLIC link).
 target_link_libraries(rospinyin-ime PRIVATE rospinyin-engine user32 gdi32 imm32)
 
 # Output must be exactly "rospinyin.ime" (no lib prefix, no .dll suffix).
@@ -48,7 +52,3 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_link_options(rospinyin-ime PRIVATE
         -static-libgcc -static-libstdc++ -static)
 endif()
-
-# M2 links the platform-independent engine above. It was deliberately kept
-# out of the M1 build so registration bugs could not be confounded with
-# engine bugs; that isolation is no longer needed once M1 is signed off.
