@@ -22,6 +22,12 @@
 >   激活/停用，每轮在记事本输入标记验证按键直通；50 次全部上屏，无崩溃，IME 菜单仍可用。
 >   宿主侧 `ctest` 3/3 通过（1000 键 + 50 次切换单测）。证据截图见
 >   `m0/vm/evidence/m1-2.4/`。
+> - **托盘图标（2026-11-16 补充实测）**：`rospinyin.ime` 加入内嵌 16×16「中」字
+>   `RT_GROUP_ICON` 后，经 guestOS 命令行下载（`wget`，31439 字节哈希一致）→
+>   覆盖 `C:\ReactOS\system32\rospinyin.ime` → 重启，用户人工确认任务栏托盘出现
+>   「中」字图标。证据见 `m0/vm/evidence/m1-2.5/`，操作单见 `NOVNC-GUIDE.md` v6。
+>   排查中固化两个环境事实：本 VM 的 `%SystemRoot%` = `C:\ReactOS`（非 `C:\windows`）；
+>   Playwright 经 noVNC 输入会丢 Shift，URL 的 `:`/大写字母须显式按 Shift。
 > - **仍待办**：Windows 参照机裸 LoadLibrary/FreeLibrary 验证、双机行为比对、中文 locale
 >   显示（可选 i18n 优化）。
 
