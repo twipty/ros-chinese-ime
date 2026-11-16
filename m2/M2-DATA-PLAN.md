@@ -238,3 +238,20 @@ rospinyin.dat: 902768 bytes, sha256 ce7ca6e0185c5cbd09146f77dbf16ebe29a2f44ba529
 > 关键教训：`PinyinSession::feed()` 在 `on_select(true)` 之前是 no-op。
 > M2 IMM32 集成最初漏掉 `ImeSelect(TRUE)` 里的激活调用，导致「IME 吃掉
 > 拼音键但永远不出组合串」。已在 `tools/check_m1.py` 加静态断言防回归。
+
+## 10. 路径补注（2026-11-16 框架抽取）
+
+本文写作时的路径在 2026-11-16 的框架抽取重构后发生如下迁移，功能不变：
+
+| 旧路径 | 新路径 |
+|---|---|
+| `engine/include/rospinyin/engine.hpp`、`engine/src/session.cpp` | `framework/include/imfw/engine.hpp`、`framework/src/engine.cpp`（含 `Result.segments`） |
+| `engine/include/rospinyin/dat_format.hpp` | `framework/include/imfw/dat_format.hpp`（通用码表格式） |
+| `engine/include/rospinyin/table.hpp`、`engine/src/table.cpp` | `framework/include/imfw/code_table.hpp`、`framework/src/code_table.cpp`（`CodeTable`，键名由 dat SylEntry 提供） |
+| `engine/include/rospinyin/candidate_pager.hpp` 等 | `framework/include/imfw/candidate_pager.hpp` |
+| `engine/include/rospinyin/pinyin*.hpp`、`engine/src/pinyin*.cpp` | `pinyin/include/rospinyin/`、`pinyin/src/` |
+| `ime/imm_entry.cpp` 等 host 文件 | `framework/host/` |
+| `ui/*.cpp` 组合串/候选窗 | `framework/ui/` |
+| `ime/dat_loader.cpp` 的内置码表 | `pinyin/src/scheme.cpp`（`PinyinScheme::load_fallback`） |
+
+`mkdat` 仍按本文第 4-7 节的格式与规则编译 `rospinyin.dat`，dat 内容未变。
