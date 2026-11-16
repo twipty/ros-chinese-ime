@@ -31,36 +31,80 @@ jobs:
         run: ctest --test-dir build --output-on-failure
 
   windows-build:
-    name: Windows/ReactOS targets (rospinyin.ime + installer)
+    # MinGW-w64 i686, NOT MSVC. MSVC's CRT statically imports
+    # kernel32!InitializeCriticalSectionEx, which ReactOS 0.4.16 does not
+    # export (its spec2def gates that API behind -version=0x600+ while the
+    # default build version is 0x502). MinGW's CRT uses the legacy
+    # InitializeCriticalSection, and -static removes every non-system DLL
+    # dependency. The verify step below makes any regression a hard failure.
+    name: MinGW i686 / ReactOS targets (rospinyin.ime + installer)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW32
+          install: >-
+            mingw-w64-i686-binutils
+            mingw-w64-i686-gcc
+            mingw-w64-i686-cmake
+            mingw-w64-i686-ninja
       - name: Configure (standalone)
-        run: cmake -S . -B build-standalone -A Win32
+        shell: msys2 {0}
+        run: >-
+          cmake -S . -B build-standalone -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_CXX_COMPILER=g++
+          -DCMAKE_RC_COMPILER=windres
+          -DROSPINYIN_BUILD_TESTS=OFF
       - name: Configure (in-tree target)
-        run: cmake -S . -B build-intree -A Win32 -DROSPINYIN_IN_TREE=ON
+        shell: msys2 {0}
+        run: >-
+          cmake -S . -B build-intree -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_CXX_COMPILER=g++
+          -DCMAKE_RC_COMPILER=windres
+          -DROSPINYIN_IN_TREE=ON
+          -DROSPINYIN_BUILD_TESTS=OFF
       - name: Build (standalone)
-        run: cmake --build build-standalone --config Release --parallel
+        shell: msys2 {0}
+        run: cmake --build build-standalone --parallel
       - name: Build (in-tree target)
-        run: cmake --build build-intree --config Release --parallel
-      - name: Verify artefact names
+        shell: msys2 {0}
+        run: cmake --build build-intree --parallel
+      - name: Verify PE imports (ReactOS 0.4.16 compatibility)
+        shell: msys2 {0}
         run: |
-          $f = Get-ChildItem -Recurse -Filter "rospinyin.ime" build-standalone
-          if (-not $f) { throw "rospinyin.ime was not produced" }
-          $f | Select-Object -ExpandProperty FullName
-          $exe = Get-ChildItem -Recurse -Filter "install-rospinyin.exe" build-standalone
-          if (-not $exe) { throw "install-rospinyin.exe was not produced" }
-          $exe | Select-Object -ExpandProperty FullName
-        shell: pwsh
+          set -eu
+          IME=$(find build-standalone -type f -name rospinyin.ime | head -n 1)
+          EXE=$(find build-standalone -type f -name install-rospinyin.exe | head -n 1)
+          test -n "$IME" && test -n "$EXE"
+          echo "IME=$IME"
+          echo "EXE=$EXE"
+          for f in "$IME" "$EXE"; do
+            echo "===== imports of $f ====="
+            objdump -p "$f" | sed -n '/The Import Tables/,$p'
+            if objdump -p "$f" | grep -Eqi 'InitializeCriticalSectionEx'; then
+              echo "FATAL: $f imports Vista+ kernel32!InitializeCriticalSectionEx"
+              exit 1
+            fi
+            if objdump -p "$f" | grep -Eqi 'vcruntime140|api-ms-win-crt|libstdc\+\+-6|libgcc_s|libwinpthread'; then
+              echo "FATAL: $f depends on a runtime DLL absent from bare ReactOS"
+              exit 1
+            fi
+          done
       - name: Stage VM test assets
         # Flat layout for the ReactOS test VM: wget from the host HTTP share
         # expects bare filenames next to the installer.
+        shell: msys2 {0}
         run: |
-          New-Item -ItemType Directory -Force -Path stage | Out-Null
-          Copy-Item (Get-ChildItem -Recurse -Filter "rospinyin.ime" build-standalone).FullName stage\rospinyin.ime
-          Copy-Item (Get-ChildItem -Recurse -Filter "install-rospinyin.exe" build-standalone).FullName stage\install-rospinyin.exe
-          Get-ChildItem stage
-        shell: pwsh
+          set -eu
+          IME=$(find build-standalone -type f -name rospinyin.ime | head -n 1)
+          EXE=$(find build-standalone -type f -name install-rospinyin.exe | head -n 1)
+          mkdir -p stage
+          cp "$IME" stage/rospinyin.ime
+          cp "$EXE" stage/install-rospinyin.exe
+          ls -l stage
       - name: Upload VM test assets
         uses: actions/upload-artifact@v4
         with:

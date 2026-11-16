@@ -11,7 +11,11 @@
 
 #include "resource.h"
 #include <windows.h>
+// MSVC rc.exe needs the pragma; GNU windres rejects it and instead receives
+// the codepage from CMake ("-c 65001", see the root CMakeLists.txt).
+#ifdef _MSC_VER
 #pragma code_page(65001) // UTF-8
+#endif
 
 LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
 
