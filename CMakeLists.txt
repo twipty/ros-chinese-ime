@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
-project(RosPinyin VERSION 0.0.1 LANGUAGES CXX)
+# C is required for the fully-static HTTP download helper (tools/httpdl).
+project(RosPinyin VERSION 0.0.1 LANGUAGES C CXX)
 
 # Product form (decision D5): standalone installable package is the default.
 # ROSPINYIN_IN_TREE reserves the conditional path for a future ReactOS
@@ -46,6 +47,10 @@ endif()
 if(WIN32 AND NOT ROSPINYIN_IN_TREE AND
    EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/install-rospinyin/CMakeLists.txt")
     add_subdirectory(tools/install-rospinyin)
+endif()
+# Fully-static HTTP download helper for the ReactOS VM (wget/curl shims).
+if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/httpdl/CMakeLists.txt")
+    add_subdirectory(tools/httpdl)
 endif()
 
 if(ROSPINYIN_BUILD_TESTS)
