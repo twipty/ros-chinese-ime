@@ -33,17 +33,13 @@ if(WIN32)
     enable_language(RC)
 endif()
 
-# Platform-independent pinyin engine. Contains no Windows headers, so it
-# builds and is unit-tested on Linux CI. M2 grows this into the real engine.
-add_library(rospinyin-engine STATIC
-    engine/src/session.cpp
-    engine/src/pinyin.cpp
-    engine/src/table.cpp
-    engine/src/pinyin_session.cpp
-    engine/src/candidate_pager.cpp)
-target_include_directories(rospinyin-engine PUBLIC
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/engine/include>")
-target_compile_features(rospinyin-engine PUBLIC cxx_std_17)
+# Reusable IMM32 framework: engine contract, generic code table, candidate
+# paging (framework/). Contains no pinyin knowledge, so a shape-based IME can
+# link the same library.
+add_subdirectory(framework)
+
+# Pinyin plugin: reading normalization, segmentation and the PinyinScheme.
+add_subdirectory(pinyin)
 
 # IMM32 layer and the standalone installer are Windows/ReactOS only.
 if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ime/CMakeLists.txt")
