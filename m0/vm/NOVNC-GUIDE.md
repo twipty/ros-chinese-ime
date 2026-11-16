@@ -1,5 +1,33 @@
 # ReactOS M1 分步注册 — noVNC 人机协作操作单
 
+> **v6（2026-11-16 第五轮，托盘图标修复已在 VM 实测确认）**：三件事。
+>
+> 1. **实测通过**：新内嵌图标的 `rospinyin.ime` 已通过 guestOS 命令行下载、覆盖、
+>    重启，用户人工确认任务栏托盘出现「中」字图标。证据见
+>    `m0/vm/evidence/m1-2.5/`。
+> 2. **纠正路径**：系统目录是 **`C:\ReactOS\system32`**，不是 `C:\windows\system32`
+>    （`echo %SystemRoot%` 实测为 `C:\ReactOS`）。务必用前者覆盖，否则 copy 报
+>    `The system cannot find the path specified.`。
+> 3. **noVNC 键位坑**：Playwright `keyboard.type()` 经 noVNC 会**丢掉 Shift 修饰键**，
+>    `:`（Shift+;）变 `;`、`>`（Shift+.）变 `.`、`%`（Shift+5）变 `5`、大写字母
+>    变小写——这正是 `http://` 被下载器判为非 URL 的元凶（屏幕上 `:` 与 `;` 在
+>    点阵字体下几乎无法区分）。自动化时须**逐字符显式按 Shift**：
+>    ```python
+>    def type_exact(page, s):
+>        for ch in s:
+>            if ch == ':':   # Shift+;
+>                page.keyboard.down('Shift'); page.keyboard.press('Semicolon'); page.keyboard.up('Shift')
+>            elif ch == '%': # Shift+5
+>                page.keyboard.down('Shift'); page.keyboard.press('Digit5'); page.keyboard.up('Shift')
+>            elif ch == '\\': page.keyboard.press('Backslash')
+>            elif ch == '/':  page.keyboard.press('Slash')
+>            elif ch.isupper():
+>                page.keyboard.down('Shift'); page.keyboard.press(ch.lower()); page.keyboard.up('Shift')
+>            else: page.keyboard.type(ch)
+>    ```
+>    另外连续两个 `/` 用 `type('//')` 会被合并成一个，须用两次独立 `press('Slash')`
+>    并在中间加延迟。相关脚本：`~/.workbuddy/tmp/novnc_exact_{dl,copy}.py`。
+>
 > **v5（2026-11-16 第四轮）**：两件事。
 >
 > 1. **托盘图标修复**：`rospinyin.ime` 现在内嵌 16×16 红色「中」字图标
@@ -25,21 +53,27 @@
 > CP1252 编译，中文串在编译期就坏了（改用 GCC 后从根上不再有此问题）。
 > v2（同日）：修复 vcruntime140.dll 缺失。
 
-## 本轮操作（v5）：让托盘显示「中」字图标（需你本人操作下载）
+## 本轮操作（v6，已在 VM 实测完成）：让托盘显示「中」字图标
 
 目标：把内网嵌图标的新 `rospinyin.ime` 覆盖掉 system32 里的旧版，让任务栏
 显示红色「中」字图标（而不是空白/只有绿色铅笔开关）。
 
-1. 你先在 guestOS 中用浏览器/已放好的 `wget.exe` 拿到新文件（按第 1.5 步）：
+1. guestOS 命令行下载（wget 已在 PATH）：
    ```
-   wget http://10.0.2.2:8000/rospinyin.ime -O rospinyin.ime
+   wget http://10.0.2.2:8000/rospinyin.ime -o rospinyin.ime
    ```
-2. 覆盖 system32（在 cmd 里，需管理员权限的 Administrator 账户）：
+   成功标志：`done: 31439 bytes written to rospinyin.ime`。
+2. 覆盖 system32（注意是 **`C:\ReactOS`** 不是 `C:\windows`）：
    ```
-   copy /Y rospinyin.ime C:\windows\system32\rospinyin.ime
+   copy /y rospinyin.ime C:\ReactOS\system32\
    ```
-3. **重启**（开始菜单 → Shutdown → Restart），让 kbswitch 重新从 .ime 加载图标。
-4. 回到桌面后看任务栏托盘：应出现红色「中」字方块图标。
+   成功标志：`1 file(s) copied`；`dir C:\ReactOS\system32\rospinyin.ime` 显示 31439 字节。
+3. **重启**（`shutdown -r -t 0` 或开始菜单 → Shutdown → Restart），让 kbswitch
+   重新从 .ime 加载图标。
+4. 回到桌面后看任务栏托盘：应出现红色「中」字方块图标。**此步已由用户人工确认。**
+
+> 证据：`m0/vm/evidence/m1-2.5/`（download.png / copy.png / desktop_after_reboot.png /
+> tray_zoom.png / systemroot_probe.png）。
 
 > 如果之前 step1-4 已完成，注册表无需再动，只换 .ime + 重启即可。
 >
