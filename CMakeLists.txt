@@ -13,11 +13,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Source files are UTF-8 without BOM (checked in CI) and contain non-ASCII
-# string literals (Chinese layout names). Without this flag MSVC on an en-US
-# host interprets them as CP1252, and every L"..." literal with Chinese text
-# is mojibake at compile time (showed up as wrong characters in kbswitch).
+# string literals (Chinese layout names). MSVC on an en-US host defaults to
+# CP1252, which turns every L"..." with Chinese text into mojibake at compile
+# time (this showed up as wrong characters in kbswitch). GCC/Clang, including
+# MinGW-w64, default to UTF-8 input already.
 if(MSVC)
     add_compile_options(/utf-8)
+endif()
+
+# windres does not accept MSVC's "#pragma code_page" (it is guarded by
+# _MSC_VER in rospinyin_res.rc), so hand it the codepage explicitly.
+if(MINGW)
+    set(CMAKE_RC_FLAGS "${CMAKE_RC_FLAGS} -c 65001")
 endif()
 
 if(WIN32)

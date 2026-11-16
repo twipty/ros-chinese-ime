@@ -27,12 +27,18 @@ set_target_properties(rospinyin-ime PROPERTIES
 
 # Do not drag a compiler runtime DLL onto a ReactOS installation.
 if(MSVC)
-    # ReactOS has no vcruntime140.dll: link the CRT statically.
+    # Kept for the historical MSVC toolchain only. ReactOS 0.4.16's kernel32
+    # lacks InitializeCriticalSectionEx, which MSVC's static CRT imports, so
+    # the supported build is MinGW (see .github/workflows/ci.yml).
     set_property(TARGET rospinyin-ime PROPERTY
         MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_link_options(rospinyin-ime PRIVATE -static-libgcc -static-libstdc++)
+    # A bare ReactOS has none of libstdc++-6.dll / libgcc_s_dw2-1.dll /
+    # libwinpthread-1.dll, so link the whole runtime statically. The resulting
+    # PE then only imports system DLLs (kernel32/user32/gdi32/imm32).
+    target_link_options(rospinyin-ime PRIVATE
+        -static-libgcc -static-libstdc++ -static)
 endif()
 
 # M2 will link the platform-independent engine here. At M1 the IME layer

@@ -18,5 +18,8 @@ endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     # wmain requires the Unicode CRT entry point on MinGW-w64.
-    target_link_options(install-rospinyin PRIVATE -municode)
+    # -static avoids any dependency on libstdc++-6.dll / libgcc_s_dw2-1.dll /
+    # libwinpthread-1.dll, none of which ship with ReactOS 0.4.16.
+    target_link_options(install-rospinyin PRIVATE
+        -municode -static-libgcc -static-libstdc++ -static)
 endif()
