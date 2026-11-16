@@ -1,0 +1,38 @@
+; RosXingMa 可选数据包 — 98 版（预配置清单模板）
+; 本文件是模板：{{...}} 由 xingma/tools/mkdat-shape/make_pack.py 在构建期填充。
+; 规范见 xingma/docs/DATA-PACK-SPEC.md 第 3 节。
+
+[Pack]
+FormatVersion = 1
+PackId = shape98-tables
+PackVersion = {{PACK_VERSION}}
+DisplayName = 98 版形码
+Description = 98 版形码表，含单字与词组。
+Author = yanhuacuo（上游） / RosXingMa 项目（打包）
+Homepage = https://github.com/yanhuacuo/98wubi-tables
+BuildDate = {{BUILD_DATE}}
+UpstreamFormat = rime
+
+[License]
+License = Unlicense
+LicenseFile = LICENSE
+SourceUrl = https://github.com/yanhuacuo/98wubi-tables
+SourceCommit = 6b8b6fb9d3c34e0d5e3b17211e1f1c100e7eb697
+UpstreamNotice = 上游作者于 2024-01-20 自行将码表置于 Unlicense（公有领域）。权利链相对清晰，但仍建议使用者自行确认对自身用途的适用性。
+Redistributable = yes
+Warranty = none
+
+[Table]
+SourceFormat = csv
+DataFile = table.csv
+DataSha256 = {{DATA_SHA256}}
+EntryCountExpect = {{ENTRY_COUNT}}
+MaxCodeLen = 4
+Alphabet = abcdefghijklmnopqrstuvwxy
+Wildcard = z
+
+[Install]
+ActivateIfNone = yes
+DefaultOrder = 20
+ConsentRequired = yes
+RetainSource = no
