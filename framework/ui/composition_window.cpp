@@ -5,6 +5,8 @@
 
 #include "composition_window.h"
 
+#include <imfw/utf8.hpp>
+
 #include <windows.h>
 
 #ifndef TRANSPARENT
@@ -34,7 +36,10 @@ void CompositionWindow::update(HINSTANCE inst, const wchar_t* class_name,
     syllable_ends_.clear();
     std::size_t end = 0;
     for (const auto& seg : segments) {
-        end += seg.size();
+        // Segments are UTF-8 (engine.hpp); underline ends are indexes into
+        // the wide composition text, so accumulate the decoded width, not
+        // the byte count (G4: CJK segments must underline correctly).
+        end += imfw::utf8_to_wide(seg).size();
         if (end <= text_.size()) syllable_ends_.push_back(end);
     }
 

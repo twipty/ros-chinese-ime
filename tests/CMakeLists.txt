@@ -32,6 +32,16 @@ add_executable(rospinyin-scheme scheme_test.cpp)
 target_link_libraries(rospinyin-scheme PRIVATE rospinyin-engine)
 add_test(NAME pinyin-scheme COMMAND rospinyin-scheme)
 
+# G1 regression: multi-codepoint commits (WM_IME_CHAR per UTF-16 unit).
+add_executable(rospinyin-emit-text emit_text_test.cpp)
+target_link_libraries(rospinyin-emit-text PRIVATE imfw-engine)
+add_test(NAME emit-text COMMAND rospinyin-emit-text)
+
+# G4 connected conclusion: UTF-8 compositions with byte-wise fallback.
+add_executable(rospinyin-utf8 utf8_test.cpp)
+target_link_libraries(rospinyin-utf8 PRIVATE imfw-engine)
+add_test(NAME utf8 COMMAND rospinyin-utf8)
+
 # Static M1 contract checks (exports, version resource, M0 red lines).
 find_program(ROSPINYIN_PYTHON NAMES python3 python QUIET)
 if(ROSPINYIN_PYTHON)
