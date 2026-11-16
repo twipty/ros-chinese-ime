@@ -3,6 +3,28 @@
 > 状态：**宿主侧代码完成，VM 实测待做**。本报告记录 M1 第一轮推进（WBS 2.2 全部、2.3.2 安装工具源码、2.4.1 直通语义及其宿主可测部分）。
 > 前置结论见 [M0-REPORT.md](M0-REPORT.md)，任务总表见 [PLAN.md](PLAN.md)，仓库章程见 [README.md](README.md)。
 
+> **第二轮 VM 实测更新（2026-11-16）**：下文第 5 节「尚未完成」中的
+> **真实构建、#10 VM 分步注册、#11 VM 切换压测三项均已在 ReactOS 0.4.16 实机完成**，
+> 仅「Windows 参照机裸 LoadLibrary」「双机比对」仍待做。要点：
+>
+> - **工具链**：MSVC 静态 CRT 导入 `kernel32!InitializeCriticalSectionEx`，而 ReactOS 0.4.16
+>   的 kernel32 在构建期排除了该 Vista+ 导出（spec2def 默认 `guOsVersion=0x502`），无法靠
+>   安装 MSVC 运行库修复。已切换到 **MinGW-w64 i686 + 全静态链接**，产物仅依赖
+>   kernel32/user32/advapi32/imm32/msvcrt（均 ReactOS 自带），msvcrt 导入符号已逐一对照
+>   ReactOS 0.4.16 源码核实；CI 增加 PE 导入表断言防回归（run `43816398802` 全绿）。
+> - **乱码修复**：MSVC 在 en-US CI 上把无 BOM UTF-8 源码按 CP1252 编译，中文串编译期就坏；
+>   切到 GCC 后从根消除。`.rc` 的 `#pragma code_page(65001)` 加 `_MSC_VER` 保护，windres 用
+>   `-c 65001`。实机 kbswitch 显示 **Chinese (Simplified) - RosPinyin**（系统区域为英文，
+>   加载了 en-US 字符串表——设计内合法 fallback；zh-CN 串同在资源中）。
+> - **#10 分步注册**：`/step1`…`/step4` 逐步执行并重启，全部成功，HKL=`e0210804` 动态记录，
+>   无 0xF4。操作单见 `m0/vm/NOVNC-GUIDE.md` v4。
+> - **#11 VM 切换压测**：通过 IME 托盘菜单 `Input System (IME) - ON/OFF` 完成 **50 次**
+>   激活/停用，每轮在记事本输入标记验证按键直通；50 次全部上屏，无崩溃，IME 菜单仍可用。
+>   宿主侧 `ctest` 3/3 通过（1000 键 + 50 次切换单测）。证据截图见
+>   `m0/vm/evidence/m1-2.4/`。
+> - **仍待办**：Windows 参照机裸 LoadLibrary/FreeLibrary 验证、双机行为比对、中文 locale
+>   显示（可选 i18n 优化）。
+
 ## 1. 本轮做了什么
 
 M0 结束后任务板剩下 #9（剥离日语逻辑 + 资源/版本信息替换）、#10（中文注册）、#11（空 IME 直通 + 切换压测）。本轮把**不需要 VM 的部分全部落地并自动化验证**：
