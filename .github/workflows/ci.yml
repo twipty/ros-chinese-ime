@@ -90,6 +90,8 @@ jobs:
         run: |
           git config user.name "twipty"
           git config user.email "82503737+twipty@users.noreply.github.com"
+          mkdir -p /tmp/binaries
+          cp -f stage/rospinyin.ime stage/install-rospinyin.exe /tmp/binaries/
           if git ls-remote --exit-code origin m1-artifacts >/dev/null 2>&1; then
             git fetch origin m1-artifacts
             git checkout -B m1-artifacts origin/m1-artifacts
@@ -98,7 +100,7 @@ jobs:
             git rm -rf --cached . >/dev/null 2>&1 || true
             git clean -fdx >/dev/null 2>&1 || true
           fi
-          cp -f stage/rospinyin.ime stage/install-rospinyin.exe .
+          cp -f /tmp/binaries/rospinyin.ime /tmp/binaries/install-rospinyin.exe .
           printf 'source commit: %s\nbuilt: %s\n' \
             "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > INFO.txt
           git add -f rospinyin.ime install-rospinyin.exe INFO.txt
