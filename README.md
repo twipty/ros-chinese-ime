@@ -139,3 +139,22 @@
 - **质量闸门**：Linux 语法检查（`ime/` + `ui/` + 安装器）通过；`ctest` **7/7**；真实 dat 端到端验证 `zhongguo → 国`、`nv/lv/lve/nve` 命中预期字。
 - **验收准备**：操作单 `m2/M2-ACCEPTANCE.md` 与数据 `m0/share/rospinyin.dat` 已就位，待 CI 产出含 M2 UI 的新 `.ime` 后在 ReactOS VM 执行。
 - M1 的 passthrough 契约断言已随 M2 语义更新（保留注册/资源/DllMain 红线，新增会话激活断言），详见 `tools/check_m1.py`。
+
+## 11.5 框架抽取：引擎宿主 / UI / 工具条独立为可复用模块（2026-11-16 变更目标）
+
+应 Owner 要求，输入法框架（**不含**拼音码表与拼音选字逻辑）已从 RosPinyin 中独立出来，供形码输入法（RosXingMa，规划见 `xingma/XINGMA-PLAN.md`）等其他输入法复用。目录重组：
+
+```
+framework/   # imfw 可复用框架：engine 契约 + CodeTable/dat 格式 + CandidatePager
+             #   host/  IMM32 16 导出（通用键处理）、DllMain、UI server、会话存储、dat 延迟加载
+             #   ui/    窗口基类 + CJK 字体链、组合串窗口、候选窗、输入法工具条（新增）
+pinyin/      # 拼音插件：归一化、音节切分、PinyinSession、PinyinScheme、内置兜底码表
+ime/         # rospinyin.ime 装配：scheme_reg + 品牌 def/rc/图标（其余全部来自 framework/）
+```
+
+- **Scheme 插件接口**（`framework/include/imfw/scheme.hpp`）是复用缝：字母表、码表文件名、窗口类名、工具条标签、引擎工厂、兜底表。框架拥有翻页/选字/退格/Esc/上屏与全部窗口渲染。
+- `Result.segments`（`imfw/engine.hpp`）让组合串窗口对拼音与形码通用（下划线按引擎切分画）。
+- 通用 `CodeTable` 改用 dat 自带键名表索引，框架侧不再有 `pinyin` 字样（`tools/check_m1.py` 新增防污染断言）。
+- 窗口类按 Scheme 命名并按名去重注册，两个 IME DLL 可同进程共存。
+- 宿主 ctest **8/8**（新增 `pinyin-scheme` 插件契约测试）；真实 MinGW 头交叉语法检查（ziglang, x86-windows-gnu）12/12；真实 dat 链路复验通过。
+- 复用指南见 **[framework/README.md](framework/README.md)**。
