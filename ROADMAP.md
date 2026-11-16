@@ -29,7 +29,7 @@ v0.1「墨」→ v0.2「联」→ v0.3「全」→ v1.0「正」
 细节：以 mzimeja **v1.0.0.3（公共领域）** 源码为只读蓝本 → rospinyin；剥离假名/罗马字逻辑，保留 IMM32 状态机与 UI 窗口框架；**用 `ImmInstallIME` 动态分配 HKL 并记录返回值**（D3 已修正，不再硬编码 0xE0100804），且**绝不写 Preload 第一项**；ImeInquire/ImeSelect/ImeSetActiveContext/ImeProcessKey/NotifyIME 等导出函数接通；kbswitch 列表出现「简体中文」并可切换；ImeProcessKey 直通直出。
 退出标准：Ctrl+Space（或备用键）切到该 IME 不崩溃，任务栏指示正确，普通按键直通。
 
-**M1 进展（2026-11-13）**：宿主侧骨架完成——新写 16 个 IMM32 导出的直通实现、中文资源与合规版本信息、动态 HKL 且不写 Preload 的**分步安装器**、引擎 API 契约与 25 项静态契约检查 + Linux 语法编译 + 3/3 单测通过。尚未取得可运行的 `.ime` 二进制（本机无 Windows 工具链），VM 分步注册与切换压测待做；详见 **[M1-REPORT.md](M1-REPORT.md)**。
+**M1 进展（2026-11-13 宿主侧 / 2026-11-16 VM 实机完成）**：**M1 退出标准已达成**。宿主侧骨架完成——新写 16 个 IMM32 导出的直通实现、中文资源与合规版本信息、动态 HKL 且不写 Preload 的**分步安装器**、引擎 API 契约与 25 项静态契约检查 + Linux 语法编译 + 3/3 单测通过。工具链已切到 **MinGW-w64 i686 + 全静态**产物（规避 MSVC CRT / Vista+ API 在裸 ReactOS 0.4.16 上的缺失），CI 加 PE 导入表断言防回归。VM 实机完成：step1-4 分步注册（HKL=`e0210804`，无 0xF4）、50 次 IME 激活/停用压测无崩溃、托盘「中」字图标（内嵌 `RT_GROUP_ICON`）、**Alt+Shift 可靠切换**（`Ctrl+Space` 在此 VM 不可靠，作为 CORE-19455 备用热键落地 M3 WBS 4.4）。仅 Windows 参照机裸 LoadLibrary 与双机比对因本机 Linux + M0 已跳过 XP VM 而搁置（非技术缺口）。详见 **[M1-REPORT.md](M1-REPORT.md)** 第二轮更新。
 
 ## M2 单字引擎（4-6 周）★核心
 
