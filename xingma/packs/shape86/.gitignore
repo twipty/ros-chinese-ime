@@ -1,0 +1,6 @@
+# 构建产物，不入库；数据来源与哈希见 pack.ini.in 与 xingma/docs/DATA-PACK-SPEC.md
+table.csv
+pack.ini
+SHA256SUMS
+*.zip
+*.zip.sha256

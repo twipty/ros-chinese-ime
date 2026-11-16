@@ -1,0 +1,39 @@
+; RosXingMa 可选数据包 — 86 版（预配置清单模板）
+; 本文件是模板：{{...}} 由 xingma/tools/mkdat-shape/make_pack.py 在构建期填充，
+; 生成 dist/RosXingMa-Pack-Shape86/ 下的 pack.ini。仓库内不放数据文件。
+; 规范见 xingma/docs/DATA-PACK-SPEC.md 第 3 节。
+
+[Pack]
+FormatVersion = 1
+PackId = shape86-jidian
+PackVersion = {{PACK_VERSION}}
+DisplayName = 86 版形码（极点）
+Description = 86 版形码表，含单字与词组。
+Author = Kyle Bing（上游） / RosXingMa 项目（打包）
+Homepage = https://github.com/KyleBing/rime-wubi86-jidian
+BuildDate = {{BUILD_DATE}}
+UpstreamFormat = rime
+
+[License]
+License = MIT
+LicenseFile = LICENSE
+SourceUrl = https://github.com/KyleBing/rime-wubi86-jidian
+SourceCommit = 4d08110b8080f6577dad733ada7e5ae5c5e878fd
+UpstreamNotice = 本表源自「极点五笔」码表。上游维护者于 2026-10-29 将仓库许可改为 MIT，但其仅能许可自身有权部分，更上游的权利完整性未获担保。本数据包按原样提供，不作任何担保。
+Redistributable = yes
+Warranty = none
+
+[Table]
+SourceFormat = csv
+DataFile = table.csv
+DataSha256 = {{DATA_SHA256}}
+EntryCountExpect = {{ENTRY_COUNT}}
+MaxCodeLen = 4
+Alphabet = abcdefghijklmnopqrstuvwxy
+Wildcard = z
+
+[Install]
+ActivateIfNone = yes
+DefaultOrder = 10
+ConsentRequired = yes
+RetainSource = no
