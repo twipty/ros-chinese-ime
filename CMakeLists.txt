@@ -35,7 +35,11 @@ endif()
 
 # Platform-independent pinyin engine. Contains no Windows headers, so it
 # builds and is unit-tested on Linux CI. M2 grows this into the real engine.
-add_library(rospinyin-engine STATIC engine/src/session.cpp)
+add_library(rospinyin-engine STATIC
+    engine/src/session.cpp
+    engine/src/pinyin.cpp
+    engine/src/table.cpp
+    engine/src/pinyin_session.cpp)
 target_include_directories(rospinyin-engine PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/engine/include>")
 target_compile_features(rospinyin-engine PUBLIC cxx_std_17)
@@ -51,6 +55,10 @@ endif()
 # Fully-static HTTP download helper for the ReactOS VM (wget/curl shims).
 if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/httpdl/CMakeLists.txt")
     add_subdirectory(tools/httpdl)
+endif()
+# M2 data compiler: a host-side tool (runs on Linux CI), no Windows headers.
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/mkdat/CMakeLists.txt")
+    add_subdirectory(tools/mkdat)
 endif()
 
 if(ROSPINYIN_BUILD_TESTS)

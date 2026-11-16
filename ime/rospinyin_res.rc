@@ -26,8 +26,8 @@ IDI_ROSPINYIN ICON "rospinyin.ico"
 LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
 
 1 VERSIONINFO
-FILEVERSION     0, 0, 1, 0
-PRODUCTVERSION  0, 0, 1, 0
+FILEVERSION     0, 0, 2, 0
+PRODUCTVERSION  0, 0, 2, 0
 FILEFLAGSMASK   0x3fL
 FILEOS          0x40004L
 FILETYPE        0x3L
@@ -39,12 +39,12 @@ FILESUBTYPE     0xBL
         {
             VALUE "CompanyName",      "RosPinyin contributors\0"
             VALUE "FileDescription", "中文(简体) - RosPinyin\0"
-            VALUE "FileVersion",     "0.0.1-m1\0"
+            VALUE "FileVersion",     "0.0.2-m2-dev\0"
             VALUE "InternalName",    "rospinyin\0"
             VALUE "LegalCopyright",  "Copyright (c) 2026 RosPinyin contributors. MIT.\0"
             VALUE "OriginalFilename", "rospinyin.ime\0"
             VALUE "ProductName",     "RosPinyin\0"
-            VALUE "ProductVersion",  "0.0.1-m1\0"
+            VALUE "ProductVersion",  "0.0.2-m2-dev\0"
         }
     }
     BLOCK "VarFileInfo"

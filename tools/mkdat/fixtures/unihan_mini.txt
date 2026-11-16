@@ -1,0 +1,17 @@
+# Mini Unihan_Readings.txt fixture for mkdat end-to-end tests.
+# Tab separated: U+XXXX <field> <value>
+U+4E00	kMandarin	yī
+U+4E0A	kMandarin	shàng
+U+4E0A	kHanyuPinlu	shàng(12308) shang(392)
+U+4E2D	kMandarin	zhōng
+U+5417	kMandarin	ma
+U+56FD	kMandarin	guó
+U+5973	kMandarin	nǚ
+U+5973	kHanyuPinlu	nǚ(9000)
+U+5F8B	kMandarin	lǜ
+U+7565	kMandarin	lüè
+U+7684	kMandarin	de
+U+91CD	kMandarin	zhòng chóng
+U+91CD	kHanyuPinlu	chóng(5000) zhòng(1000)
+U+4E48	kMandarin	me yāo
+U+54EF	kMandarin	ǹg en
