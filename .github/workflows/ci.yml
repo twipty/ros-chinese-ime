@@ -48,4 +48,23 @@ jobs:
           $f = Get-ChildItem -Recurse -Filter "rospinyin.ime" build-standalone
           if (-not $f) { throw "rospinyin.ime was not produced" }
           $f | Select-Object -ExpandProperty FullName
+          $exe = Get-ChildItem -Recurse -Filter "install-rospinyin.exe" build-standalone
+          if (-not $exe) { throw "install-rospinyin.exe was not produced" }
+          $exe | Select-Object -ExpandProperty FullName
         shell: pwsh
+      - name: Stage VM test assets
+        # Flat layout for the ReactOS test VM: wget from the host HTTP share
+        # expects bare filenames next to the installer.
+        run: |
+          New-Item -ItemType Directory -Force -Path stage | Out-Null
+          Copy-Item (Get-ChildItem -Recurse -Filter "rospinyin.ime" build-standalone).FullName stage\rospinyin.ime
+          Copy-Item (Get-ChildItem -Recurse -Filter "install-rospinyin.exe" build-standalone).FullName stage\install-rospinyin.exe
+          Get-ChildItem stage
+        shell: pwsh
+      - name: Upload VM test assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: rospinyin-m1-win32
+          path: stage/
+          if-no-files-found: error
+          retention-days: 30
