@@ -27,7 +27,8 @@ m0/downloads/*.iso
 m0/downloads/*.exe
 m0/extract/*.bin
 m0/probe/reactos/
-m0/share/*.exe
+# Local HTTP share drop zone for the ReactOS VM (all payloads are build outputs)
+m0/share/
 vendor/*.tar.gz
 
 # Third-party reference source: local extraction only, reproduce with

@@ -48,7 +48,7 @@
 
 ## 3. M2 单字引擎（估 22-30 人日）★核心里程碑 — 🚧 进行中（2026-11-16 起步）
 
-> 进展：D2 已拍板 A；共用归一化库、`mkdat` 编译器、`rospinyin.dat` v1 格式、运行时表与单字引擎骨架已落地，宿主 ctest 6/6（见 `m2/M2-DATA-PLAN.md` 第 8 节）。IMM32 UI 集成（3.3/3.4）与 ReactOS 记事本验收（3.5）尚未开始。
+> 进展：D2 已拍板 A；共用归一化库、`mkdat` 编译器、`rospinyin.dat` v1 格式、运行时表与单字引擎骨架已落地。2026-11-16 完成 M2 剩余工程部分：候选分页器、`rospinyin.dat` 延迟加载、按 HIMC 会话管理、IMM32 键处理（组合/翻页/数字选字/上屏/回删/Esc）以及组合串窗口与候选窗（`ui/`）；宿主 ctest **7/7**、语法检查通过。实测加载真实 dat 后 `zhongguo` → `[zhong][guo]` / 首选 `国`（U+56FD），`nv` → 女、`lv` → 律、`lve` → 略、`nve` → 虐。ReactOS 记事本验收操作单见 `m2/M2-ACCEPTANCE.md`，待 CI 产出新 `.ime` 后在 VM 执行（见 `m2/M2-DATA-PLAN.md` 第 8/9 节）。
 
 - **3.1 引擎库 `pinyin-core` ✓**
   - 3.1.1 音节数据结构（415 左右合法音节 + 声调变体）
@@ -62,20 +62,21 @@
   - 3.2.2 字频来源整合（**D2 已定 A**：hanziDB.csv MIT 主源 + Unihan kHanyuPinlu 辅源；Jun Da 原始表因商用限制排除；`ü`/`v` 归一化）
   - 3.2.3 编译器 `mkdat`：产出紧凑 `rospinyin.dat`（目标 < 2MB，mmap 友好）
   - 3.2.4 数据校验工具（音节完整性、多音字抽样）
-- **3.3 IME UI ✓**
-  - 3.3.1 组合串窗口：拼音串 + 音节切分下划线、光标位置
-  - 3.3.2 候选窗：9 候选 + 编号、高亮首选，跟随光标位置（避免屏幕边缘溢出）
-  - 3.3.3 键位：数字 1-9 选字、`-`/`=`（或 `,`/`.`）翻页、空格首选上屏
-  - 3.3.4 编辑键：退格逐字回删（音节级）、Esc 取消组合
-  - 3.3.5 字体：候选窗用系统字体链（处理无中文字体时的兜底显示）
-- **3.4 IMM32 集成**
-  - 3.4.1 ImeProcessKey 状态机（开始/继续/结束组合）
-  - 3.4.2 组合串经 ImmSetCompositionString → WM_IME_COMPOSITION 送达应用
-  - 3.4.3 候选窗经 ImmNotifyIME/NI_ 常量驱动 WM_IME_NOTIFY
-  - 3.4.4 上屏：WM_IME_CHAR / GCS_RESULTSTR 路径
-  - 3.4.5 焦点切换时上下文保存/恢复（ImeSetActiveContext）
-- **3.5 ReactOS 记事本验收 ✓**
-  - 3.5.1 全流程测试脚本（输入→选字→翻页→上屏→取消→回删）逐项通过
+- **3.3 IME UI ✅（2026-11-16 落地）**
+  - 3.3.1 组合串窗口：拼音串 + 音节切分下划线、跟随插入符（`GetCaretPos` + `ClientToScreen`）
+  - 3.3.2 候选窗：9 候选 + 编号、页码提示、跟随光标、屏幕边缘翻转避让
+  - 3.3.3 键位：数字 1-9 选字（经 `CandidatePager::select`，翻页后按当前页解释）、`-`/`=`（或 `,`/`.`）翻页、空格首选上屏
+  - 3.3.4 编辑键：退格逐字回删、Esc 取消组合
+  - 3.3.5 字体：`Droid Sans Fallback → Noto Sans SC → Microsoft YaHei → SimSun → Arial Unicode MS` 兜底链，用 `GetTextFaceW` 验证 GDI 实际解析结果
+- **3.4 IMM32 集成 ✅（2026-11-16 落地，方案调整）**
+  - 3.4.1 ImeProcessKey 只判按键归属（Side-effect free）；Ctrl/Alt 不消费，应用快捷键不受影响
+  - 3.4.2 ⚠️ 原计划的 `ImmSetCompositionString` / `NI_` 常量路径**改为自绘窗口**：ReactOS 的 IMM32 DDK 候选列表结构不完整，自绘避免依赖；组合串经 `UiShow()` 渲染
+  - 3.4.3 ⚠️ 候选窗同样由 `UiShow()` / `UiHide()` 驱动，不经 `ImmNotifyIME`
+  - 3.4.4 上屏：生成 `WM_IME_CHAR` TRANSMESSAGE（单字候选均为 BMP）
+  - 3.4.5 焦点切换：`ImeSetActiveContext` 激活/隐藏；`ImeSelect(FALSE)` 销毁窗口与会话
+  - 3.4.6 会话激活：`ImeSelect(TRUE)` / `ImeSetActiveContext(TRUE)` 必须调用 `on_select(true)`，否则引擎拒绝 `feed()`（已加 contract 断言防回归）
+- **3.5 ReactOS 记事本验收 🧪（操作单就绪，待 VM 执行）**
+  - 3.5.1 全流程测试操作单：`m2/M2-ACCEPTANCE.md`（15 项用例）
   - 3.5.2 长时间输入会话（30 分钟）稳定性
   - 3.5.3 **v0.1 预览版发布**（提前收集社区反馈，不等 M3）
 
