@@ -25,10 +25,20 @@ RosPinyin — Third-party notices / 第三方许可声明
    https://www.unicode.org/license.txt
    生成的 rospinyin.dat 须随附本声明。
 
-4. 字频表（M2，决策点 D2 未定）
+4. 字频表（M2，D2 已定 = A，2026-11-16）
    ------------------------------------------------------------------------
-   Jun Da 现代汉语字频表的许可条款在核实通过前**不得并入发行包**。
-   回退方案：仅用 Unihan + 手工分级频度，保持整包 MIT 干净。
+   主源：hanziDB.csv（MIT License，Copyright (c) 2017 Rudd Fawcett），
+   仓库 https://github.com/rtang18/hanziDB.csv ，文件 data/hanziDB.csv。
+   辅源：Unicode Unihan kHanyuPinlu（Unicode License，见第 3 条）。
+
+   hanziDB 的排名衍生自 Jun Da 现代汉语字频表。Jun Da 原始表官方声明
+   "research and teaching/learning purposes only"，商用需作者书面许可，
+   因此**不直接分发 Jun Da 原始表**；发行包内只并入 hanziDB 的 MIT 衍生 CSV
+   与其编译产物 rospinyin.dat，并在此标注底层来源。
+   https://lingua.mtsu.edu/chinese-computing/copyright.html
+
+   数据可替换设计：字频编译为独立 rospinyin.dat，未来若改用自算语料字频，
+   只需替换 mkdat 输入文件，不动 MIT 代码。
 
 5. 词组词典（M4 / v0.2）：CC-CEDICT
    ------------------------------------------------------------------------

@@ -1,8 +1,11 @@
 # M2 数据工具链可行性报告与 D2 决策建议
 
-> 日期：2026-11-16　状态：预研完成，待 Owner 拍板 D2
+> 日期：2026-11-16　状态：**D2 已拍板 = A**（hanziDB MIT 主源 + Unihan kHanyuPinlu 辅源）；预研完成，进入实现阶段
 > 本文回答两件事：① M2 单字引擎的数据来源是否拿得到、许可证是否合规；② 决策点 D2（字频来源）该怎么定。
 > 所有结论均基于**实际下载数据 + 实地解析验证**，非纸面推演。
+>
+> **2026-11-16 Owner 追加约束**：实际输入中 `ü` 一律用 `v` 键（如 `nv`=女、`lv`=律、`lve`=略）。
+> 数据层须把 `ü`/`ǖǘǚǜ` 归一为 `v`，使输入层的 `v` 与数据层一一对应。详见第 7 节。
 
 ---
 
@@ -11,11 +14,12 @@
 | 决策项 | 结论 | 依据 |
 |---|---|---|
 | 拼音映射源 | ✅ **Unihan 18.0.0 `kMandarin`** 可用，官方直连可达 | 实测下载 8.0 MB / sha256 `4c93ea9c…`，44355 条 |
-| 字频源（D2） | ⚠️ **不能直接采用 Jun Da 原始表**（License 限制商用）；建议改用 **hanziDB.csv（MIT）** 或 **Unihan `kHanyuPinlu`** | 官方版权声明全文 + MIT LICENSE 实证 |
+| 字频源（D2） | ✅ **已定 A**：hanziDB.csv（MIT）主源 + Unihan `kHanyuPinlu` 辅源；Jun Da 原始表因 License 限制商用**排除** | 官方版权声明全文 + MIT LICENSE 实证 + Owner 拍板 |
 | 覆盖率 | ✅ Unihan 覆盖 hanziDB 前 3500 字 **100%**（3500/3500） | 实地交叉验证 |
 | 引擎影响 | ⚠️ 声调需从「带调符号」转「数字调」，且**数字插在元音后**（`zhōng`→`zho1ng`），不是音节尾 | 44355 条全量转换验证 |
+| 输入映射 | ✅ `ü` 用 `v` 键输入：`nǚ`→`nv3`、`lǜ`→`lv4`；数据层与输入层统一用 `v` | Owner 追加约束 + 418 个无声调音节实证 |
 
-**D2 推荐**：采用 **hanziDB.csv（MIT）作主字频源**，Unihan `kHanyuPinlu` 作补充/交叉校验；**放弃直接使用 Jun Da 原始表**。理由见第 4 节。
+**D2 决定（2026-11-16 Owner 拍板）= A**：采用 **hanziDB.csv（MIT）作主字频源**，Unihan `kHanyuPinlu` 作补充/交叉校验；**放弃直接使用 Jun Da 原始表**。理由见第 4 节。
 
 ---
 
@@ -44,7 +48,7 @@ Unihan 的 `kMandarin` 用**带声调符号的拉丁字母**（如 `zhōng`、`l
    - `zhōng` → `zho1ng`（1 插在 o 后）✅
    - `guó` → `guo2` ✅
    - 这直接影响 3.1.1「415 合法音节 + 声调变体」的数据结构：应以**无声调音节**为键，声调作独立属性。
-2. **ü 保留**：`nǚ` → `nü3`、`lǜ` → `lü4`；引擎输入层须把用户键入的 `v` / `u:` 归一到 `ü`（或统一用 `v` 表示，二选一，建议 M2 定）。
+2. **ü 归一到 v（已定）**：`nǚ` → `nv3`、`lǜ` → `lv4`、`lüè` → `lve4`；数据层与输入层统一用 `v`，不做 `u:` 变体。详见第 7 节。
 3. **多音字空格分隔**：`嗯` = `ǹg en` → 两个读音；编译器取第一个作主音，其余作次选（对应 PLAN 3.2.1「取最常用音，其余作次选」）。
 
 ### 2.4 额外发现：Unihan 自带字频字段 `kHanyuPinlu`
@@ -93,9 +97,9 @@ Unihan 的 `kMandarin` 用**带声调符号的拉丁字母**（如 `zhōng`、`l
 3. **覆盖率验证通过**：Unihan 覆盖 hanziDB 全部前 3500 常用字（100%），两源可无缝 join（`char` ↔ `kMandarin`）。
 4. **风险可控**：hanziDB 的上游传导风险通过「NOTICE 双署名 + 数据可替换设计」降到最低——字频数据编译成独立 `rospinyin.dat`，未来若需替换为自算语料表，只需换输入文件、不动引擎代码（对应 PLAN 3.2.3「可单独更新」的设计）。
 
-**备选（若 Owner 偏好最保守合规）**：直接用 Tatoeba 自算字频或仅用 `kHanyuPinlu`，放弃 hanziDB。代价是长尾字排序质量下降或需额外语料处理。
+**备选（记录备查，未采用）**：Tatoeba 自算字频或仅用 `kHanyuPinlu`。代价是长尾字排序质量下降或需额外语料处理。
 
-**请 Owner 拍板**：D2 = （A）hanziDB MIT 主源 + kHanyuPinlu 辅源【推荐】／（B）纯 Unihan kHanyuPinlu／（C）Tatoeba 自算。
+**Owner 决定（2026-11-16）：D2 = A**。hanziDB MIT 主源 + Unihan `kHanyuPinlu` 辅源，已拍板；下方第 7 节的 `v` 键约束同时生效。
 
 ---
 
@@ -120,4 +124,82 @@ Unihan 的 `kMandarin` 用**带声调符号的拉丁字母**（如 `zhōng`、`l
 | `hanziDB.csv` | MIT 字频表，10,000 字 |
 | 声调转换与覆盖验证 | 一次性 Python 脚本（第 2.3 / 2.4 / 3.3 节的实地验证） |
 
-原始数据不入库（体积与可再获取性考虑）；M2 实现时由构建脚本按固定 URL + sha256 拉取，保证可复现。
+原始数据不入库（体积与可再获取性考虑）；M2 实现时由 `tools/mkdat/fetch_data.py` 按固定 URL + sha256 拉取，保证可复现：
+- `Unihan.zip`：`https://www.unicode.org/Public/18.0.0/ucd/Unihan.zip`，sha256 `4c93ea9c1f636451729a840978f1667a53886af37ba854fdcce109721c63d43e`
+- `hanziDB.csv`：`https://raw.githubusercontent.com/rtang18/hanziDB.csv/master/data/hanziDB.csv`，sha256 `03f809543a2bd0d32c8f65f98567cbaa01527f2eefbdb0ea214a1abddc0b03a0`
+
+---
+
+## 7. `v` 键映射约束（Owner 追加，已定）
+
+### 7.1 规则
+
+实际拼音输入中 `ü` 一律用 `v` 键，不做 `u:` / `yu` 之类变体。数据层与输入层**统一用 `v` 表示 `ü`**：
+
+| 规范读音 | 数字调（数据层） | 无声调音节（切分键） | 用户键入 |
+|---|---|---|---|
+| `nǚ` | `nv3` | `nv` | `nv` |
+| `lǜ` | `lv4` | `lv` | `lv` |
+| `lüè` | `lve4` | `lve` | `lve` |
+| `nüè` | `nve4` | `nve` | `nve` |
+
+实地验证：Unihan 18.0.0 的 44,355 条 `kMandarin` 全量转换后得到 **418 个无声调音节**，其中含 `v` 的恰好 4 个：`lv` / `lve` / `nv` / `nve`（与 PLAN「415 左右合法音节」量级吻合）。两个数据源里都不出现字面 `v`，`v` 纯属输入层约定，因此归一化是**单向无损**的（数据层 `ü` → `v`，输入层 `v` 直接匹配）。
+
+> 实现期勘误记录：mkdat 初版用 `std::set` 存放多音字读音，把 Unihan「首选音在前」的顺序打乱（如 `嗯` 的 `ǹg en` 变成按字母序取 `en`），导致音节数一度变成 417。
+> 已改为**保序去重**，输出恢复为 418，与预研一致。另补齐 hanziDB 独有的 `ń`（U+0144）→`n2` 映射。
+
+另外，hanziDB 的 10,000 行里有 2 行（rank 8220 `裏` U+F9E7、rank 9019 `秊` U+F995，均为兼容表意文字）**pinyin 字段为空**，mkdat 会跳过并各报一条 warning；这是预期的脏数据过滤，不是编译错误。因此最终带排名的字数为 9,898，与预研交叉验证的 9,898/9,900 一致。
+
+### 7.2 声调符号 → 数字调映射表（编译器与引擎共用）
+
+数字**紧跟带调元音**（不是音节尾），`ü` 族直接并到 `v`：
+
+```
+声调1（阴平）: ā→a1 ē→e1 ī→i1 ō→o1 ū→u1 ǖ→v1
+声调2（阳平）: á→a2 é→e2 í→i2 ó→o2 ú→u2 ǘ→v2 ń→n2 ḿ→m2
+声调3（上声）: ǎ→a3 ě→e3 ǐ→i3 ǒ→o3 ǔ→u3 ǚ→v3 ň→n3
+声调4（去声）: à→a4 è→e4 ì→i4 ò→o4 ù→u4 ǜ→v4 ǹ→n4
+轻声/无调  : ü→v
+```
+
+`ḿ` / `ń` / `ň` / `ǹ` 是音节性鼻音：Unihan 收 `嗯`=`ǹg en`，hanziDB 收 `嗯`=`ń`。
+归一后分别为 `m2` / `n2` / `n3` / `n4g`，无声调音节 `m` / `n` / `n` / `ng`。
+`ń`（U+0144）是实地跑 mkdat 时发现 hanziDB 用到、而 Unihan 未出现的字符，已补进映射表。
+
+### 7.3 实现落点
+
+- `engine/src/pinyin.cpp`：`marked_to_numeric()` / `to_canonical()` / `syllable_of()` 共用同一张映射表；
+- `tools/mkdat/mkdat.cpp`：编译 `rospinyin.dat` 时把 kMandarin / hanziDB pinyin 都过一遍该映射，确保数据层只存 `v`；
+- `tools/mkdat/fetch_data.py`：固定 URL + sha256 拉取原始数据；
+- 单测：`tests/pinyin_test.cpp` 覆盖 `nǚ→nv3`、`lǜ→lv4`、`lüè→lve4`、`zhōng→zho1ng`、`ǹg→n4g`。
+
+---
+
+## 8. 实现落地状态（2026-11-16）
+
+D2=A 拍板后已把本报告的规则全部落到代码，并实地编译/验证：
+
+| 落点 | 文件 | 状态 |
+|---|---|---|
+| 共用归一化 | `engine/include/rospinyin/pinyin.hpp`、`engine/src/pinyin.cpp` | ✅ 带调→数字调、`ü` 族→`v`、音节提取，编译进 `rospinyin-engine`，mkdat 与引擎共用同一实现 |
+| dat 格式 | `engine/include/rospinyin/dat_format.hpp` | ✅ v1，定长头 + 两定长表 + 字符串池，mmap 友好，小端 32 位 |
+| 编译器 | `tools/mkdat/mkdat.cpp` + `CMakeLists.txt` | ✅ 解析 Unihan（`kMandarin`/`kHanyuPinlu`）+ hanziDB CSV（`charcter` 容错），多音字保序、pinlu 定首选音 |
+| 可复现取数 | `tools/mkdat/fetch_data.py`、`tools/mkdat/build_dat.sh` | ✅ 固定 URL + sha256，一键出 `rospinyin.dat` |
+| 运行时读取 | `engine/include/rospinyin/table.hpp`、`engine/src/table.cpp` | ✅ 全边界检查加载 dat；按音节查字，按 rank 排序 |
+| 引擎骨架 | `engine/include/rospinyin/pinyin_session.hpp`、`engine/src/pinyin_session.cpp` | ✅ 最长匹配+回溯切分（含 `'` 硬边界、连续输入）、`v` 键候选、空格/数字上屏、退格/Esc |
+| 测试 | `tests/pinyin_test.cpp`、`pinyin_session_test.cpp`、`check_mkdat.py` | ✅ 宿主 `ctest` **6/6 通过**（含 M1 三项回归） |
+
+实地编译结果（Unihan 18.0.0 + hanziDB.csv）：
+
+```
+mkdat: 44355 chars, 418 syllables, 8928-byte string pool
+mkdat: warnings=2 skipped=0          # 两个兼容表意文字 pinyin 为空，预期过滤
+mkdat stats: ranked=9898 unknown=34457 polyphonic=109
+rospinyin.dat = 882 KB（目标 < 2 MB ✅）
+两次独立编译 sha256 一致（字节级可复现）
+```
+
+端到端验证：加载真实 dat 后 `zhongguo` → 切分为 `[zhong][guo]`，末音节候选首选 `国`（U+56FD）；
+`nv` → 女（U+5973，rank 224）、`lv` → 律（U+5F8B，rank 526）、`lve` → 略（U+7565，rank 704）。
+
+版本标识已从 `0.0.1-m1` 升为 `0.0.2-m2-dev`（`version.hpp` 与 `ime/rospinyin_res.rc` 同步）。
