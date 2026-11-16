@@ -12,7 +12,7 @@
 // sha256). mkdat itself never touches the network.
 
 #include <rospinyin/pinyin.hpp>
-#include <rospinyin/dat_format.hpp>
+#include <imfw/dat_format.hpp>
 
 #include <algorithm>
 #include <cstdint>
@@ -33,12 +33,12 @@
 
 namespace {
 
-using rospinyin::dat::CharEntry;
-using rospinyin::dat::Header;
-using rospinyin::dat::SylEntry;
-using rospinyin::dat::kMagic;
-using rospinyin::dat::kUnknownRank;
-using rospinyin::dat::kVersion;
+using imfw::dat::CharEntry;
+using imfw::dat::Header;
+using imfw::dat::SylEntry;
+using imfw::dat::kMagic;
+using imfw::dat::kUnknownRank;
+using imfw::dat::kVersion;
 
 struct UniReading {
     std::vector<std::string> readings;  // canonicalized kMandarin readings
@@ -530,7 +530,7 @@ bool write_dat(const std::string& path, const BuiltData& data) {
     header.flags = 0;
     header.char_count = static_cast<std::uint32_t>(data.chars.size());
     header.syl_count = static_cast<std::uint32_t>(data.syllables.size());
-    header.char_table_off = rospinyin::dat::kHeaderSize;
+    header.char_table_off = imfw::dat::kHeaderSize;
     header.syl_table_off =
         static_cast<std::uint32_t>(header.char_table_off +
                                    data.chars.size() * sizeof(CharEntry));

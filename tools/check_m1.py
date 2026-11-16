@@ -34,7 +34,7 @@ REQUIRED_EXPORTS = {
 }
 
 SCAN_DIRS = [
-    "ime", "engine", "ui", "tests",
+    "framework", "pinyin", "ime", "tests",
     "tools/install-rospinyin", "tools/syntax_stub",
 ]
 SOURCE_SUFFIXES = {".cpp", ".h", ".hpp", ".rc", ".def"}
@@ -134,8 +134,8 @@ def run(root: Path) -> int:
             f"missing={sorted(REQUIRED_EXPORTS - exports)} "
             f"extra={sorted(exports - REQUIRED_EXPORTS)}")
 
-    abi = read(root, "ime/imm32_abi.h")
-    entry = read(root, "ime/imm_entry.cpp")
+    abi = read(root, "framework/host/imm32_abi.h")
+    entry = read(root, "framework/host/imm_entry.cpp")
     abi_missing = [n for n in REQUIRED_EXPORTS
                    if not re.search(r"\b" + n + r"\s*\(", abi)]
     impl_missing = [n for n in REQUIRED_EXPORTS
@@ -162,7 +162,10 @@ def run(root: Path) -> int:
     c.check("ImeToAsciiEx dispatches key processing to process_key",
             ascii_body is not None and "process_key" in ascii_body)
     c.check("M2 commits text through WM_IME_CHAR TRANSMESSAGEs",
-            "WM_IME_CHAR" in entry and "emit_char" in entry)
+            "WM_IME_CHAR" in entry and "emit_text" in entry)
+    c.check("G1: commit path handles multi-codepoint text (words)",
+            "emit_text(lpTransMsg, commit_text)" in entry and
+            "chosen->text[0]" not in entry)
     # Regression guard: PinyinSession::feed() is a no-op until on_select(true),
     # so a missing activation makes the IME silently swallow every pinyin key.
     select_body = function_body(entry, r"BOOL\s+WINAPI\s+ImeSelect\s*\([^)]*\)")
@@ -183,7 +186,7 @@ def run(root: Path) -> int:
         c.check(f"version resource: {label}", ok)
 
     # 6. DllMain harmlessness (M0 red line #1).
-    dll = strip_cpp_comments(read(root, "ime/dllmain.cpp"))
+    dll = strip_cpp_comments(read(root, "framework/host/dllmain.cpp"))
     forbidden_dll = ["LoadLibrary", "RegOpenKey", "RegCreateKey", "RegQueryValue",
                      "CreateThread", "CreateWindow", "fopen", "ImmInstallIME",
                      "ImmGetContext", "LoadImage"]
@@ -219,17 +222,38 @@ def run(root: Path) -> int:
             ", ".join(k for k, v in places.items() if not v))
 
     # 9. Core files exist and the engine contract is host-testable.
-    for rel in ["engine/include/rospinyin/engine.hpp",
-                "engine/include/rospinyin/session.hpp",
-                "engine/src/session.cpp",
-                "ui/README.md",
+    for rel in ["framework/include/imfw/engine.hpp",
+                "framework/include/imfw/scheme.hpp",
+                "framework/include/imfw/session.hpp",
+                "framework/src/engine.cpp",
+                "framework/host/dllmain.cpp",
+                "framework/host/imm_entry.cpp",
+                "framework/ui/README.md",
+                "pinyin/include/rospinyin/scheme.hpp",
+                "pinyin/src/scheme.cpp",
+                "ime/scheme_reg.cpp",
                 "tests/session_test.cpp",
                 "tools/syntax_stub/windows.h"]:
         c.check(f"present: {rel}", (root / rel).is_file())
 
-    c.check("UI server class name is centrally defined",
-            "kUIServerClassName" in header and
-            "kUIServerClassName" in read(root, "ime/ui_server.cpp"))
+    # The reusable framework must stay free of pinyin knowledge: the plugin
+    # seam is imfw::Scheme (see framework/README.md).
+    scheme_cpp = read(root, "pinyin/src/scheme.cpp")
+    ui_server = read(root, "framework/host/ui_server.cpp")
+    c.check("UI server class name comes from the Scheme",
+            "ui_server_class" in ui_server and
+            "L\"RosPinyinUIServer\"" in scheme_cpp)
+    c.check("scheme_reg hands the framework its Scheme",
+            "scheme_instance" in read(root, "ime/scheme_reg.cpp") and
+            "PinyinScheme" in read(root, "ime/scheme_reg.cpp"))
+    framework_pinyin_refs = []
+    for rel in ["framework/src/code_table.cpp", "framework/host/imm_entry.cpp",
+                "framework/src/engine.cpp"]:
+        text = read(root, rel)
+        if "pinyin" in strip_cpp_comments(text).lower():
+            framework_pinyin_refs.append(rel)
+    c.check("framework core contains no pinyin knowledge",
+            not framework_pinyin_refs, ", ".join(framework_pinyin_refs))
 
     return c.summary()
 
