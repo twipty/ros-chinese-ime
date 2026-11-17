@@ -23,11 +23,27 @@
 // icon the tray shows no layout badge at all.
 IDI_ROSPINYIN ICON "rospinyin.ico"
 
+// Which "keyboard" the layout lands under is decided **solely** by the first
+// entry of VarFileInfo\Translation in this resource: imm32_install.c does
+// `pInfoEx->hkl = UlongToHandle(*pw)`, so the low word of the HKL (hence
+// E0xx0804 vs E0xx0409) comes from here. The Japanese IME that ships with the
+// system uses 0409; ours used 0804, which made every A/B comparison differ
+// in two variables at once (IME implementation + layout language/charset).
+// Build with -DROSPINYIN_IME_LANGID=0409 to get a control build that sits in
+// the exact same language slot as the system IME.
+#ifdef ROSPINYIN_IME_LANG_EN
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#define ROSPINYIN_STRBLOCK "040904b0"
+#define ROSPINYIN_TRANSLATION_LANGID 0x409
+#else
 LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+#define ROSPINYIN_STRBLOCK "080404b0"
+#define ROSPINYIN_TRANSLATION_LANGID 0x804
+#endif
 
 1 VERSIONINFO
-FILEVERSION     0, 0, 2, 0
-PRODUCTVERSION  0, 0, 2, 0
+FILEVERSION     0, 0, 1, 0
+PRODUCTVERSION  0, 0, 1, 0
 FILEFLAGSMASK   0x3fL
 FILEOS          0x40004L
 FILETYPE        0x3L
@@ -35,21 +51,21 @@ FILESUBTYPE     0xBL
 {
     BLOCK "StringFileInfo"
     {
-        BLOCK "080404b0"
+        BLOCK ROSPINYIN_STRBLOCK
         {
             VALUE "CompanyName",      "RosPinyin contributors\0"
             VALUE "FileDescription", "中文(简体) - RosPinyin\0"
-            VALUE "FileVersion",     "0.0.2-m2-dev\0"
+            VALUE "FileVersion",     "alpha0.0.1\0"
             VALUE "InternalName",    "rospinyin\0"
             VALUE "LegalCopyright",  "Copyright (c) 2026 RosPinyin contributors. MIT.\0"
             VALUE "OriginalFilename", "rospinyin.ime\0"
             VALUE "ProductName",     "RosPinyin\0"
-            VALUE "ProductVersion",  "0.0.2-m2-dev\0"
+            VALUE "ProductVersion",  "alpha0.0.1\0"
         }
     }
     BLOCK "VarFileInfo"
     {
-        VALUE "Translation", 0x804, 1200
+        VALUE "Translation", ROSPINYIN_TRANSLATION_LANGID, 1200
     }
 }
 

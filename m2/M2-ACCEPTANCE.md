@@ -9,7 +9,7 @@
 
 | 项 | 判定标准 |
 |---|---|
-| 数据加载 | `rospinyin.dat` 能被 IME 从 `C:\ReactOS\system32\` 读取；44,355 字 / 418 音节生效（以候选数明显多于内置表为准） |
+| 数据加载 | `rospinyin.dat` 能被 IME 从 `C:\ReactOS\system32\` 读取；44,355 字 / 418 音节在表内，候选默认只呈现有字频的 9,898 字（未登录生僻字需 `set_show_rare(true)`，见 HANDOVER §11.8） |
 | 组合串 | 输入 `zhongguo` 显示 8 个字母并在 `[zhong]` / `[guo]` 处有音节下划线 |
 | 候选窗 | 显示 9 条编号候选；`-` / `,` 上一页，`=` / `.` 下一页，页码如 `1/15` |
 | 选字上屏 | 空格选首选；`1`–`9` 选当前页对应候选；翻页后数字按当前页解释 |
@@ -80,7 +80,9 @@ result.md                  上表实测列 + 结论
 
 - 若组合串不出现：检查 `ImeSelect(TRUE)` 是否触发（引擎在 `on_select(true)`
   前拒绝 `feed()`）；已加 contract 断言防回归。
-- 若候选是方框：CJK 字体未挂载，安装 `NotoSansSC-subset.ttf` 或改用
-  `Droid Sans Fallback`，见 `ui/README.md`。
+- 若候选是方框：先区分两种情况——**整页全方框**才是 CJK 字体未挂载（安装
+  `NotoSansSC-subset.ttf` 或改用 `Droid Sans Fallback`，见 `ui/README.md`）；
+  **只有零星几个方框**是候选里混进了扩展区生僻字，属数据问题，已由
+  `PinyinSession` 默认过滤无字频字解决（HANDOVER §11.8）。
 - 若 `.ime` 加载失败：回退到 M1 产物（`m0/share/rospinyin.ime.noicon` 是
   无图标版，不要用于最终验收），先确认 M1 仍可用再定位 M2 回归。

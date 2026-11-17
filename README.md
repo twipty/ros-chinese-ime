@@ -2,7 +2,7 @@
 
 **项目章程 / Project Charter**
 状态：已立项（2026-11-12）｜路线：B（以 mzimeja 为蓝本新写 IMM32 拼音 IME）｜目标平台：ReactOS 0.4.16+（IMM32 架构）
-当前阶段：**M1 骨架替换**（宿主侧代码完成，VM 实测待做，见 [M1-REPORT.md](M1-REPORT.md)）
+当前阶段：**M2 单字拼音引擎已打通**（ReactOS VM 真实手打 `nihao`/`zhong`/`guo`/`shui` 端到端上屏；15 项验收单尚未全项跑完，见 [m2/M2-ACCEPTANCE.md](m2/M2-ACCEPTANCE.md)）｜首个公开版本：**alpha0.0.1**（2026-11-17，[Release 说明](CHANGELOG.md)）
 仓库：https://github.com/twipty/ros-chinese-ime（public, main）｜代码许可证：**MIT**（D1 已定，2026-11-13）｜第三方与数据分层授权见 `NOTICE.txt`
 
 ## 1. 一句话使命
@@ -140,6 +140,25 @@
 - **验收准备**：操作单 `m2/M2-ACCEPTANCE.md` 与数据 `m0/share/rospinyin.dat` 已就位，待 CI 产出含 M2 UI 的新 `.ime` 后在 ReactOS VM 执行。
 - M1 的 passthrough 契约断言已随 M2 语义更新（保留注册/资源/DllMain 红线，新增会话激活断言），详见 `tools/check_m1.py`。
 
+### M2 打通记录（2026-11-17，alpha0.0.1）
+
+真实键盘手打（非程序注入）已端到端通过，`imhost` 三层记录（入口 `WH_KEYBOARD` / 窗口消息 / IME trace）逐条对齐：
+
+```
+入口层 DOWN=40 UP=40 | 窗口层 40/40 | WM_CHAR=5 WM_IME_CHAR=5 | 注入按键 0 次
+上屏：你 → 你好 → 你好中 → 你好中国 → 你好中国谁
+```
+
+途中修掉的四个真问题（均带回归断言）：
+
+1. **IME 从不被调用**：UI 类名 `RosPinyinUIServer` 17 字符，被 `imm32` 的 `szUIClass[16]` 截断后 `GetClassInfoW` 失败 → `fLoadFlag=1`。类名收敛到 `RosPinyinUISrv`（≤15，`static_assert` 兜底）。
+2. **多字/丢字**：`WM_KEYUP` 也被喂进 `ImeToAsciiEx`（该路径无 lParam，看不到 transition 位）。`ImeProcessKey` 对 key-up 一律返回 `FALSE`。
+3. **简体「谁」打不出**：Unihan 中 U+8C01 `kMandarin` 只有 `shéi`，`shuí` 被丢弃；且引擎从不读次读音字段。`mkdat` 改为把 `kHanyuPinlu` 的音作为次读音保留，`CodeTable::load_dat` 增加 alt 别名索引。
+4. **候选里的空心框**：44,355 字里 34,457 条是 Unihan 独有生僻字（68% 在字体子集外）。`PinyinSession` 默认只放有字频的字（9,898 条），该音节为空时回退全表。
+
+修复效果（真实引擎 + 真实数据）：`shui` 34 条 → **7 条「水 谁 税 睡 稅 誰 脽」**，简体「谁」第 2 位，空心框 20 → 0。回归 `ctest` 11/11、`check_m1` 53/53。
+
+
 ## 11.5 框架抽取：引擎宿主 / UI / 工具条独立为可复用模块（2026-11-16 变更目标）
 
 应 Owner 要求，输入法框架（**不含**拼音码表与拼音选字逻辑）已从 RosPinyin 中独立出来，供形码输入法（RosXingMa，规划见 `xingma/XINGMA-PLAN.md`）等其他输入法复用。目录重组：
@@ -158,5 +177,5 @@ ime/         # rospinyin.ime 装配：scheme_reg + 品牌 def/rc/图标（其余
 - 通用 `CodeTable` 改用 dat 自带键名表索引，框架侧不再有 `pinyin` 字样（`tools/check_m1.py` 新增防污染断言）。
 - 窗口类按 Scheme 命名并按名去重注册，两个 IME DLL 可同进程共存。
 - **xingma 缺口 G1–G4 已全部在框架侧解决**（2026-11-16；G2 于 2026-11-17 演进为「框架零码表」终局形态，详见 `framework/README.md`）：`imfw::emit_text` 多码点/非 BMP 上屏、无参 `create_engine` + `reload_data()` 热重载、`Scheme::configure` 接管 `ImeConfigure`、选字/翻页键策略下放 Scheme + 组合串 UTF-8 化。形码无需自建宿主层。
-- 宿主 ctest **10/10**（含 `emit-text`、`utf8` 回归测试）；真实 MinGW 头交叉语法检查（clang i686-w64-windows-gnu + mingw 头）12/12；真实 dat 链路复验通过。
+- 宿主 ctest **11/11**（含 `emit-text`、`utf8`、`code-table` 回归测试）；真实 MinGW 头交叉语法检查（clang i686-w64-windows-gnu + mingw 头）12/12；真实 dat 链路复验通过。
 - 复用指南见 **[framework/README.md](framework/README.md)**。

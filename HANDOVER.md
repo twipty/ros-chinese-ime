@@ -191,7 +191,7 @@ ros-pinyin/
 │   ├── src/                    读音归一化、切分、会话、Scheme、宿主兜底数据源
 │   └── host/dat_source_win.cpp Win32 数据源（读 system32\rospinyin.dat）
 ├── ime/                        装配层：rospinyin.def（16 导出）、rospinyin_res.rc、scheme_reg.cpp、图标
-├── tests/                      10 个宿主测试（ctest）
+├── tests/                      11 个宿主测试（ctest）
 ├── tools/
 │   ├── check_m1.py             契约静态检查（50 项，无第三方依赖）
 │   ├── mkdat/                  数据编译器 + fetch_data.py + fixtures
@@ -201,7 +201,6 @@ ros-pinyin/
 ├── m0/vm/                      QEMU/ReactOS 实验环境（qcow2、启动脚本、noVNC、证据、日志）
 ├── m2/                         M2 验收操作单 + 数据方案
 ├── xingma/                     形码产品线 RosXingMa（规划/规范/数据包模板，代码待 W1）
-├── engine/include/             （历史遗留空目录，实体已并入 framework/）
 ├── libernt/                    未纳入版本控制的本地探针材料（.gitignore 外，可忽略）
 └── .github/workflows/ci.yml    三 job CI：Linux 测试 / MinGW 构建 / 产物发布
 ```
@@ -244,7 +243,7 @@ ros-pinyin/
 cd ros-pinyin
 cmake -S . -B build -DROSPINYIN_BUILD_TESTS=ON
 cmake --build build --parallel
-ctest --test-dir build --output-on-failure        # 10 个测试，应 100% 通过
+ctest --test-dir build --output-on-failure        # 11 个测试，应 100% 通过
 python3 tools/check_m1.py                          # 50 项契约检查，应 50/50
 ```
 
@@ -321,6 +320,24 @@ cd m0/vm
 - **截屏**：`hmp "screendump out.ppm"`（`common.sh` 提供 `hmp` 函数，走 monitor.sock）。
 - **控制**：`hmp "quit"` 优雅关机；若 monitor.sock 失效，`kill -TERM <qemu pid>`。
 - ⚠️ 这些服务（QEMU / websockify / http.server）**交接时应确认已停止**（本次交接已全部关闭并核对端口 5901/8000/6080 无监听）。
+
+### 6.6 诊断 trace（`ROSPINYIN_TRACE`）
+
+```bash
+# 本机交叉工具链的 toolchain file 已就绪，直接复用缓存里的配置
+cmake -S . -B build-win-trace -DROSPINYIN_TRACE=ON \
+      -DCMAKE_TOOLCHAIN_FILE=/home/twipty/.workbuddy/binaries/mingw-i686/toolchain-i686.cmake
+make -C build-win-trace rospinyin-ime -j4
+```
+
+- 产物把每行追加到 `C:\rospinyin-trace.log`（`OPEN_ALWAYS`，**从不截断**）；正式构建里这段代码整体编译掉（可用 `objdump -p` 看有无 `CreateFileA`/`GetLocalTime` 导入来确认）。
+- 行前缀形如 `[19:23:01.123 +123456ms] p=1234 t=1234 正文`，两个时钟各有分工：
+  - **墙钟 `HH:MM:SS.mmm`**：跨重启唯一能区分轮次的字段。日志是追加写、永不截断，只有 tick 的话两次开机的行无法分辨，"修前/修后"也就无从对比；
+  - **`+Nms`**：`GetTickCount`（开机毫秒），任意两行的时间差就是一次减法；它同时是 `imhost.exe` 自己日志用的时钟，两个文件的先后关系因此可对齐。
+- 格式实现与 `kTracePath` 都在 `framework/host/trace_stamp.h`（header-only、无 CRT、不分配内存，`DllMain` 里也能用）；路径只定义一次，避免 `dllmain.cpp` / `imm_entry.cpp` 各写一份而漂移。
+- 排查前先 `del C:\rospinyin-trace.log`：旧行只有 `[tick]`，混在一起会让"这次到底有没有新行"变成误判。
+- `tools/check_m1.py` 里"框架不得含拼音知识"这一条会先剔除 `ROSPINYIN` 产品名再匹配 —— 否则仅打开 trace 通道就会误报（`ROSPINYIN_TRACE` 不是拼音知识）。
+
 
 ---
 
@@ -414,7 +431,7 @@ VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
 
 | 门禁 | 命令 | 通过标准 |
 |---|---|---|
-| 宿单单测 | `ctest --test-dir build` | 10/10（smoke、session、pinyin、pinyin-session、candidate-pager、pinyin-scheme、emit-text、utf8、m1-contract、mkdat-e2e） |
+| 宿单单测 | `ctest --test-dir build` | 11/11（smoke、session、pinyin、pinyin-session、candidate-pager、pinyin-scheme、emit-text、utf8、code-table、m1-contract、mkdat-e2e） |
 | 契约静态检查 | `python3 tools/check_m1.py` | 50/50（SPDX、16 导出、DllMain 无害、无 Preload、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
 | Win32 语法检查 | CI 的第一步，见 §6.3 | 0 error（用 `tools/syntax_stub` 提供的 Windows 头） |
 | PE 导入表 | CI `objdump -p` | 不得出现 Vista+ 导出或非系统 DLL |
@@ -491,15 +508,391 @@ VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
 3. `ImeSelect(TRUE)` / `ImeSetActiveContext` 是否真的被调到（可在实现里加 `DbgPrint`，看 `rosdbg.log`）；
 4. ReactOS 侧 `win32ss/user/imm32` 源码里 `ImeProcessKey` 的实际调用点与条件。
 
+**2026-11-17 源码级排查结论（读 ReactOS 0.4.16 源码，未上机）**：
+- **方向 1 的 `fOpen` 假设已排除**：`win32ss/user/imm32/keymsg.c` 的 `ImmProcessKey()`（L736-790）在调用 `pImeDpi->ImeProcessKey()` 前只检查 `ImmLockImeDpi(hKL)`、`ImmLockIMC(hIMC)`、`GetKeyboardState()`，`fOpen` 只出现在 `VK_PACKET` 分支；不打开 IME 也会调 `ImeProcessKey`。
+- **完整拦截链**：`user32!TranslateMessage`（`windows/message.c:2826`）对 `WM_KEYDOWN` → `NtUserTranslateMessage` → `ntuser!IntTranslateKbdMessage`（`ntuser/keyboard.c:1499`，只做 ToUnicode，**不调 IME**）；IME 介入点在 `ntuser/ime.c:603 IntImmProcessKey` → `co_IntImmProcessKey` → `imm32!ImmProcessKey`（keymsg.c:736）→ 我们的 `ImeProcessKey`。`IntImmProcessKey` 的硬门槛是 `pKL->piiex`（L676-679，来自 `ImeInquire` 加载），无 `piiex` 直接 `return 0`。
+- **关键门槛（最可疑）**：`IntImmProcessKey` L691-699 与 `ImmProcessKey` 中，若 `fdwProperty` 无 `IME_PROP_NEED_ALTKEY`，则 `uVK==VK_MENU` 或 `lParam & KF_ALTDOWN` 的键被丢弃；这与 Alt+Shift 切换后紧接着按键的场景相关。另一路：只有 `ImeProcessKey` 返回 TRUE 置 `IPHK_PROCESSBYIME` 且 `_IME_APP_COMPAT_PROCESS_BY_IME` 兼容标志置位时，才注入 `WM_KEYDOWN:VK_PROCESSKEY`（keymsg.c:819-830）；否则用户键不会转成 IME 转换路径。
+- **与 mzimeja 参考实现的字段差异**（`vendor/mzimeja-ref/ime/imm.cpp:27-49`）：其 `fdwProperty = KBD_CHAR_FIRST|UNICODE|AT_CARET`、`fdwConversionCaps = LANGUAGE|FULLSHAPE|ROMAN|CHARCODE`、`dwPrivateDataSize = sizeof(UIEXTRA)`、`fdwSelectCaps = SELECT_CAP_CONVERSION`；我们对应为 `UNICODE|AT_CARET` / `0` / `0` / `0`。这些差异是否致命需上机验证。
+- **本机能力边界**：QEMU 在 `~/.workbuddy/binaries/qemu-user`（可跑 VM、串口日志 `rosdbg.log`）；但**本机无 MinGW 交叉编译器**（CI 用 MSYS2 产 `.ime`），改宿主代码后需走 CI 重编译才能进 VM 验证。已编译产物在 `origin/m1-artifacts`（`rospinyin.ime`）。
+
 **闭环要求**：修复后重跑 `m2/M2-ACCEPTANCE.md` 全部 15 项，重点词组上屏（≥2 字）。
+
+**2026-11-17 源码级排查结论（第二轮：定位到唯一的硬门槛 `pWnd->hImc`）**
+
+把 0.4.16 的 `ntuser/ime.c`、`ntuser/msgqueue.c`、`ntuser/window.c`、`imm32/imm.c`、`imm32/keymsg.c` 逐个读完，结论是**链条在进入 `ImmProcessKey` 之前就断了**，上一轮列的方向 1/2/3 全部位于这道门之后，不是本现象的原因：
+
+- 调用点：`ntuser/msgqueue.c:1877` `if (pWnd && Ret && *RemoveMessages && bKeyUpDown && !(pti->TIF_flags & TIF_DISABLEIME))` → `IntImmProcessKey()`。
+- 唯一硬门槛在 `ntuser/ime.c:674-682`（`dwHotKeyId == INVALID_HOTKEY` 分支，即普通输入键）：
+  ```c
+  if (!pKL->piiex) return 0;
+  if (pWnd->hImc) pIMC = UserGetObject(gHandleTable, pWnd->hImc, TYPE_INPUTCONTEXT);
+  if (!pIMC) return 0;          /* <-- 没有 IMC 就到此为止 */
+  ```
+  只有越过这里才会走到 `co_IntImmProcessKey()` → `imm32!ImmProcessKey()`（`keymsg.c:757` 里还要 `ImmGetContext(hWnd)` + `ImmLockIMC()` 再非 NULL，条件等价）。
+- `pWnd->hImc` 在 ReactOS 0.4.16 里**只有两条赋值路径**：
+  1. `ntuser/window.c:1913` 创建窗口时若线程已有默认 IMC，自动挂上：
+     `if (pti->spDefaultImc && Class->atomClassName != gpsi->atomSysClass[ICLS_BUTTON]) pWnd->hImc = UserHMGetHandle(pti->spDefaultImc);`
+  2. `ntuser/ime.c:528 IntAssociateInputContext()`，由 `ImmAssociateContext` / `ImmAssociateContextEx` 触发。
+- 而 `spDefaultImc` 只由 `NtUserCreateInputContext`（即应用显式 `ImmCreateContext`）建立；`co_IntCreateDefaultImeWindow()`（`ime.c:2077`）除了 logon 进程外不会替应用补建。
+- 关键：ReactOS 的 `ImmGetContext()` **不会惰性创建 IMC**。`imm32/imm.c:1065 ImmGetContext` → `ImmGetSaveContext(hWnd, 2)`（`imm.c:1022-1060`），`dwContextFlags=2` 只检查 `CLIENTIMC_DISABLEIME`，**不含 1**，所以不会回退到 `QUERY_WINDOW_DEFAULT_ICONTEXT`，`pWnd->hImc` 为空时直接返回 NULL。（Wine 在此处会建默认 IMC，ReactOS 没有。）
+- 结论：记事本的 `EDIT` 控件从不创建 IMC，于是 `pWnd->hImc == 0` → `IntImmProcessKey` 在 `if (!pIMC) return 0;` 提前返回 → **`ImeProcessKey` 永远不会被调用**。这与 `C:\rospinyin-trace.log` 里只有 `ImeInquire`、没有 `ImeProcessKey` 完全吻合；也解释了 `ImmIsIME` 返回 1（该 API 只查注册表）、键盘布局切换正常（`pti->KeyboardLayout` 与 IMC 无关）却敲不出中文。
+- 推论（下一步的两条路）：
+  - **A. IMC 兜底兼容层**：宿主 `.ime` 在自己进程内（进程已随布局切换加载）为焦点窗口补 `ImmCreateContext` + `ImmAssociateContext`，让 ReactOS 上任何应用都能进入 IME 链条。需评估与 M0「裸 `LoadLibrary` 必须无害」红线的冲突（放到首次按键的懒路径里，不进 `DllMain`）。
+  - **B. 自建宿主验证 M2**：用一个自己保证 IMC 存在的宿主窗口跑 `M2-ACCEPTANCE.md`，先把引擎侧验收做掉，兼容层单独推进。
+- 取证工具：`imhost.exe`（在 `~/.workbuddy/tmp/vmshare/`，源码 `imhost.cpp`）——先 `ImmCreateContext` 再建窗口（命中路径 1），再显式 `ImmAssociateContext` 兜底（命中路径 2），逐条记录 `WM_KEY*` / `WM_IME_*` 与 `wParam == VK_PROCESSKEY(0xE5)`，日志同时落 `D:\imhost.log` 并 POST 回宿主机 `10.0.2.2:8080`，无需手工拷贝。
+
+**2026-11-17 源码级排查结论（第三轮：真正的原因 —— UI 类名比 imm32 的缓冲长 1 个字符）**
+
+上一轮把锅指给"应用不建 IMC"，那是另一件事（影响记事本这类应用），不是"IME 装不上"的原因。决定性证据来自同一进程内的一次 A/B：
+
+| 观测 | 我们的 .ime | 系统自带 mzimeja |
+|---|---|---|
+| `ImmInstallIMEW` 之后、未查询属性前 `fLoadFlag` | 0 | 0 |
+| 查一次 `ImmGetProperty` 之后 | **1**（prop=0x00000000） | **0**（prop=0x00190002） |
+| trace | 只有 `process detach`（说明 `LoadLibrary` 成功过，随后被 `FreeLibrary`） | — |
+
+同机、同 API、同一次开机 → **不是环境脏，也不是 IMM 链坏了**；是 `imm32!Imm32LoadIME` 在 `Imm32InquireIme` 之后 `FreeLibrary` 并把 `fLoadFlag` 钉成 1。而 `Imm32InquireIme` 末尾是：
+
+```c
+WCHAR szUIClass[64];                                    // imm32_ime.c:47
+pImeDpi->ImeInquire(pImeInfo, szUIClass, dwSystemInfoFlags);
+StringCchCopyW(pImeDpi->szUIClass, 16, szUIClass);      // IMEDPI.szUIClass[16] —— 只放 15 字符 + NUL
+if (!GetClassInfoW(pImeDpi->hInst, pImeDpi->szUIClass, &wcW)) return FALSE;
+```
+
+我们的类名原来是 `RosPinyinUIServer`（**17 字符**）→ 被截成 `RosPinyinUIServe` → `GetClassInfoW` 查不到 → 整条加载失败。这就是"IME 从不被调用"的全部原因：**类名长了 2 个字符**。
+
+为什么之前摸不到：探针一直用 `ImeInquire` 返回的**完整**类名去 `GetClassInfoEx`，当然通过；imm32 用的是**截断后**的名字。`IMEINFOEX.wszUIClass` 也只有 16，所以 `ReadIex` 打出来的 `uiclass=[]` 正是因为失败分支根本没回填它（`fLoadFlag==0 && ret` 才写）。
+
+修法：
+- `pinyin/src/scheme.cpp` 的类名改为 `RosPinyinUISrv`（14 字符），并加 `static_assert(长度 <= 15)` 把契约钉死；
+- `imfw/scheme.hpp` 在 `ui_server_class()` 上写明"至多 15 字符"及失败症状（否则下一个人还会踩）；
+- `tools/check_m1.py` 增加一条门禁：`kUiServerClass` 长度 ≤ 15；
+- 探针新增一条判据：同时用"前 15 字符"查类（那才是 imm32 真正用的名字），超长会直接打印警告。
+
+**2026-11-17 用户发现：imhost 不是有效的 IME UI 宿主（必须用 `plain` 模式做判据）**
+
+用户观察到：**系统自带日文输入法 mzimeja 在 imhost 里唤不出状态工具条，同一时刻在记事本里完全正常**（候选窗贴在插入符下方、右下角 `IME ON / あ R 式` 状态条都在）。
+
+日志证明这不是"IME 没加载"：
+
+```
+[03:41:42.070] WM_INPUTLANGCHANGEREQUEST flags=0x1 hkl=E0200409
+[03:41:42.100] WM_INPUTLANGCHANGE charset=0x0 hkl=E0200409   ← 布局清单里 E0200409 = mzimeja
+[03:41:42.100] WM_IME_NOTIFY wParam=0x0006                   ← IMN_SETCONVERSIONMODE
+```
+
+mzimeja 已经被加载并激活（否则不会有 `IMN_SETCONVERSIONMODE`），只是**它的 UI 窗口出不来**。imhost 与被测应用之间的差异全在宿主自己身上：
+
+1. 启动即 `ActivateKeyboardLayout(g_hklIme, 0)` 把线程钉在我们的布局上；
+2. 抢先 `ImmCreateContext()` + `ImmAssociateContext()`，绕开内核 `co_IntCreateDefaultImeWindow()` 要求的 `pti->spDefaultImc` 默认路径（该函数在建 "Default IME" 窗口，`WS_POPUP|WS_DISABLED`，IME 的 UI 消息无处落脚就什么也画不出）；
+3. `WM_IME_SETCONTEXT / WM_IME_NOTIFY / …` 全部 `return 0`，等于向 IME 声称"UI 我自己画"，而 imhost 并不画（记事本能出候选窗就是因为它走 `DefWindowProc`）。
+
+**结论：不能用 imhost 的默认模式判断"IME/工具条能不能出来"。** 现在 `imhost.exe` 增加 `plain` 模式（不锁布局、不预建 IMC、IME 消息交回 `DefWindowProc`、跳过全部破坏性探针），同一个 exe 内即可 A/B；日志文件名加 `plain-` 前缀区分。同时 `DumpLayoutInventory()` 会算出"从当前布局按几次 Alt+Shift 能到我们的布局"，便于在记事本里确定性地切到被测布局。
+
+后续验收建议：M2 的"IME 被调用/候选窗出现"这类 UI 判据一律在 **记事本** 或 `plain` 模式宿主里取，imhost 默认模式只用于读 `fLoadFlag`/`IMEINFOEX` 这类内核状态。
+
+**参照链（`ref` 模式）与差异工具 `tools/ime_chain_diff.py`**
+
+"IME 不被调用"这类问题最缺的不是失败现场，而是**正常样本**：只知道我们少了什么，不知道正常该发生什么。所以做了一台自己可控、结构又和被测算应用一致的宿主：
+
+- `imhost.exe ref`：顶层框架窗口 + **真实 `EDIT` 子控件**（`WS_CHILD|WS_VISIBLE|ES_MULTILINE|ES_AUTOVSCROLL|ES_NOHIDESEL`），焦点在控件上 —— 事件链就发生在控件的 HWND 上，和记事本结构一致；再用 `SetWindowLongPtrW(GWLP_WNDPROC)` 子类化，只记录、不拦截，`CallWindowProc` 原样转发，所以被测行为与记事本完全等价。
+- 记录内容做了解码：`WM_IME_SETCONTEXT` 的 `ISC_*`、`WM_IME_NOTIFY` 的 `IMN_*`、`WM_IME_COMPOSITION` 的 `GCS_*`，并**读出组合串与上屏串**（`ImmGetCompositionStringW`，非 ASCII 转成 `\uXXXX` 以便逐字节比对）、`cursorpos`；键消息标注是否 `VK_PROCESSKEY`。
+- 布局一变就打一条 `======== 场景切换 <旧> -> <新> ime=<文件> ========`，并把 `ime=` 同步到窗口标题栏 —— VM 里一眼能看出"当前落在哪个输入法"，不用翻日志。
+- 同一次运行内切布局即可产出两段场景（参照 + 被测），日志名 `imhost-ref-*.log`，不会与其它模式混淆。
+- `tools/ime_chain_diff.py`：按 `场景切换` 切段、按 `ime=` 选段，把时间戳/pid/地址全归一化掉，再用 `difflib` 出统一 diff，并在前面给出每类事件计数（`ime-composition×0` 这种一眼就看出缺口）。`--self-test` 不需要 guest 即可自检。
+
+用法：`python3 tools/ime_chain_diff.py ref.log test.log --ref-ime mzimeja --test-ime rospinyin`。
+
+**布局语言（0804 中文键盘 vs 0409 英文键盘）到底影响什么**
+
+用户发现系统日文输入法挂在 **English keyboard（0409）** 下、与 [en] 并列，我们的挂在 **Chinese keyboard（0804）** 下。逐条查过 ReactOS 源码，结论是：
+
+- **不 gate IME 调用链**。内核 `IntImmProcessKey` 的四道门是 `IS_IMM_MODE()`、`pKL->piiex`、`pWnd->hImc`、`IME_PROP_IGNORE_UPKEYS/NEED_ALTKEY`，没有任何语言判断。
+- 按语言分支的几处都**不适用**：`Imm32IsSystemJapaneseOrKorean()` 用的是 `GetSystemDefaultLCID()`（系统区域，与布局无关）；`ImmProcessKey`/`ImmSetCompositionFont` 里的日文特判全部关在 `dwExpWinVer < _WIN32_WINNT_NT4`（Win3.x 兼容）里；`UserSetImeConversionKeyState()` 只对 JP/KR 设置 `VK_DBE_*` 开关键，默认分支什么都不做。
+- **但它确实制造了两个真实差异**：
+  1. `pKL->iBaseCharset`：0409 → `ANSI_CHARSET(0)`，0804 → `GB2312_CHARSET(0x86)`。日志里 `WM_INPUTLANGCHANGE charset=0x86` 与 `charset=0x0` 的差别就来自此，`INPUTLANGCHANGE_SYSCHARSET` 标志（`flags=0x1`）与默认组合字体也随它走。
+  2. **它是 A/B 里最后一个没被消掉的变量** —— 至今所有"我们 vs 系统日文输入法"的对比，都同时差着"实现"和"语言"两项。
+- **语言从哪来（完全可控）**：`imm32!ImmInstallIMEW` 从 `.ime` 版本资源取 `VarFileInfo\Translation` 的**第一项**当 HKL 低字（`imm32_install.c`：`pInfoEx->hkl = UlongToHandle(*pw)`）。所以我们挂在哪个键盘下，是**构建期**决定的事实。
+
+因此把语言做成构建期开关：`-DROSPINYIN_IME_LANGID=0804|0409`（`ime/CMakeLists.txt`，默认 0804；`ime/rospinyin_res.rc` 里用 `#ifdef ROSPINYIN_IME_LANG_EN` 切 `LANGUAGE` / StringFileInfo 块名 / `Translation`）。0409 版**只作对照件**，`check_m1.py` 有一条门禁守住"默认必须是 zh-CN"。产物：`rospinyin5.ime`(0804) 与 `rospinyin6.ime`(0409)，字节数相同、仅资源语言不同。
+
+**注意**：消除语言变量只是**让实验干净**，不是修 bug。验收必须回到 0804 —— 否则会留下"只在英文键盘下能用"的隐患。
+
+实测验证：同一轮 VM 里 `rospinyin5.ime`(0804) 与 `rospinyin6.ime`(0409) 行为**完全一致**（都能上屏、都缺 `WM_IME_STARTCOMPOSITION`、都双 feed），语言变量正式排除。因此 `install` 模式回到只装 0804 一份。
+
+### 11.4 ⛔ 修复中：每个按键被喂进引擎两次（多字 / 丢字）
+
+**症状**（2026-11-17 晚，IME 首次成功拦截按键之后）：能上屏中文，但输入过程中"有时多出一个字符、有时少一个字符"。
+
+**证据链**（`imhost-ref-final.log` + `rospinyin-trace-ref-final.log`，同一次运行）：
+
+```
+trace:  processkey vk=0x4e pf=0x31  -> 1      ← key-down
+        toascii    vk=0x4e
+        processkey vk=0x4e pf=0xc031 -> 1     ← key-UP，也被认领
+        toascii    vk=0x4e                    ← 于是同一字符进引擎两次
+```
+
+`pf` 是 lParam 的高 16 位：`0xc031` = bit31（transition=释放）+ bit30（previous state）+ scan code，即 **key-up**。5 个字母 `nihao` 一共产生 10 次 `toascii`。
+
+**机制**（ReactOS 源码）：
+
+1. `co_IntProcessKeyboardMessage` 对 `WM_KEYUP` 也置 `bKeyUpDown = TRUE`（`win32ss_user_ntmsgqueue.c:1785`），于是 key-up 同样进 `IntImmProcessKey`；
+2. `imm32!ImmProcessKey` 不看 transition 位，只要 `ImeProcessKey` 返回 TRUE 就置 `pIC->bNeedsTrans = TRUE`（`imm32_keymsg.c:785`）；
+3. `ImmGenerateMessage` 见到 `bNeedsTrans` 就调 `ImeToAsciiEx`（`imm32_keymsg.c:1056`）——而 **`ImeToAsciiEx` 的参数里没有 lParam**，无法自行区分按下与抬起。
+
+**后果**：`feed()` 每个字母跑两遍。拼音缓冲出现双写（`nn`/`aa`），`can_extend()` 对其中一部分判定仍可扩展 → **多出字符**；另一部分被判非法后 `pop_back()` → **丢失字符**。同一条 bug 同时解释了两种症状。
+
+**修法**：在 `ImeProcessKey` 里检查 lParam bit31，key-up 一律返回 FALSE。这是唯一能做该判断的地方。
+
+```cpp
+constexpr unsigned long kKeyUpBit = 0x80000000UL;
+if ((static_cast<unsigned long>(lParam) & kKeyUpBit) != 0) return FALSE;
+```
+
+**顺带确认的两件事**（都不是 bug）：
+
+- `WM_IME_CHAR` 紧跟 `WM_CHAR` 是正常成对：前者由 imm32 投递 TRANSMESSAGE，后者是 `TranslateMessage` 转换的结果。
+- `zhongguo` + 空格只上屏 `国`（丢 `zhong`）是 **M2 验收单 3.3 的既定口径**（单字引擎，词组属 M4）。
+- 我们**没有** `WM_IME_STARTCOMPOSITION` / `WM_IME_COMPOSITION`：ReactOS 的 imm32 **根本没有实现 `ImmSetCompositionString`**（全树无此符号、无 .spec 条目），所以组合串只能自绘（`framework/ui`）。这与记事本里能看到组合串的 mzimeja 不同，但属于平台限制，不是缺陷。
+
+**待确认**：`ImmGetOpenStatus` 的真实返回值。`ImmCreateContext` 会把 `pIC->fOpen` 初始化为 FALSE（`imm32_imm.c:793`），若它一直不翻真，则"IME 关闭时仍吞字母"就无从拦截（用户切英文后打字会整体消失）。trace 构建里已打印 `open=`，但**刻意没有用它做门禁** —— 在拿到真实值之前用它拦截会直接把 IME 打死。
+
+### 11.5 m2 自校验：把"多字/缺字"的判定交给程序
+
+**为什么需要**：11.4 的结论虽然自洽，但"多字/丢字"这个现象此前一直是**人眼读屏幕**得出的。这类判据有三类假阳性无法排除：(1) 注入太快，键根本没到 IME，看起来像丢字；(2) 读错/记错一个字；(3) 把"M2 只上屏末音节"这个既定口径当成丢字。所以要复测，就不能再靠肉眼。
+
+**做法**：`imhost.exe m2` —— ref 的窗口结构（顶层窗口 + 真实 `EDIT` 控件 + 子类化），但**结果由程序判定**：
+
+```
+注入 → GetWindowTextW 读回 → 与验收单期望值比对 → PASS / EXTRA / MISS / WRONG / ASCII-LEAK
+```
+
+判定标准全部来自 `m2/M2-ACCEPTANCE.md`；没有明确期望值的用例**只校验汉字个数**，不猜具体是哪个字（猜错就会把正常行为判成 bug）。用例表在启动时整表写进日志，日志自带判定标准，事后可复查。
+
+**16 条用例 × 两轮**（首尾各 1 条为环境/Esc 自检）：
+
+| 类别 | 用例 | 期望 |
+|---|---|---|
+| 环境自检 | `z` + `Esc` | 0 字（z 必须被 IME 吞掉） |
+| 验收单直取 | `zhong`→中、`nv`→女、`lv`→律、`lve`→略、`nve`→虐、`zhongguo`→国 | 各 1 字 |
+| 只校验个数 | `guo` `ni` `hao` `shi` `hao`+退格×2 | 各 1 字 |
+| 信息性 | `a` | 1 字（引擎未必支持，不计入总分） |
+| 取消 | `hao` + `Esc` | 0 字 |
+
+**四道防误判机制**：
+
+1. **两轮不同节奏** —— R1 600ms/键、R2 280ms/键。结论分三种：两轮全过 = 正常；慢过快不过 = **时序敏感**（真实但不是多字/缺字缺陷）；慢速也失败 = 真异常。把"注入太快"从"IME 缺陷"里摘出去。
+2. **环境自检用例** —— 若 `z` 直接落进编辑框（`ASCII-LEAK`），说明按键压根没进 IME，整轮结论标为"环境不成立"，不用来判定缺陷。
+3. **每条用例前送 Esc 清场** —— 否则一条失败会把组合串带进下一条，连锁失败看起来像"全坏"（污染传播 ≠ 真 bug）。
+4. **注入用确定 VK** —— 不用 `VkKeyScanW`（对 `z` 可能返回 `0x7A`，那是 VK_F11，注入的就不是字母），改为 `ch - 32` 直接映射。
+
+另外每条用例记录 `imeChar` / `wmChar` 计数：若读回两个字而 `imeChar=1`、`wmChar=1`，说明同一个字符被 `WM_IME_CHAR` 与 `WM_CHAR` 各插了一次 —— 那是"多字"的另一条通路，必须和"引擎被喂两次"分开。同时统计 `IMN_OPENCANDIDATE` / `IMN_CLOSECANDIDATE` / `IMN_SETOPENSTATUS` / `WM_IME_STARTCOMPOSITION`，让"选词界面有没有出现"也有日志数值，而不只靠人眼。
+
+**本机验证**（无 Windows，抽纯函数 + 复刻判定矩阵）：
+- `CountHan` / `EscText` / `VkOf` 行为正确（`z=0x5A`=VK_Z、`\b=0x08`、`Esc=0x1B`）
+- 12 条判定矩阵全过：正常上屏 PASS、双字 EXTRA、空 MISS、错字 WRONG、字母漏进编辑框 ASCII-LEAK、Esc 失效上屏判 EXTRA（而不是误判成 PASS）
+
+**用时**：R1 约 68s、R2 约 36s，合计约 1.7 分钟。
+
+
+### 11.6 键盘三层取证：真实按键 → 窗口 → IME
+
+**问题**：11.4/11.5 的所有日志都产生在"消息已经到达窗口/控件之后"。IME 把键吃掉、焦点不在控件、或消息在 win32k 里被吞时，这一层什么都看不见 —— 于是"丢字"到底是**没敲进去**、**没到窗口**、还是**到了但被 IME 处理两次**，日志本身无法区分，只能靠推断。
+
+**做法**：在 `imhost` 里加一层**入口层**记录 —— 线程级 `WH_KEYBOARD` 钩子。它由 win32k 在 `KeyboardMessage()` 中、**`IntImmProcessKey()` 之前**调用（`ntuser/msgqueue.c:1859`），拿到的是"系统这一瞬间实际收到了哪几个键"：
+
+```
+KEY 0007 vk=0x4E(N) sc=0x31 DOWN rep=1
+KEY 0008 vk=0x4E(N) sc=0x31 UP   rep=1
+```
+
+`lParam` 拆成四段记：重复次数、**扫描码**、扩展位、ALT 上下文、转换位。扫描码由 ps/2 直传，同一物理键应始终一致 —— 同一字符若出现两条不同扫描码，问题在注入侧（`keybd_event`/VNC），不在 IME。
+
+**三层对账**（每轮结束、退出时各打一份增量，R1/R2 独立）：
+
+| 层 | 取值点 | 能证明什么 |
+|---|---|---|
+| 入口层 | `WH_KEYBOARD` 回调 | 系统到底收到几次按下/抬起 |
+| 窗口层 | 子类化 `EditProc` 的 `WM_KEY(DOWN/UP)` | 有多少键真正到达应用 |
+| IME 层 | `.ime` 内 `ImeProcessKey` / `ImeToAsciiEx` 的 trace | 输入法实际被喂了什么（含 `pf=` 扫描码+标志） |
+
+```
+---- 键盘对账[R1(600ms)] 入口层 DOWN=32 UP=32 | 窗口层 DOWN=32 UP=32 | WM_CHAR=0 WM_IME_CHAR=16 ----
+  入口层与窗口层一致（各 32 次按下）：键全部到达窗口，差异只可能出现在 IME 层
+```
+
+差值为 0 → 键没进系统（焦点/主控问题）；入口有、窗口无 → 消息在钩子之后被吞；两层一致但 IME trace 少 → 丢在 IMM32 内部；`WM_CHAR` 多于按键 → 同一个键被翻出多个字符（"多字"的另一条通路）。
+
+**为什么不用更底层的两种手段**（ReactOS 0.4.16 源码核实）：
+
+- **Raw Input**（`WM_INPUT` + `RIDEV_INPUTSINK`）：`NtUserRegisterRawInputDevices` 等 6 个函数在 `ntuser/ntstubs.c` 里全是 `STUB; return 0;`，注册必然失败 —— 平台未实现，不可用。
+- **`WH_KEYBOARD_LL`**：`ntuser_callback.c` 只实现了该钩子的**参数封送**（`KBDLLHOOKSTRUCT` 拷进用户空间），全树找不到任何触发点；实际唯一的调用点是 `msgqueue.c:1859` 的 `WH_KEYBOARD`。用 LL 钩子会静默拿不到任何回调。
+- **真正的最原始层**在 guest 之外（QEMU 的 RFB `KeyEvent`）。要抓这一层得在 websockify/QEMU 前面插代理并重启那条链路，属于环境改造，不是探针能解决的；当前三层已足够定位"丢在哪一段"。
+
+**实现位置**：`~/.workbuddy/tmp/vmshare/imhost.cpp`（`KbProc` / `InstallKeyboardHook` / `KeySummary`）。钩子装失败不致命，日志会打 `SetWindowsHookExW -> NULL err=` 且对账时明示"入口层无效"，此时按两层数据判读。
+
+**两个已修的取证陷阱（2026-11-17 20:58 那轮 m2 暴露）**：
+
+1. **子串匹配选错布局** —— `FindHklByImeFile(L"rospinyin")` 会命中列表第一个 `rospinyin.ime`，那是最早的构建（UI 类名 17 字符的老版本），`ImmGetProperty` 返回 0 → 整轮在开始前即 ABORT，而真正要测的 `rospinyin7.ime` 从未被选中。改为**精确文件名匹配** + 启动时打印候选布局表（每个布局的 `prop` 与是否可用），并在每轮开头**强制从宿主机刷新一次** `.ime`（`ImmInstallIMEW` 按文件名复用布局，不会越装越多）——"测的是旧文件"这个坑在这个项目里已经出现过两次（922022 字节的陈旧 `rospinyin.ime`），不能再靠人记得先 install。
+2. **模式标语贴错** —— m2 走的是 `g_vanilla` 分支，标语却按 `g_refMode ? "ref" : "plain"` 打，日志开头写着 `plain`、实际跑的是 m2，事后看日志会误判。
+
+**rec：纯记录模式（不代替用户发键）**
+
+m2 用 `keybd_event` 替人打字，测的是**注入路径**；而"我自己敲的时候输入法收到了什么"是另一个问题——注入没有真人节奏、没有重复键，也绕过了 VNC→ps/2 那一段。所以另有 `imhost.exe rec`：
+
+- **一个键都不发**：所有注入收敛到唯一出口 `InjectKeyEvent()`，rec 模式下直接拒绝并计数；退出时打印"本程序注入按键 N 次"，rec 下必为 0（可核验，不是口头承诺）。
+- **不改状态**：不切布局、不装 IME、不清编辑框，只把当前布局/`.ime` 文件大小/`ImmGetProperty` 读出来当上下文（`prop=0` 会警告"敲键不会出候选"）。
+- **三层照记**：入口 `KEY`、窗口 `[edit]`、IME `trace`；另外每次上屏文字变化打一行 `TEXT len= 汉字= [...]`，按顺序即为真实上屏结果，不需要人读屏。
+
+用法：`imhost.exe rec` → 自己 Alt+Shift 切布局 → 正常打字 → 关窗口自动上传。
+
+### 11.7 真机手打验证结果（2026-11-17 21:08–21:10，rec 模式）
+
+第一次用**真实人手打字**（非注入）跑三层取证，被测 `rospinyin7.ime`（931,363 字节，布局 `E0260804`，`ImmGetProperty=0x00090000`）。
+
+**三层对账**（退出汇总行原文）：
+
+```
+---- 键盘对账[退出] 入口层 DOWN=40 UP=40 | 窗口层 DOWN=40 UP=40 | WM_CHAR=5 WM_IME_CHAR=5 ----
+  入口层与窗口层一致（各 40 次按下）：键全部到达窗口，差异只可能出现在 IME 层
+本程序注入按键 0 次，被拒 0 次（全程未代替用户发键）
+```
+
+**逐字上屏**（`TEXT` 行，每行只 +1 字）：
+
+```
+TEXT len=1 汉字=1 [你] → len=2 [你好] → len=3 [你好中] → len=4 [你好中国] → len=5 [你好中国誰]
+```
+
+敲的是 `nih`+Backspace+`hao`+空格 → `zhong`+空格 → `guo`+空格 → `shui`，**最后一步不是空格**：候选里没有简体「谁」，用户翻了 4 次 `=`、6 次 `-` 回到某页，按 `5` 选了第 5 项 `誰`（U+8AB0，繁体）。`TEXT` 行记录的是 `\u8AB0` 而不是 `\u8C01`，与"只有繁体的"的口头反馈一致（见 §11.8）。
+
+**IME 层证据**：29 次 `processkey ... -> 1` 对应 29 次 `toascii`（21 次字母 feed + 8 次空格/退格），**1:1**；每次抬起都是 `processkey vk=0xNN up -> 0`，没有 `toascii`、没有 `feed`。这正好验证 §11.4 的 key-up 修复生效 —— 修复前每个键会被喂两次（一次 down 一次 up），现在 up 一律不认领。`WM_IME_CHAR` 与 `WM_CHAR` 各 5 条、上屏 5 字，说明二者是"同一次上屏的两条消息"而非双重插入。
+
+**结论**：M2 的单字输入路径在真实手打条件下**通过** —— 无多字、无丢字、无 ASCII 泄漏，入口/窗口/IME 三层条数自洽。11.4 的"多字/丢字"到本轮为止不再是复现项。
+
+**观察到的两个小问题（未门禁，待查）**：
+
+1. `ImmGetOpenStatus` 读数不一致：imhost 轮询得到 `-1`，`.ime` 内 trace 打 `open=0`。引擎侧已明确"只观测不门禁"，但两个读数都不像正常值（0/1），怀疑 ReactOS 上该 API 对跨线程 IMC 的行为与预期不同，值得单独确认——它决定 Shift 切英文后按键该不该吞。
+2. 每敲一个键，应用会收到 1–3 次 `IMN_SETCOMPOSITIONWINDOW`（`n` 那次 3 次）。说明引擎在每次 feed 后都调 `ImmSetCompositionWindow`，重复通知会让宿主反复重排组合窗位置，是"界面轻微抖动"的一个可疑来源。
+
+
+### 11.8 候选质量：`shui` 没有简体「谁」+ 大量空心框（2026-11-17 21:30 修复）
+
+用户反馈：敲 `shui` 时候选里只有繁体「誰」没有简体「谁」，且很多字显示为一个空心点，问是不是字体问题。
+
+**结论：不是字体坏了，是两个独立缺陷叠加。** 字体只负责"把已有码点画出来"，而这两件事分别出在**读音归属**和**候选里塞了字体画不出的字**。
+
+#### 缺陷 A：谁 被归到 `shei` 音节（读音丢失）
+
+Unihan 简繁两条记录互相不一致：
+
+```
+U+8C01 誰?  谁  kMandarin  shéi            kHanyuPinlu  shuí(1065)
+U+8AB0 誰      kMandarin  shuí shéi        kHanyuPinlu  shuí(1065)
+```
+
+`mkdat::choose_primary()` 以 `kMandarin` 为读音全集、只拿 `kHanyuPinlu` 挑"在全集里最常用的那个"。于是：
+
+- 谁：kMandarin 只给 `shéi` → `kHanyuPinlu` 的 `shuí` **不在全集里 → 被静默丢弃** → 谁只挂在 `shei` 下，`shui` 查不到。
+- 誰：kMandarin 给了 `shuí shéi` → 首个是 `shuí` → 繁体反而占了 `shui` 音节。
+
+叠加第二层：`CodeTable::load_dat()` 只读 `reading_off`（主读音）建索引，**完全忽略 `alt_off`**（次读音）。所以就算 `shuí` 被写进 alt，引擎也查不到 —— 多音字"另一个读音能打出来"这件事从未成立。
+
+#### 缺陷 B：候选里混入字体画不出的字（空心框）
+
+`.dat` 44,355 条里只有 **9,898 条有字频**（hanziDB），其余 34,457 条是 Unihan 独有的生僻字，其中 **68%（23,433 条）落在 U+4E00–U+9FA5 之外**（CJK 扩展 A/B 等，多为 U+20000 以上）。而随包字体 `NotoSansSC-subset.ttf` 是按 `0x4E00–0x9FA5` 子集化的（`~/.workbuddy/tmp/font_subset.py`），扩展区一律没有字形 → 一个个空心框。
+
+候选窗每页 9 条，`shui` 旧候选共 34 条：`水 税 睡 稅 誰 脽 㥨 㽷 䬽 …`，第 7 项起全是空心态，第 2 页整页、最多 4 页 —— 这就是"很多字是一个空心点"的全部来源，与字体文件损坏无关。
+
+#### 修复（三处）
+
+1. **`tools/mkdat/mkdat.cpp`**：`kHanyuPinlu` 的音节不在 `kMandarin` 全集时，作为**次读音追加**（不抢主音）。谁 → 主音 `she2i` + alt `shui2`；誰 → 主音 `shui2` + alt `she2i`。多音字条目 109 → 118。
+2. **`framework/.../code_table.hpp|cpp`**：`load_dat()` 新增可选 `KeyOfReading` 回调；给出时把 alt 里每条 reading 经该回调转成 key 并建**别名索引**，同一字符可回答多个音节，且每次 lookup 只出现一次。`pinyin/host/dat_source_win.cpp` 传入 `&rospinyin::pinyin::syllable_of`。不传则行为与之前完全一致（向后兼容）。
+3. **`pinyin/src/pinyin_session.cpp`**：`recompute()` 默认**不把无字频字放进候选**；仅当该音节过滤后一个不剩时才回退到全表（保证任何合法音节都还有得选）。开关 `set_show_rare(true)` 恢复旧行为。
+
+#### 效果（真实引擎加载真实 `rospinyin.dat`，非脚本模拟）
+
+```
+shui   rare=false ->  7 条: 水 谁 税 睡 稅 誰 脽
+shui   rare=true  -> 35 条: 水 谁 税 睡 稅 誰 脽 㥨□ 㽷□ 䬽□ …
+shei   rare=false ->  2 条: 谁 誰
+zhong  rare=false -> 26 条（原 108）
+shi    rare=false -> 95 条（原 340）
+```
+
+简体「谁」现在排第 2（rank 648，仅次于「水」202），空心框 20 → 0。`shi` 仍剩 1 个：那是一个**有字频但码点在扩展 A** 的字，属字体子集覆盖不足，要彻底消掉得把 hanziDB 里那 30 个扩展区字并进字体子集（`font_subset.py` 加一段），不影响英文/拼音显示。
+
+#### 回归
+
+`ctest` 11/11、`check_m1.py` 53/53、`xingma/` 零改动。新增测试：
+`code_table_test.cpp` 的 alt 索引用例（带/不带 deriver 两种行为 + 不重复出字）、`pinyin_session_test.cpp` 的生僻字过滤与"只剩生僻字时兜底"用例。
+
+#### 顺带纠正 §11.7 的一处记录错误
+
+上一轮 `TEXT` 上屏第 5 字是 `\u8AB0`（**繁体 誰**），不是简体「谁」。日志里那 4 次 `vk=0xBB`（`=`）翻页、6 次 `vk=0xBD`（`-`）回翻、最后 `vk=0x35`（`5`）选第 5 项，正是"翻遍候选找不到简体"的现场。11.7 已订正。
+
+### 11.9 "改了没生效"的根治：让 .ime 自报数据指纹（2026-11-17 21:45）
+
+**现象**：§11.8 修完之后用户复测，反馈"问题还在"。日志里 `feed ch=i act=1 comp=[shui] cand=34` —— 候选仍是 34 条，而修复后的表应当是 7 条。
+
+**根因不在代码，在"这一轮根本没有用新构建"**：截图标题栏是 `imhost REF`，用户跑的是 `ref` 模式。而 `pull`/`install` 之外的所有模式都**从不更新 `.dat`**，`ref` 更是连 `.ime` 也不装。于是 system32 里仍是旧 `.ime` + 旧 `.dat`，候选 34 条完全自洽。旧 `.ime` 既没有 alt 索引（谁 的 shuí 读不到），也没有生僻字过滤（空心框照旧）。
+
+这类"改了却没生效"已经反复三轮（第一次是 system32 里陈旧 `.ime`，第二次是选错布局，这次是跑错模式），共同点是：**宿主侧看到的只有"候选没变"，无法分辨是文件没换、换了但被缓存、还是换错了目录**。
+
+**两条根治措施**：
+
+1. **`.ime` 自报数据指纹**（`pinyin/host/dat_source_win.cpp`，仅 `ROSPINYIN_TRACE`）。读表成功后往 trace 写一行：
+
+   ```
+   dat OK path=C:\ReactOS\System32\rospinyin.dat size=902776 chars=44355 syls=419 shui=35 shui_simp=1 shui_trad=1
+   ```
+
+   判据是 `shui_simp`：只有**新表 + 新 .ime**（alt 索引真的建起来了）才会是 `1`；旧表这里是 `0`。读不到文件时写 `dat MISSING path=... err=2 -> 回退内置表`，解析失败写 `dat PARSE_FAIL`。这样任何一轮 trace 的前几行就能定论，不必再猜。
+
+2. **`rec`/`ref`/`plain` 启动即对齐代码与数据**（`imhost.cpp` 的 `AlignRuntime()`）。在**窗口创建之前**（即 `.ime` 被 LoadLibrary 之前）：下载 `/rospinyin7.ime` 到 `C:\rospinyin7.new`，与 `system32\rospinyin7.ime` **逐字节比较**（只比大小会撞），不同则 `CopyFileW` 覆盖；再 `PullDataFile()` 更新 `.dat`。只换文件，不碰注册表、不改布局、不发任何键。覆盖失败（`err=32`）说明有进程正映射着该 `.ime`，日志明示"请重启 VM 再跑"。
+
+   `PullDataFile()` 同时修掉一个陷阱：写 `system32` 失败退到 `C:\rospinyin.dat` 时，读回校验仍会打印 OK，但那对 IME 无效（它只读 system32）。现在回退分支会追加 `但写到了 C:\，IME 读 system32，本次未生效`，并返回 false。
+
+**教训**：凡是"我改了但现象没变"，第一步不是改代码，而是先证明被测进程读的是哪份代码和哪份数据。宿主侧证明不了，就让被测方自己报。
+
+**产物**：`rospinyin7.ime` 946,193 字节（trace）、`rospinyin.dat` 902,776 字节、`imhost.exe` 935,031 字节。回归 `ctest` 11/11、`check_m1` 53/53、`xingma/` 零改动；无 trace 的 `build-win` 同样编译通过（`#ifdef` 分支未破坏生产构建）。
+
+### 11.10 `.ime` 换不掉的真因：默认输入法导致常驻映射（2026-11-17 21:56）
+
+11.9 的对齐机制上线后复测，日志里出现：
+
+```
+启动前对齐代码与数据（只换文件，不发键、不改布局）
+  .ime 覆盖失败 err=32 —— 有进程正映射着它
+数据表校验 OK：magic=ROSPYDAT chars=44355 syls=418
+```
+
+`.dat` 换成了新的，`.ime` 换不掉 → 仍是"新表 + 旧代码"，现象当然不变。`.ime` trace 里没有 `dat OK` 那一行，正好证明跑的是旧代码（新代码才有这行）。
+
+**为什么换不掉**：`err=32` 是 `ERROR_SHARING_VIOLATION`，即该 PE 已被某个进程作为 image 映射。trace 里除 imhost 外还出现过 `p=520`、`p=716` 两个进程执行 `active f=1`，说明有**非 imhost 的常驻进程**加载了它。结合 `GetKeyboardLayout(0)=E0260804`（imhost 一启动当前布局就是我们的 IME，而控制面板里"默认输入语言"显示 English(US)），实际状态是：我们的 IME 已被系统在会话里激活并常驻，任何激活过它的进程都会一直映射该文件，直到退出。
+
+ReactOS 这版没有 psapi、也没有 toolhelp 的模块枚举（`EnumProcessModules` / `Module32First` 全树无实现），所以无法在宿主侧点名是哪个进程。
+
+**两条处置**：
+
+1. **热替换退让链**（`ReplaceFileBestEffort`）。直接 `CopyFile` 失败后依次试：把原名 `MoveFile` 成 `.old` 再写新文件（映射的是 section 对象，与文件名无关，通常能过）→ 备份到 `C:\rospinyin7.ime.bak` 后删除原名（delete-pending）再建同名文件。每步失败都先回滚，绝不留下"IME 文件没了"的状态。全部失败才提示关窗口/重启。
+2. **dev 布局兜底**（`EnsureDevIme`）。布局按**文件名**去重，所以换名字等于换文件，与占用彻底无关：装一份 `rospinyindev.ime`（描述 `RosPinyinDev`），固定在同一个名字上反复覆盖，不会把布局列表越堆越长。`AlignRuntime()` 返回 false 时自动装并 `ActivateKeyboardLayout` 过去，日志明示本轮用的是 dev 布局。
+
+另：`rec`/`ref`/`plain` 启动时若 `FindWindowW(kClass)` 已找到窗口，说明上一个 imhost 没关，它也在映射 `.ime`，日志会提示先关掉。
+
+**长期口径**：验证期用 dev 布局即可，不必重启；要让 `rospinyin7.ime` 本身更新，需要先关掉所有加载过它的进程（或重启 VM），因为文件被 image 映射时无法原地覆盖。这一点应在 M2 验收单里写清，避免下次又误判成"改了没生效"。
+
 
 ### 11.2 其他待办
 
+- ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。
 - M3：中文标点、全角/半角、Shift 临时英文；
 - M4：词组与词频（数据结构需扩展 `rospinyin.dat`，注意版本号与向后兼容）；
 - 语言栏菜单项（属性/关于）留待 M6；
 - `xingma/` W1 编码（`ShapeScheme`/`ShapeStore`/`ShapeDatLoader`）尚未开始，框架侧缺口已全部关闭，可直接复用宿主层；
-- 历史遗留空目录 `engine/include/` 可清理（实体已并入 `framework/`）。
+- 历史遗留空目录 `engine/include/` 已于 2026-11-17 清理（实体已并入 `framework/`）。
 
 ---
 
@@ -507,7 +900,7 @@ VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
 
 **改代码**
 
-1. `cmake --build build --parallel && ctest --test-dir build` → 10/10；
+1. `cmake --build build --parallel && ctest --test-dir build` → 11/11；
 2. `python3 tools/check_m1.py` → 50/50；
 3. 动了 `framework/host` 或 `framework/ui`：跑 CI 那步宿主语法检查（§6.3），确认 `-Wchanges-meaning` / ABI 断言不炸；
 4. 动了 ABI：本地用 zig 真实 MinGW 头编译一次 `framework/host/imm_entry.cpp`（`-target x86-windows-gnu -c`）。
