@@ -4,8 +4,12 @@
 //
 // Per-input-method plugin contract. The framework owns everything an IME
 // has in common — the IMM32 entry points, key routing, candidate paging,
-// composition/candidate/toolbar windows and .dat loading. A concrete input
-// method (pinyin today, a shape IME next) only supplies this Scheme.
+// composition/candidate/toolbar windows. A concrete input method (pinyin
+// today, a shape IME next) supplies this Scheme and owns its own data: the
+// framework never loads, holds or passes a code table (dat_filename /
+// load_fallback were removed when data ownership moved into the schemes;
+// the generic CodeTable utility class stays in imfw for schemes that want
+// it).
 //
 // The interface is deliberately free of Windows headers: `vk` is a plain
 // virtual-key number, so pinyin/scheme code builds and is unit-tested on
@@ -17,7 +21,6 @@
 
 #pragma once
 
-#include <imfw/code_table.hpp>
 #include <imfw/engine.hpp>
 
 #include <cstdint>
@@ -32,12 +35,14 @@ public:
 
     // ---- identity and resources ------------------------------------------
 
-    // Data file searched in the system directory, e.g. L"rospinyin.dat".
-    // Return nullptr (or an empty string) when the scheme owns its data
-    // entirely (e.g. a shape IME with its own multi-pack store): the
-    // framework then never touches the system directory, and the empty
-    // framework table passed to create_engine() is simply ignored.
-    virtual const wchar_t* dat_filename() const = 0;
+    // Data policy: every scheme owns its data entirely. The framework never
+    // loads, holds or passes a code table; the scheme decides where its data
+    // lives (system directory .dat, multi-pack store, embedded resource) and
+    // hands each engine its own view through create_engine(). A configuration
+    // tool signals data changes through reload_data() (see below).
+    // No dat_filename / load_fallback on purpose — those were the old
+    // framework-managed-table contract (xingma gap G2 sentinel), removed when
+    // data ownership moved fully into the schemes.
 
     // UI server window class returned by ImeInquire (IMM32 registers it).
     virtual const wchar_t* ui_server_class() const = 0;
@@ -88,29 +93,31 @@ public:
 
     // ---- engine ----------------------------------------------------------
 
-    // One engine instance per input context, sharing the loaded table.
-    virtual std::unique_ptr<Engine> create_engine(const CodeTable& table) const = 0;
+    // One engine instance per input context. The scheme builds it against
+    // its own data (a pinyin CodeTable, a shape ShapeStore, ...); the
+    // framework never touches that data.
+    virtual std::unique_ptr<Engine> create_engine() const = 0;
 
-    // ---- data --------------------------------------------------------------
-
-    // Fill a fallback table when the .dat file is missing or corrupt so the
-    // IME stays usable on a bare installation. Return false when the IME
-    // has no fallback (the IME then simply does not compose).
-    virtual bool load_fallback(CodeTable& out) const = 0;
-
-    // ---- configuration -------------------------------------------------------
+    // ---- configuration and data reload --------------------------------------
     // Framework gap G3: ImeConfigure used to always decline (FALSE), forcing
     // users into the start menu / command line. When the scheme can show its
     // own configuration UI (in-process dialog or launching an external tool),
     // implement this hook: `parent` is the caller's window handle (opaque
     // here so the interface stays free of Windows headers). Return true when
-    // the request was handled — the framework then reloads data and sessions
-    // (so a config tool may swap packs or rewrite the .dat) and reports
-    // success to IMM32. The default keeps declining.
+    // the request was handled — the framework then reloads sessions, which
+    // calls reload_data() first (below), and reports success to IMM32. The
+    // default keeps declining.
     virtual bool configure(void* parent) const {
         (void)parent;
         return false;
     }
+
+    // Called by the framework before sessions are rebuilt (ImeConfigure
+    // success path and reload_sessions). Re-read data files, swap packs or
+    // re-derive whatever the scheme's engines need; create_engine() picks
+    // the new state up. The default is a no-op for schemes whose data cannot
+    // change at runtime.
+    virtual void reload_data() const {}
 };
 
 // Defined by the assembling IME module (see ime/scheme_reg.cpp).
