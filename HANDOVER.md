@@ -235,6 +235,9 @@ ros-pinyin/
 
 ## 6. 构建与运行
 
+> **从 GitHub 全新 clone 后先做一步**：远端仓库里的 shell 脚本没有可执行位（见 §10.5 第 24 条），
+> 需 `chmod +x m0/vm/*.sh tools/mkdat/build_dat.sh vendor/fetch-vendor.sh`，否则 `./run-reactos.sh` 会报 Permission denied。
+
 ### 6.1 主机（Linux）构建与测试 —— 日常开发主通道
 
 ```bash
@@ -464,6 +467,10 @@ VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
 23. 沙箱是独立 PID 命名空间，**看不到宿主的 QEMU/服务进程**。需要操作它们时用：
     `XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus systemd-run --user --pipe --quiet -- <cmd>`
     （该命令运行在宿主用户会话里，`ps`/`kill` 都生效）。
+24. **`push_files` 通道不传文件模式位**，远端 `m0/vm/*.sh`、`tools/mkdat/build_dat.sh`、`vendor/fetch-vendor.sh` 都是 `100644`。所以从 GitHub 全新 clone 后**不能直接 `./run-reactos.sh`**，要先
+    `chmod +x m0/vm/*.sh tools/mkdat/build_dat.sh vendor/fetch-vendor.sh`（或统一用 `bash <script>` 调用）。
+    同理，`m0/vm/evidence/` 下的 PNG 与 `ime/rospinyin.ico` 这类二进制在远端并不存在（本地产出后未入库），
+    它们不是构建必需物——图标由 `ime/rospinyin.ico.b64` + CI 解码提供，证据图仅作本地归档。
 
 ---
 
