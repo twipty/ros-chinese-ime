@@ -145,17 +145,18 @@
 应 Owner 要求，输入法框架（**不含**拼音码表与拼音选字逻辑）已从 RosPinyin 中独立出来，供形码输入法（RosXingMa，规划见 `xingma/XINGMA-PLAN.md`）等其他输入法复用。目录重组：
 
 ```
-framework/   # imfw 可复用框架：engine 契约 + CodeTable/dat 格式 + CandidatePager
-             #   host/  IMM32 16 导出（通用键处理）、DllMain、UI server、会话存储、dat 延迟加载
+framework/   # imfw 可复用框架：engine 契约 + CodeTable/dat 格式工具类 + CandidatePager
+             #   host/  IMM32 16 导出（通用键处理）、DllMain、UI server、会话存储（框架不含码表）
              #   ui/    窗口基类 + CJK 字体链、组合串窗口、候选窗、输入法工具条（新增）
-pinyin/      # 拼音插件：归一化、音节切分、PinyinSession、PinyinScheme、内置兜底码表
+pinyin/      # 拼音插件：归一化、音节切分、PinyinSession、PinyinScheme、内置兜底码表、自管数据源
 ime/         # rospinyin.ime 装配：scheme_reg + 品牌 def/rc/图标（其余全部来自 framework/）
 ```
 
-- **Scheme 插件接口**（`framework/include/imfw/scheme.hpp`）是复用缝：字母表、码表文件名（`nullptr` 即方案自管数据）、窗口类名、工具条标签、选字/翻页键策略（默认经典行为）、引擎工厂、兜底表、`ImeConfigure` 回调。框架拥有退格/Esc/上屏与全部窗口渲染。
+- **Scheme 插件接口**（`framework/include/imfw/scheme.hpp`）是复用缝：字母表、窗口类名、工具条标签、选字/翻页键策略（默认经典行为）、**无参引擎工厂 + `reload_data()` 数据热重载钩子**、`ImeConfigure` 回调。框架拥有退格/Esc/上屏与全部窗口渲染。
+- **数据完全归方案自管**（2026-11-17 G2 终局）：框架不加载、不持有、不传递码表；`CodeTable`/dat 格式保留为通用工具类（拼音在用），形码用自己的 `ShapeStore`。拼音的数据源在 `pinyin/`（系统目录 .dat + 内置兜底表）。
 - `Result.segments`（`imfw/engine.hpp`）让组合串窗口对拼音与形码通用（下划线按引擎切分画）；组合串与 segments 契约为 UTF-8，CJK 可直接渲染。
 - 通用 `CodeTable` 改用 dat 自带键名表索引，框架侧不再有 `pinyin` 字样（`tools/check_m1.py` 新增防污染断言）。
 - 窗口类按 Scheme 命名并按名去重注册，两个 IME DLL 可同进程共存。
-- **xingma 缺口 G1–G4 已全部在框架侧解决**（2026-11-16，详见 `framework/README.md`）：`imfw::emit_text` 多码点/非 BMP 上屏、`dat_filename()==nullptr` 方案自管数据 + `reload_sessions()` 热重载、`Scheme::configure` 接管 `ImeConfigure`、选字/翻页键策略下放 Scheme + 组合串 UTF-8 化。形码无需自建宿主层。
-- 宿主 ctest **10/10**（新增 `emit-text`、`utf8` 回归测试）；真实 MinGW 头交叉语法检查（clang x86_64-w64-windows-gnu + mingw 头）12/12；真实 dat 链路复验通过。
+- **xingma 缺口 G1–G4 已全部在框架侧解决**（2026-11-16；G2 于 2026-11-17 演进为「框架零码表」终局形态，详见 `framework/README.md`）：`imfw::emit_text` 多码点/非 BMP 上屏、无参 `create_engine` + `reload_data()` 热重载、`Scheme::configure` 接管 `ImeConfigure`、选字/翻页键策略下放 Scheme + 组合串 UTF-8 化。形码无需自建宿主层。
+- 宿主 ctest **10/10**（含 `emit-text`、`utf8` 回归测试）；真实 MinGW 头交叉语法检查（clang i686-w64-windows-gnu + mingw 头）12/12；真实 dat 链路复验通过。
 - 复用指南见 **[framework/README.md](framework/README.md)**。
