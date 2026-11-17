@@ -82,9 +82,15 @@ UINT emit_text(rpimm::TransMsgList* lpTransMsgList, const std::u32string& text) 
                   "TRANSMESSAGE must stay layout-compatible with "
                   "imfw::TransMsgSlot");
     using rpimm_list = rpimm::TransMsgList;
+#if defined(_WIN32) || defined(__i686__) || defined(__i386__)
+    // Win32 (ILP32) ABI: TRANSMESSAGE is 4-byte packed (UINT/WPARAM/LPARAM
+    // all 4 bytes), so the array follows the header with no padding. On
+    // LP64 hosts the pointer-sized fields pad the slot and the offset grows
+    // accordingly — the runtime buffer is only ever seen on Win32.
     static_assert(offsetof(rpimm_list, TransMsg) == sizeof(UINT),
                   "TRANSMSGLIST.TransMsg must follow uMsgCount directly "
                   "(no padding) on the Win32 ABI");
+#endif
     if (lpTransMsgList == nullptr || lpTransMsgList->uMsgCount == 0) return 0;
     const UINT capacity = lpTransMsgList->uMsgCount < imfw::kMaxEmitMessages
                               ? lpTransMsgList->uMsgCount

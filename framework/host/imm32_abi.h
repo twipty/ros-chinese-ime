@@ -49,10 +49,17 @@ struct TransMsg {
 // messages back from ->TransMsg[0] using the count we return, so writing
 // at offset 0 would overwrite the capacity header and shift every message
 // by one slot. The message array therefore starts right after the header.
+// The member named `TransMsg` (DDK spelling, keep it) shadows the struct
+// name inside this scope, which trips GCC's -Wchanges-meaning when both
+// are declared in the same block. Silence just that diagnostic here —
+// the layout itself is what we must match.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wchanges-meaning"
 struct TransMsgList {
-    UINT     uMsgCount;   // in: capacity pre-filled by IMM32
-    TransMsg TransMsg[1]; // out: messages written here, count == return value
+    UINT     uMsgCount;              // in: capacity pre-filled by IMM32
+    TransMsg TransMsg[1];            // out: messages written here, count == return value
 };
+#pragma GCC diagnostic pop
 
 // Opaque at M1: no conversion list, no candidate list, no menu items.
 struct CandidateList;
