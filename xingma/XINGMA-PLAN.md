@@ -123,7 +123,7 @@ ros-pinyin 交付的 `framework/` 已经把「IME 公共部分」抽成可插拔
 | 契约 | 位置 | 内容 |
 |---|---|---|
 | 引擎接口 | `framework/include/imfw/engine.hpp` | `Engine::feed/backspace/cancel/on_select`；`Result{action, composition, candidates, segments, commit_text}`；`Action{Passthrough, Absorb, Commit}` |
-| 方案插件 | `framework/include/imfw/scheme.hpp` | `Scheme`：数据文件名、四类窗口类名、工具栏标签、`input_char` / `is_input_char`、`create_engine`、`load_fallback`；`scheme_instance()` 由装配件定义 |
+| 方案插件 | `framework/include/imfw/scheme.hpp` | `Scheme`：四类窗口类名、工具栏标签、`input_char` / `is_input_char`、无参 `create_engine`、`reload_data` 数据热重载钩子；`scheme_instance()` 由装配件定义（框架不传递码表，方案完全自管数据） |
 | 码表视图 | `framework/include/imfw/code_table.hpp` | `CodeTable`：`load_dat` / `add` / `build_index` / `lookup` / `is_code` / `is_prefix`，**条目为单个码点** |
 | 候选分页 | `framework/include/imfw/candidate_pager.hpp` | 每页 9 条、跨页选号、`reset/select/next_page/prev_page` |
 | 宿主层 | `framework/host/` | IMM32 全部导出、按键路由、会话存储、`ImeConfigure`、UI server 类注册 |
@@ -154,7 +154,7 @@ ros-pinyin 交付的 `framework/` 已经把「IME 公共部分」抽成可插拔
 ```
 rosxingma.ime
 ├── 装配件      xingma/host/scheme_reg_shape.cpp   → 定义 imfw::scheme_instance()
-├── 框架宿主     ../framework/host/{dllmain,imm_entry,ui_server,session_store,dat_loader}.cpp
+├── 框架宿主     ../framework/host/{dllmain,imm_entry,ui_server,session_store}.cpp
 ├── 框架界面     ../framework/ui/{ime_ui,ui_window,composition_window,candidate_window,toolbar}.cpp
 ├── 形码插件     xingma/src/{shape_table,shape_session,shape_store,shape_scheme}.cpp
 ├── 形码装配     xingma/host/shape_dat_loader.cpp
@@ -167,13 +167,13 @@ rosxingma.ime
 
 ### 3.4 框架能力缺口与处置
 
-框架已交付，实读源码后确认四个缺口。**2026-11-16 更新：四个缺口已全部在框架侧解决**（见 `framework/README.md`「框架能力缺口的处置记录」），形码无需自建宿主层，按下表「框架侧落地」接入即可。
+框架已交付，实读源码后确认四个缺口。**2026-11-16 更新：四个缺口已全部在框架侧解决**（见 `framework/README.md`「框架能力缺口的处置记录」），形码无需自建宿主层，按下表「框架侧落地」接入即可。**2026-11-17 更新：G2 演进为终局形态——框架不再加载/持有/传递码表，`dat_filename()`/`load_fallback()` 哨兵值契约移除，`create_engine()` 无参 + `Scheme::reload_data()` 数据热重载钩子；形码数据完全自管不再需要任何哨兵约定。**
 
 | # | 缺口（原始记录） | 实际影响 | 框架侧落地（已完成） |
 |---|---|---|---|
 | **G1** | 宿主层只上屏**一个码点**：`process_key` 取 `commit_text[0]`，选字取 `chosen->text[0]`；`emit_char` 只写 `messages[0]` 并返回 1 | **词无法上屏**——候选窗能看到词，选中只输出首字，形码词库等于失效 | `imfw::emit_text()`（`framework/include/imfw/emit_text.hpp`，imfw-engine 内、Linux 单测覆盖）按 UTF-16 码单元逐条写 `WM_IME_CHAR`，非 BMP 走代理对，上限 32 条。选字与 Commit 路径均全量上屏，词组候选完整输出 |
-| **G2** | 框架只加载 `GetSystemDirectoryW()\<dat_filename>` 单一 `CodeTable`，且 `Store::table_loaded_` 首次加载后不再重载 | 无法多表、无法热切换、无法存词 | 方案自管数据成为正式契约：`ShapeScheme::dat_filename()` 返回 `nullptr`、`load_fallback()` 返回 `false`，框架运行在空表上、`create_engine` 忽略之，`ShapeStore` 全权负责多表与切换。另提供 `imfw::reload_sessions()`：丢弃共享表与全部会话、下次按键重建（`ImeConfigure` 成功后自动调用），配置工具换包后即刻生效 |
-| **G3** | `ImeConfigure` 恒返回 `FALSE`，语言栏菜单亦未实现 | 用户需从开始菜单或命令行打开配置工具 | `Scheme::configure(void* parent)` 回调已接入 `ImeConfigure`：返回 `true` 即视为已处理并触发会话重载。形码在回调内拉起配置工具（进程内 UI 或 `CreateProcess` 外部 exe 均可）；开始菜单快捷方式与 `HKLM\...\Install\ConfigExe` 仍照旧写入，作为冗余入口。语言栏菜单项仍留待框架 M6 |
+| **G2** | 框架只加载 `GetSystemDirectoryW()\<dat_filename>` 单一 `CodeTable`，且 `Store::table_loaded_` 首次加载后不再重载 | 无法多表、无法热切换、无法存词 | **终局（2026-11-17）**：框架不再加载/持有/传递码表——`create_engine()` 无参，引擎数据由 `ShapeStore` 直接供给；`reload_sessions()` 先调 `Scheme::reload_data()`（形码在此刷新当前表）再丢弃全部会话（`ImeConfigure` 成功后自动调用），配置工具换包即刻生效。通用 `CodeTable` 保留为框架工具类，形码可不使用 |
+| **G3** | `ImeConfigure` 恒返回 `FALSE`，语言栏菜单亦未实现 | 用户需从开始菜单或命令行打开配置工具 | `Scheme::configure(void* parent)` 回调已接入 `ImeConfigure`：返回 `true` 即视为已处理并触发 `reload_data()` + 会话重载。形码在回调内拉起配置工具（进程内 UI 或 `CreateProcess` 外部 exe 均可）；开始菜单快捷方式与 `HKLM\...\Install\ConfigExe` 仍照旧写入，作为冗余入口。语言栏菜单项仍留待框架 M6 |
 | **G4** | 空格与 `-` `=` `,` `.` 被宿主固定为选字/翻页键，引擎收不到 | 「无候选时空格上屏原文」无法实现；标点也不能进组合串 | 选字/翻页键策略下放 Scheme：`is_selection_key()` / `page_key()`（默认即经典行为，形码按需覆盖）；框架仅在「组合中且有候选」时拦截这些键，否则直达应用。**组合串与 `segments` 契约改为 UTF-8**（`imfw::utf8_to_wide` 解码渲染、坏字节按字节兜底），「未安装码表」中文提示可以放进组合串，不再受 ASCII 限制。「无候选且达最大码长自动提交原文」仍按本计划 4.x 由 `ShapeSession` 用 `Action::Commit` 实现——框架保证此时空格/标点直达应用，两者配合即达成「空格上屏原文」的等效体验 |
 
 > **G1 的降级说明（已作废）**：原计划在框架未补齐时自建宿主层 `xingma/host/imm_entry_shape.cpp`。框架已按上述方案补齐（含 `tests/emit_text_test.cpp` 回归测试与 `check_m1.py` 静态断言），**该降级路径取消**，形码直接复用共享宿主层。
@@ -286,16 +286,15 @@ HKCU\SOFTWARE\RosXingMa\
 
 | 方法 | 返回值 | 理由 |
 |---|---|---|
-| `dat_filename()` | `nullptr` | G2 框架契约：方案自管数据，框架不触碰系统目录、运行在空表上 |
 | `ui_server_class()` | `L"RosXingMaUI"` | 与拼音窗口类名互不冲突，两个 IME 可同进程共存 |
 | `composition_class()` / `candidate_class()` / `toolbar_class()` | `L"RosXingMaComp"` / `L"RosXingMaCand"` / `L"RosXingMaBar"` | 同上 |
 | `toolbar_label()` | `L"形"` | 固定单字标签，与拼音的「拼」区分 |
 | `input_char(vk)` | 字母键 → 小写码点，其余 `0` | 大小写归一由此完成 |
 | `is_input_char(cp)` | 当前表字母表内为 `true`；**无表时恒 `false`** | 无表即透传，不吞键 |
 | `is_selection_key()` / `page_key()` | 不覆盖（用框架默认） | G4：默认空格+数字选字、`-`/`=`/`,`/`.` 翻页即形码所需 |
-| `create_engine(table)` | `ShapeSession`（忽略传入的空 `CodeTable`，从 `ShapeStore` 取当前表） | 见 G2 |
-| `load_fallback(table)` | `false` | 形码不使用框架表；空表不影响宿主 |
-| `configure(parent)` | 拉起配置工具后返回 `true` | G3：接管 `ImeConfigure`，成功后框架自动 `reload_sessions()` |
+| `create_engine()` | `ShapeSession`（从 `ShapeStore` 取当前表；框架不再传任何表，G2 终局契约） | 见 G2 |
+| `reload_data()` | 通知 `ShapeStore` 重读 revision/当前表 | G2：`reload_sessions()` 先调它再清会话，配置工具换包即刻生效 |
+| `configure(parent)` | 拉起配置工具后返回 `true` | G3：接管 `ImeConfigure`，成功后框架自动 `reload_data()` + `reload_sessions()` |
 
 ### 5.3 表切换
 

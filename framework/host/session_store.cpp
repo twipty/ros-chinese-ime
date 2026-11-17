@@ -4,15 +4,18 @@
 // Deliberately uses Win32 CRITICAL_SECTION instead of std::mutex: MinGW's
 // POSIX threading model would otherwise drag libwinpthread into the IME PE,
 // which the ReactOS compatibility check in CI rejects.
+//
+// Data policy: the framework holds no code table. Every scheme owns its
+// data and builds engines against it (see imfw/scheme.hpp); the store only
+// tracks per-HIMC sessions.
 
 #include "session_store.hpp"
-
-#include "dat_loader.hpp"
 
 #include <windows.h>
 
 #include <map>
 #include <memory>
+#include <utility>
 
 namespace imfw {
 namespace {
@@ -22,29 +25,13 @@ public:
     Store() { InitializeCriticalSection(&cs_); }
     ~Store() { DeleteCriticalSection(&cs_); }
 
-    const CodeTable& table() {
-        EnterCriticalSection(&cs_);
-        if (!table_loaded_) {
-            load_ime_table(table_, scheme_instance());
-            table_loaded_ = true;
-        }
-        LeaveCriticalSection(&cs_);
-        return table_;
-    }
-
     ImeSessionState* acquire(rpimm::InputContext hIMC) {
         if (hIMC == nullptr) return nullptr;
         EnterCriticalSection(&cs_);
-        // Make sure the table exists before an engine can hold a reference
-        // to it.
-        if (!table_loaded_) {
-            load_ime_table(table_, scheme_instance());
-            table_loaded_ = true;
-        }
         auto& slot = states_[hIMC];
         if (!slot) {
             slot = std::make_unique<ImeSessionState>();
-            slot->engine = scheme_instance().create_engine(table_);
+            slot->engine = scheme_instance().create_engine();
         }
         ImeSessionState* result = slot.get();
         LeaveCriticalSection(&cs_);
@@ -57,22 +44,18 @@ public:
         LeaveCriticalSection(&cs_);
     }
 
-    // Framework gap G2 hot path: drop the shared table and every session so
-    // the next key reloads data from scratch. Engines hold references into
-    // the shared table, so sessions must go first. In-flight compositions
-    // are discarded — acceptable after a configuration change.
+    // Let the scheme refresh its own data first, then drop every session so
+    // the next key rebuilds engines against the new data. In-flight
+    // compositions are discarded — acceptable after a configuration change.
     void reload() {
         EnterCriticalSection(&cs_);
         states_.clear();
-        table_.clear();
-        table_loaded_ = false;
+        scheme_instance().reload_data();
         LeaveCriticalSection(&cs_);
     }
 
 private:
     CRITICAL_SECTION cs_;
-    bool table_loaded_ = false;
-    CodeTable table_;
     std::map<rpimm::InputContext, std::unique_ptr<ImeSessionState>> states_;
 };
 
@@ -82,8 +65,6 @@ Store& store() {
 }
 
 }  // namespace
-
-const CodeTable& shared_table() { return store().table(); }
 
 ImeSessionState* acquire_session(rpimm::InputContext hIMC) {
     return store().acquire(hIMC);

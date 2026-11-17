@@ -7,10 +7,12 @@
 
 #include <imfw/code_table.hpp>
 #include <imfw/engine.hpp>
+#include <rospinyin/dat_source.hpp>
 #include <rospinyin/pinyin_session.hpp>
 #include <rospinyin/scheme.hpp>
 
 #include <cstdio>
+#include <memory>
 #include <string>
 
 namespace {
@@ -29,9 +31,8 @@ void check(bool condition, const char* what) {
 int main() {
     const rospinyin::PinyinScheme scheme;
 
-    // Identity and resources.
-    check(std::wcscmp(scheme.dat_filename(), L"rospinyin.dat") == 0,
-          "dat filename must be rospinyin.dat");
+    // Identity and resources. dat_filename/load_fallback are gone: data
+    // ownership moved fully into the schemes (framework gap G2 disposition).
     check(std::wcslen(scheme.ui_server_class()) > 0, "ui server class set");
     check(std::wcslen(scheme.composition_class()) > 0, "composition class set");
     check(std::wcslen(scheme.candidate_class()) > 0, "candidate class set");
@@ -73,26 +74,34 @@ int main() {
     check(!scheme.configure(nullptr),
           "configure() declines by default");
 
-    // G2 documentation contract: a scheme that owns its data returns a
-    // dat filename; the pinyin scheme uses the framework dat.
-    check(scheme.dat_filename() != nullptr, "pinyin uses the framework dat");
-
-    // Engine factory: the engine must reject input until selected (the
-    // imm_entry regression guard depends on this contract).
-    imfw::CodeTable table;
-    check(scheme.load_fallback(table), "fallback table must load");
-    check(table.char_count() > 100, "fallback table covers common characters");
-    check(table.is_code("nv") && table.is_code("lv") && table.is_code("lve"),
-          "v-key syllables present in fallback table");
-    check(table.is_prefix("zho"), "fallback table exposes prefixes");
-
-    std::unique_ptr<imfw::Engine> engine = scheme.create_engine(table);
-    check(engine != nullptr, "create_engine returns an engine");
+    // G2 final disposition: the scheme owns its data (dat_filename /
+    // load_fallback are gone from the contract). Engines are built with no
+    // table argument against the scheme's own table; the engine must reject
+    // input until selected (the imm_entry regression guard depends on this
+    // contract).
+    std::unique_ptr<imfw::Engine> engine = scheme.create_engine();
+    check(engine != nullptr, "create_engine (no table argument) returns an engine");
     check(engine->feed(U'n').action == imfw::Action::Passthrough,
           "engine must passthrough before on_select");
     engine->on_select(true);
     check(engine->feed(U'n').action == imfw::Action::Absorb,
           "engine must absorb input after on_select");
+
+    // The builtin fallback loader is also directly testable.
+    imfw::CodeTable fallback;
+    rospinyin::load_builtin_table(fallback);
+    check(fallback.char_count() > 100, "fallback table covers common characters");
+    check(fallback.is_code("nv") && fallback.is_code("lv") && fallback.is_code("lve"),
+          "v-key syllables present in fallback table");
+    check(fallback.is_prefix("zho"), "fallback table exposes prefixes");
+
+    // Reload swaps in a fresh table generation without breaking anything.
+    scheme.reload_data();
+    std::unique_ptr<imfw::Engine> reloaded = scheme.create_engine();
+    check(reloaded != nullptr, "engine builds after reload_data");
+    reloaded->on_select(true);
+    check(reloaded->feed(U'n').action == imfw::Action::Absorb,
+          "engine works after reload_data");
 
     if (failures == 0) {
         std::printf("pinyin scheme contract OK\n");

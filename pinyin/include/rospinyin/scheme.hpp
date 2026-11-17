@@ -8,14 +8,19 @@
 
 #pragma once
 
+#include <imfw/code_table.hpp>
 #include <imfw/scheme.hpp>
+
+#include <cstdint>
+#include <memory>
 
 namespace rospinyin {
 
 class PinyinScheme final : public imfw::Scheme {
 public:
+    PinyinScheme();
+
     // ---- identity and resources ----
-    const wchar_t* dat_filename() const override;
     const wchar_t* ui_server_class() const override;
     const wchar_t* composition_class() const override;
     const wchar_t* candidate_class() const override;
@@ -27,11 +32,22 @@ public:
     bool is_input_char(char32_t cp) const override;
 
     // ---- engine ----
-    std::unique_ptr<imfw::Engine> create_engine(
-        const imfw::CodeTable& table) const override;
+    std::unique_ptr<imfw::Engine> create_engine() const override;
 
     // ---- data ----
-    bool load_fallback(imfw::CodeTable& out) const override;
+    // Data is scheme-owned: the system-directory .dat when present, the
+    // built-in fallback table otherwise (see dat_source.hpp). The framework
+    // never sees the table. reload_data() may run on a const scheme from a
+    // foreign thread while engines still hold the previous generation; the
+    // swap is a single pointer write under the framework's session lock.
+    void reload_data() const override;
+
+private:
+    // Mutable: reload_data() is logically const for the framework (the
+    // scheme's observable behaviour — what it feeds engines — stays the
+    // same kind of table); the pointer swap replaces the generation.
+    // Shared so in-flight sessions keep a valid table across reloads.
+    mutable std::shared_ptr<const imfw::CodeTable> table_;
 };
 
 }  // namespace rospinyin

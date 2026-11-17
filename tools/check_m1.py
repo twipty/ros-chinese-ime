@@ -188,8 +188,27 @@ def run(root: Path) -> int:
             "scheme.page_key(ch)" in entry and
             "bool is_page_key" not in entry)
     store_hpp = read(root, "framework/host/session_store.hpp")
-    c.check("G2: sessions and shared table reload at runtime",
+    c.check("G2: sessions reload at runtime via reload_sessions",
             "void reload_sessions()" in store_hpp)
+    scheme_hpp = read(root, "framework/include/imfw/scheme.hpp")
+    c.check("G2: framework no longer passes a code table to engines",
+            "create_engine() const" in scheme_hpp and
+            "CodeTable&" not in scheme_hpp and
+            "reload_data" in scheme_hpp)
+    c.check("G2: the framework host holds no shared code table",
+            "shared_table" not in store_hpp and
+            "CodeTable" not in store_hpp and
+            not (root / "framework/host/dat_loader.hpp").is_file() and
+            not (root / "framework/host/dat_loader.cpp").is_file())
+    c.check("G2: reload clears sessions then lets the scheme refresh data",
+            "scheme_instance().reload_data()" in
+            read(root, "framework/host/session_store.cpp"))
+    c.check("G2: the pinyin scheme owns its data (dat_source)",
+            (root / "pinyin/include/rospinyin/dat_source.hpp").is_file() and
+            (root / "pinyin/src/dat_source.cpp").is_file() and
+            (root / "pinyin/host/dat_source_win.cpp").is_file() and
+            "load_pinyin_table" in read(root, "pinyin/src/scheme.cpp") and
+            "dat_filename" not in read(root, "pinyin/src/scheme.cpp"))
     composition_ui = read(root, "framework/ui/composition_window.cpp")
     c.check("G4: compositions decode as UTF-8 (CJK allowed)",
             "utf8_to_wide" in entry and "utf8_to_wide" in composition_ui)
@@ -275,7 +294,7 @@ def run(root: Path) -> int:
             "PinyinScheme" in read(root, "ime/scheme_reg.cpp"))
     framework_pinyin_refs = []
     for rel in ["framework/src/code_table.cpp", "framework/host/imm_entry.cpp",
-                "framework/src/engine.cpp"]:
+                "framework/src/engine.cpp", "framework/host/session_store.cpp"]:
         text = read(root, rel)
         if "pinyin" in strip_cpp_comments(text).lower():
             framework_pinyin_refs.append(rel)

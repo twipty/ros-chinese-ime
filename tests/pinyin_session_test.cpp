@@ -8,6 +8,7 @@
 #include <rospinyin/pinyin_session.hpp>
 
 #include <cstdio>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -50,6 +51,10 @@ imfw::CodeTable make_table() {
     return table;
 }
 
+std::shared_ptr<const imfw::CodeTable> make_shared_table() {
+    return std::make_shared<const imfw::CodeTable>(make_table());
+}
+
 void feed_string(rospinyin::PinyinSession& session, const char* text) {
     for (const char* p = text; *p != '\0'; ++p) {
         session.feed(static_cast<char32_t>(static_cast<unsigned char>(*p)));
@@ -61,23 +66,24 @@ void feed_string(rospinyin::PinyinSession& session, const char* text) {
 int main() {
     using namespace rospinyin;
     using namespace imfw;
-    const imfw::CodeTable table = make_table();
+    const auto table = make_shared_table();
+    const imfw::CodeTable& tbl = *table;
 
     // Segmentation: longest match, backtracking, apostrophe boundary.
-    const auto zhongguo = segment_syllables("zhongguo", table);
+    const auto zhongguo = segment_syllables("zhongguo", tbl);
     check(zhongguo.size() == 2, "zhongguo must split into two syllables");
     if (zhongguo.size() == 2) {
         check_equal(zhongguo[0], "zhong", "first syllable of zhongguo");
         check_equal(zhongguo[1], "guo", "second syllable of zhongguo");
     }
-    const auto xian = segment_syllables("xian", table);
+    const auto xian = segment_syllables("xian", tbl);
     check(xian.size() == 1 && xian[0] == "xian",
           "xian must prefer the longer syllable");
-    const auto xian_split = segment_syllables("xi'an", table);
+    const auto xian_split = segment_syllables("xi'an", tbl);
     check(xian_split.size() == 2, "xi'an must split into two syllables");
-    check(segment_syllables("zh", table).empty(),
+    check(segment_syllables("zh", tbl).empty(),
           "incomplete pinyin must not segment");
-    check(segment_syllables("", table).empty(),
+    check(segment_syllables("", tbl).empty(),
           "empty composition must not segment");
 
     PinyinSession session(table);

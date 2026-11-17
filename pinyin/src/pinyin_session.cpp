@@ -93,11 +93,11 @@ std::vector<std::string> segment_syllables(const std::string& letters,
 }
 
 void PinyinSession::recompute() {
-    syllables_ = segment_syllables(composition_, table_);
+    syllables_ = segment_syllables(composition_, *table_);
     candidates_.clear();
     if (syllables_.empty()) return;
 
-    const auto entries = table_.lookup(syllables_.back());
+    const auto entries = table_->lookup(syllables_.back());
     candidates_.reserve(entries.size());
     for (const auto& entry : entries) {
         Candidate candidate;
@@ -132,7 +132,7 @@ Result PinyinSession::feed(char32_t codepoint) {
         composition_.push_back(typed);
         // A partial prefix or a completed-syllable-plus-prefix is legal
         // input; only strings that can never become pinyin are rejected.
-        if (!can_extend(composition_, table_)) {
+        if (!can_extend(composition_, *table_)) {
             composition_.pop_back();
             return Result{Action::Absorb, composition_, candidates_, syllables_, {}};
         }

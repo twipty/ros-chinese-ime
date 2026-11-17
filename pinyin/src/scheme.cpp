@@ -7,12 +7,14 @@
 // it is pinyin data and therefore belongs to the plugin, not the framework.
 
 #include <rospinyin/scheme.hpp>
+#include <rospinyin/dat_source.hpp>
 #include <rospinyin/pinyin.hpp>
 #include <rospinyin/pinyin_session.hpp>
 
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace rospinyin {
 namespace {
@@ -140,9 +142,7 @@ constexpr BuiltinReading kBuiltin[] = {
 
 // ---- identity and resources -------------------------------------------
 
-const wchar_t* PinyinScheme::dat_filename() const {
-    return L"rospinyin.dat";
-}
+PinyinScheme::PinyinScheme() : table_(load_pinyin_table()) {}
 
 const wchar_t* PinyinScheme::ui_server_class() const {
     return L"RosPinyinUIServer";
@@ -181,9 +181,8 @@ bool PinyinScheme::is_input_char(char32_t cp) const {
 
 // ---- engine -------------------------------------------------------------
 
-std::unique_ptr<imfw::Engine> PinyinScheme::create_engine(
-    const imfw::CodeTable& table) const {
-    return std::make_unique<PinyinSession>(table);
+std::unique_ptr<imfw::Engine> PinyinScheme::create_engine() const {
+    return std::make_unique<PinyinSession>(table_);
 }
 
 // ---- data ----------------------------------------------------------------
@@ -193,7 +192,7 @@ void add_reading(imfw::CodeTable& table, char32_t codepoint,
     table.add(codepoint, rank, reading, pinyin::syllable_of(reading));
 }
 
-bool PinyinScheme::load_fallback(imfw::CodeTable& out) const {
+void load_builtin_table(imfw::CodeTable& out) {
     for (const auto& item : kBuiltin) {
         if (item.chars == nullptr || item.chars[0] == L'\0') continue;
         std::uint32_t rank = 1000;
@@ -204,7 +203,13 @@ bool PinyinScheme::load_fallback(imfw::CodeTable& out) const {
         }
     }
     out.build_index();
-    return true;
+}
+
+// The framework calls this before rebuilding sessions (ImeConfigure success
+// path): re-read the .dat (a config tool may have replaced it), keeping the
+// old table alive for sessions from the previous generation.
+void PinyinScheme::reload_data() const {
+    table_ = load_pinyin_table();
 }
 
 }  // namespace rospinyin
