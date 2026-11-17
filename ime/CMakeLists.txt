@@ -12,12 +12,12 @@ add_library(rospinyin-ime SHARED
     ../framework/host/imm_entry.cpp
     ../framework/host/ui_server.cpp
     ../framework/host/session_store.cpp
-    ../framework/host/dat_loader.cpp
     ../framework/ui/ime_ui.cpp
     ../framework/ui/ui_window.cpp
     ../framework/ui/composition_window.cpp
     ../framework/ui/candidate_window.cpp
     ../framework/ui/toolbar.cpp
+    ../pinyin/host/dat_source_win.cpp
     rospinyin.def
     rospinyin_res.rc)
 

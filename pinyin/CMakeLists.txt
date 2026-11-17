@@ -8,7 +8,8 @@
 add_library(rospinyin-engine STATIC
     src/pinyin.cpp
     src/pinyin_session.cpp
-    src/scheme.cpp)
+    src/scheme.cpp
+    src/dat_source.cpp)
 
 target_include_directories(rospinyin-engine PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>")

@@ -14,6 +14,7 @@
 #include <imfw/engine.hpp>
 
 #include <cstddef>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -32,7 +33,11 @@ void add_reading(imfw::CodeTable& table, char32_t codepoint,
 
 class PinyinSession final : public imfw::Engine {
 public:
-    explicit PinyinSession(const imfw::CodeTable& table) : table_(table) {}
+    // Holds a shared reference: the owning PinyinScheme may rebuild its
+    // table (reload_data) while old sessions from a previous generation
+    // stay valid through the shared_ptr.
+    explicit PinyinSession(std::shared_ptr<const imfw::CodeTable> table)
+        : table_(std::move(table)) {}
 
     imfw::Result feed(char32_t codepoint) override;
     imfw::Result backspace() override;
@@ -51,7 +56,7 @@ private:
     void recompute();
     imfw::Result commit(std::size_t index);
 
-    const imfw::CodeTable& table_;
+    std::shared_ptr<const imfw::CodeTable> table_;
     std::string composition_;
     std::vector<imfw::Candidate> candidates_;
     std::vector<std::string> syllables_;
