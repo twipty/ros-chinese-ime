@@ -97,6 +97,11 @@ POINT caret_anchor() {
     return pt;
 }
 
+// Every window is placed AND sized here, in one SetWindowPos per window per
+// call, and only when the geometry actually changed (see
+// UiWindow::apply_geometry). The composition window measures its own text in
+// update() but no longer calls SetWindowPos itself: two owners of the same
+// window geometry is how "zhongguo" ended up clipped to the width of "zhong".
 void place_windows(UiContext& ctx, const POINT& anchor) {
     const int screen_w = GetSystemMetrics(SM_CXSCREEN);
     const int screen_h = GetSystemMetrics(SM_CYSCREEN);
@@ -107,14 +112,16 @@ void place_windows(UiContext& ctx, const POINT& anchor) {
         x = screen_w - ctx.composition.width() - 8;
     }
     if (x < 0) x = 0;
-    ctx.composition.move_to(x, y);
+    ctx.composition.apply_geometry(x, y, ctx.composition.width(),
+                                   ctx.composition.height());
 
     y += ctx.composition.height();
     if (y + ctx.candidates.height() > screen_h && screen_h > 0) {
         y = anchor.y - ctx.candidates.height() - 4;
         if (y < 0) y = 0;
     }
-    ctx.candidates.move_to(x, y);
+    ctx.candidates.apply_geometry(x, y, ctx.candidates.width(),
+                                  ctx.candidates.height());
 }
 
 }  // namespace
@@ -157,5 +164,82 @@ void UiToolbarHide(rpimm::InputContext hIMC) {
     if (ctx == nullptr) return;
     ctx->toolbar.hide();
 }
+
+UiCounters UiCountersSnapshot() {
+    const ui::UiStats s = ui::ui_stats();
+    return UiCounters{s.place_calls, s.place_changes, s.show_real,
+                      s.invalidates};
+}
+
+namespace {
+
+// Glyph probe for the candidate font. The shipped subset is U+4E00-U+9FA5, so
+// a ranked character from another block (extension A, compatibility) used to
+// reach the candidate list and paint as a tofu box; picking it inserted a box
+// into the document. GetGlyphIndicesW answers the question with the *same*
+// font the window paints with, and the answer is cached: `shi` alone has 95
+// candidates.
+class GlyphProbe {
+public:
+    GlyphProbe() {
+        InitializeCriticalSection(&cs_);
+        dc_ = CreateCompatibleDC(nullptr);
+        font_ = ui::CreateUiFont(16);
+        if (dc_ != nullptr && font_ != nullptr) {
+            previous_ = SelectObject(dc_, font_);
+        }
+    }
+
+    ~GlyphProbe() {
+        if (dc_ != nullptr) {
+            if (previous_ != nullptr) SelectObject(dc_, previous_);
+            DeleteDC(dc_);
+        }
+        if (font_ != nullptr) DeleteObject(font_);
+        DeleteCriticalSection(&cs_);
+    }
+
+    bool has(char32_t codepoint) {
+        // Anything outside the BMP is not in our data set; and a probe that
+        // cannot run at all must not hide text.
+        if (dc_ == nullptr || font_ == nullptr || codepoint > 0xFFFF) return true;
+
+        EnterCriticalSection(&cs_);
+        const auto cached = cache_.find(codepoint);
+        if (cached != cache_.end()) {
+            const bool value = cached->second;
+            LeaveCriticalSection(&cs_);
+            return value;
+        }
+        LeaveCriticalSection(&cs_);
+
+        const wchar_t wide = static_cast<wchar_t>(codepoint);
+        WORD index = 0;
+        const DWORD result =
+            GetGlyphIndicesW(dc_, &wide, 1, &index, GGI_MARK_NONEXISTING_GLYPHS);
+        const bool present = result != GDI_ERROR && index != 0xFFFF;
+
+        EnterCriticalSection(&cs_);
+        cache_[codepoint] = present;
+        LeaveCriticalSection(&cs_);
+        return present;
+    }
+
+private:
+    CRITICAL_SECTION cs_;
+    HDC dc_ = nullptr;
+    HFONT font_ = nullptr;
+    HGDIOBJ previous_ = nullptr;
+    std::map<char32_t, bool> cache_;
+};
+
+GlyphProbe& glyph_probe() {
+    static GlyphProbe instance;  // first use, never in DllMain
+    return instance;
+}
+
+}  // namespace
+
+bool UiCanRender(char32_t codepoint) { return glyph_probe().has(codepoint); }
 
 }  // namespace imfw

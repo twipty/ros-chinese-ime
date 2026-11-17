@@ -70,15 +70,16 @@ void CandidateWindow::update(HINSTANCE inst, const wchar_t* class_name,
         return;
     }
 
-    lines_.clear();
+    std::vector<std::wstring> next;
     const Candidate* begin = pager.page_begin();
     const std::size_t count = pager.page_size();
+    next.reserve(count + 1);
     for (std::size_t i = 0; i < count; ++i) {
         std::wstring line;
         line.push_back(static_cast<wchar_t>(L'1' + i));
         line += L". ";
         line += utf32_to_wide(begin[i].text);
-        lines_.push_back(std::move(line));
+        next.push_back(std::move(line));
     }
 
     std::wstring footer = L"  -  ";
@@ -86,39 +87,46 @@ void CandidateWindow::update(HINSTANCE inst, const wchar_t* class_name,
     footer += L"/";
     footer += small_number(pager.page_count());
     footer += L"  +";
-    lines_.push_back(std::move(footer));
+    next.push_back(std::move(footer));
+
+    // Same dedupe as the composition window: an engine update that produces
+    // the identical page (key repeat, IMM32 re-entry) must not repaint.
+    const bool content_changed = next != lines_;
+    lines_.swap(next);
 
     if (!ensure_created(inst, class_name, L"", 160,
                         static_cast<int>(lines_.size() * line_height_) + 8)) {
         return;
     }
 
-    HDC dc = GetDC(hwnd_);
-    if (dc != nullptr) {
-        const HGDIOBJ old = font_ != nullptr ? SelectObject(dc, font_) : nullptr;
-        int max_width = 0;
-        for (const auto& line : lines_) {
-            SIZE size{};
-            if (GetTextExtentPoint32W(dc, line.c_str(),
-                                      static_cast<int>(line.size()), &size)) {
-                if (size.cx > max_width) max_width = size.cx;
-                if (size.cy > 0) line_height_ = static_cast<std::size_t>(size.cy + 4);
+    if (content_changed) {
+        HDC dc = GetDC(hwnd_);
+        if (dc != nullptr) {
+            const HGDIOBJ old = font_ != nullptr ? SelectObject(dc, font_) : nullptr;
+            int max_width = 0;
+            for (const auto& line : lines_) {
+                SIZE size{};
+                if (GetTextExtentPoint32W(dc, line.c_str(),
+                                          static_cast<int>(line.size()), &size)) {
+                    if (size.cx > max_width) max_width = size.cx;
+                    if (size.cy > 0) line_height_ = static_cast<std::size_t>(size.cy + 4);
+                }
+            }
+            if (old != nullptr) SelectObject(dc, old);
+            ReleaseDC(hwnd_, dc);
+
+            const int width = max_width + 20;
+            const int height = static_cast<int>(lines_.size() * line_height_) + 8;
+            if (width > 16 && height > 16) {
+                width_ = width;
+                height_ = height;
             }
         }
-        if (old != nullptr) SelectObject(dc, old);
-        ReleaseDC(hwnd_, dc);
-
-        const int width = max_width + 20;
-        const int height = static_cast<int>(lines_.size() * line_height_) + 8;
-        if (width > 16 && height > 16) {
-            width_ = width;
-            height_ = height;
-            SetWindowPos(hwnd_, HWND_TOPMOST, 0, 0, width, height,
-                         SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
-        }
+        // The size is applied together with the position by place_windows().
+        InvalidateRect(hwnd_, nullptr, TRUE);
+        note_invalidate();
     }
 
-    InvalidateRect(hwnd_, nullptr, TRUE);
     show();
 }
 

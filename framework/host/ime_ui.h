@@ -38,4 +38,21 @@ void UiToolbarShow(rpimm::InputContext hIMC);
 // Hide the toolbar (IME deselected / context deactivated).
 void UiToolbarHide(rpimm::InputContext hIMC);
 
+// Window-operation counters for the diagnostic trace. Kept here (instead of
+// exposing framework/ui/ui_window.h) so the IMM32 layer never depends on UI
+// headers. Absolute values, monotonically increasing over the process.
+struct UiCounters {
+    unsigned place_calls;    // geometry attempts
+    unsigned place_changes;  // attempts that really moved/resized a window
+    unsigned shows;          // ShowWindow calls that were not a no-op
+    unsigned invalidates;    // InvalidateRect calls
+};
+UiCounters UiCountersSnapshot();
+
+// P1-2: can the candidate font actually draw this code point? Uses
+// GetGlyphIndicesW against the same font the candidate window paints with,
+// cached per process. Fails OPEN (returns true) when GDI cannot answer, so a
+// missing implementation can never hide candidates.
+bool UiCanRender(char32_t codepoint);
+
 }  // namespace imfw

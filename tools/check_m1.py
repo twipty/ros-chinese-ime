@@ -358,6 +358,41 @@ def run(root: Path) -> int:
     c.check("framework core contains no pinyin knowledge",
             not framework_pinyin_refs, ", ".join(framework_pinyin_refs))
 
+    # 10. M2 invariants that cost a whole test round when they regress.
+    #
+    # P0-3: the composition window measured its own text and stored the new
+    # width, but never handed it to Win32, so "zhongguo" stayed clipped to the
+    # width of "zhong". Geometry (position AND size) must have exactly one
+    # owner: ime_ui's place_windows(), which knows the caret anchor and the
+    # screen edges.
+    comp_cpp = strip_cpp_comments(read(root, "framework/ui/composition_window.cpp"))
+    ime_ui_cpp = strip_cpp_comments(read(root, "framework/ui/ime_ui.cpp"))
+    c.check("composition window geometry owned by place_windows (no SetWindowPos)",
+            "SetWindowPos" not in comp_cpp and
+            "apply_geometry" in ime_ui_cpp)
+    # ...and the per-keystroke repaint must be conditional, otherwise every
+    # IMM32 re-entry (1-3 per key) flickers the window.
+    c.check("composition repaint is conditional on content change",
+            "content_changed" in comp_cpp)
+
+    # P1-1: an .ime without its .dat shows an empty candidate window. The
+    # installer must place both and remove both.
+    installer_code = strip_cpp_comments(read(
+        root, "tools/install-rospinyin/install.cpp"))
+    c.check("installer ships and removes the data table too",
+            installer_code.count("kDatFileName") >= 3 and
+            "kDatFileName" in installer_code.split("int uninstall()")[1])
+
+    # P0-2: the OS-side open flag is aligned at activation and never used as a
+    # key gate (ReactOS hands keys to ImeProcessKey whatever fOpen says, so
+    # gating would disable the IME whenever the flag is stale).
+    entry_code = strip_cpp_comments(entry)
+    gate = function_body(entry_code, r"bool should_consume_key\([^)]*\)")
+    c.check("open status is aligned once, never used as a key gate",
+            "AlignOpenStatus(" in entry_code and
+            gate is not None and "OpenStatus" not in gate,
+            "should_consume_key not found" if gate is None else "")
+
     return c.summary()
 
 

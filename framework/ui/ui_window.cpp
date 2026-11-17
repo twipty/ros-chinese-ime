@@ -162,7 +162,13 @@ WindowRegistry& window_registry() {
     return instance;
 }
 
+UiStats g_stats;
+
 }  // namespace
+
+UiStats ui_stats() { return g_stats; }
+
+void note_invalidate() { ++g_stats.invalidates; }
 
 HFONT CreateUiFont(int pixel_height) {
     for (const wchar_t* face : kFontFaces) {
@@ -228,20 +234,52 @@ bool UiWindow::ensure_created(HINSTANCE inst, const wchar_t* class_name,
 
 void UiWindow::show() {
     if (hwnd_ == nullptr) return;
-    ShowWindow(hwnd_, SW_SHOWNOACTIVATE);
-    visible_ = true;
+    // ShowWindow on an already-visible window still sends WM_SHOWWINDOW in
+    // some implementations and always forces a z-order pass; with one call per
+    // engine update that is a visible flicker. Only do it when hidden.
+    if (!visible_) {
+        ShowWindow(hwnd_, SW_SHOWNOACTIVATE);
+        visible_ = true;
+        ++g_stats.show_real;
+    }
 }
 
 void UiWindow::hide() {
     if (hwnd_ == nullptr) return;
-    ShowWindow(hwnd_, SW_HIDE);
-    visible_ = false;
+    if (visible_) {
+        ShowWindow(hwnd_, SW_HIDE);
+        visible_ = false;
+    }
 }
 
 void UiWindow::move_to(int x, int y) {
+    apply_geometry(x, y, width_, height_);
+}
+
+void UiWindow::apply_geometry(int x, int y, int width, int height) {
     if (hwnd_ == nullptr) return;
-    SetWindowPos(hwnd_, HWND_TOPMOST, x, y, 0, 0,
-                 SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    ++g_stats.place_calls;
+
+    // P0-3: the composition window used to grow its cached width_/height_ but
+    // never tell Win32, so "zhongguo" was clipped to the width measured for
+    // "zhong". Sizing belongs here, together with the position, and both are
+    // skipped when unchanged so a caret that did not move costs no messages.
+    if (width <= 0) width = width_;
+    if (height <= 0) height = height_;
+    if (x == applied_x_ && y == applied_y_ && width == applied_w_ &&
+        height == applied_h_) {
+        return;
+    }
+
+    SetWindowPos(hwnd_, HWND_TOPMOST, x, y, width, height,
+                 SWP_NOZORDER | SWP_NOACTIVATE);
+    applied_x_ = x;
+    applied_y_ = y;
+    applied_w_ = width;
+    applied_h_ = height;
+    width_ = width;
+    height_ = height;
+    ++g_stats.place_changes;
 }
 
 UiWindow* UiWindow::from_handle(HWND hwnd) {

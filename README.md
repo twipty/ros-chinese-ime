@@ -127,7 +127,7 @@
 - 中文资源与版本信息落定：`FILETYPE=VFT_DRV` / `FILESUBTYPE=VFT2_DRV_INPUTMETHOD`、`Translation 0x0804/1200`、布局文本「中文(简体) - RosPinyin」。
 - `tools/install-rospinyin/install.cpp` 按 M0 红线重写注册链路：**动态 HKL**、**不写 Preload**、**`/step1`…`/step4` 逐键分步注册**（ReactOS 每步重启验证）、自带 `/status` 与 `/u`。
 - 引擎契约 `engine/include/rospinyin/engine.hpp` 定型，M2 替换实现时 API 不变；`ui/` 给出窗口分层约定。
-- 质量闸门：`tools/check_m1.py`（25 项：日语残留、导出表、版本字段、M0 红线、命名一致性）+ Linux 下用 `tools/syntax_stub` 对 Windows 源码做零链接语法编译；本机 `ctest` 3/3 通过。
+- 质量闸门：`tools/check_m1.py`（长期契约闸门，当前 57 项：日语残留、导出表、版本字段、M0 红线、命名一致性、M2 不变量）+ Linux 下用 `tools/syntax_stub` 对 Windows 源码做零链接语法编译；本机 `ctest` 3/3 通过。
 
 **尚未完成（此为 2026-11-13 历史状态，后续已更新）**：真实 Windows/MinGW 构建产物、Windows 参照机裸加载验证、ReactOS VM 分步注册与 50 次切换压测。本机为 Linux 无 Windows 工具链，**当前仓库不含可运行的 `rospinyin.ime` 二进制**；Windows CI job 已接线，推送后应先确认其产物。→ 见 [M1-REPORT.md](M1-REPORT.md) 第二轮更新与下文第 11 节。
 
@@ -156,7 +156,7 @@
 3. **简体「谁」打不出**：Unihan 中 U+8C01 `kMandarin` 只有 `shéi`，`shuí` 被丢弃；且引擎从不读次读音字段。`mkdat` 改为把 `kHanyuPinlu` 的音作为次读音保留，`CodeTable::load_dat` 增加 alt 别名索引。
 4. **候选里的空心框**：44,355 字里 34,457 条是 Unihan 独有生僻字（68% 在字体子集外）。`PinyinSession` 默认只放有字频的字（9,898 条），该音节为空时回退全表。
 
-修复效果（真实引擎 + 真实数据）：`shui` 34 条 → **7 条「水 谁 税 睡 稅 誰 脽」**，简体「谁」第 2 位，空心框 20 → 0。回归 `ctest` 11/11、`check_m1` 53/53。
+修复效果（真实引擎 + 真实数据）：`shui` 34 条 → **7 条「水 谁 税 睡 稅 誰 脽」**，简体「谁」第 2 位，空心框 20 → 0。回归 `ctest` 11/11、`check_m1` 57/57。
 
 
 ## 11.5 框架抽取：引擎宿主 / UI / 工具条独立为可复用模块（2026-11-16 变更目标）

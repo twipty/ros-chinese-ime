@@ -24,6 +24,11 @@
 #include "session_store.hpp"
 #include "trace_stamp.h"
 
+// IMM32 client API (ImmGetOpenStatus / ImmSetOpenStatus). The IME-side ABI in
+// imm32_abi.h deliberately does not pull this header, but the *client* half is
+// needed here for the open-status alignment described at AlignOpenStatus().
+#include <imm.h>
+
 #include <imfw/candidate_pager.hpp>
 #include <imfw/emit_text.hpp>
 #include <imfw/scheme.hpp>
@@ -285,6 +290,46 @@ void adopt_result(ImeSessionState& state, const imfw::Result& result) {
     state.segments = result.segments;
 }
 
+// P1-2: keep only candidates the candidate font can draw. Without this,
+// `shi` offered a ranked extension-A character that painted as a tofu box and
+// inserted a box into the document when picked.
+//
+// Two guards make a wrong font harmless:
+//   * everything dropped (or more than half) means the font has no CJK at all
+//     — that is a font problem, not a candidate problem, so keep the list;
+//   * the probe fails open (see UiCanRender), so a GDI without
+//     GetGlyphIndicesW behaves exactly as before.
+std::vector<imfw::Candidate> renderable_candidates(
+    const std::vector<imfw::Candidate>& input) {
+    if (input.empty()) return input;
+
+    std::vector<imfw::Candidate> kept;
+    kept.reserve(input.size());
+    for (const auto& candidate : input) {
+        bool drawable = true;
+        for (const char32_t codepoint : candidate.text) {
+            if (codepoint != 0 && !imfw::UiCanRender(codepoint)) {
+                drawable = false;
+                break;
+            }
+        }
+        if (drawable) kept.push_back(candidate);
+    }
+
+    const std::size_t dropped = input.size() - kept.size();
+    if (dropped == 0) return input;
+    if (kept.empty() || kept.size() * 2 < input.size()) {
+        IMFW_TRACE("cand-filter dropped ").d(static_cast<long long>(dropped))
+            .s(" of ").d(static_cast<long long>(input.size()))
+            .s(" -> font cannot draw CJK, keeping all");
+        return input;
+    }
+    IMFW_TRACE("cand-filter dropped ").d(static_cast<long long>(dropped))
+        .s(" of ").d(static_cast<long long>(input.size()))
+        .s(" (no glyph)");
+    return kept;
+}
+
 UINT process_key(rpimm::InputContext hIMC, UINT vk, const BYTE* lpbKeyState,
                  rpimm::TransMsgList* lpTransMsgList) {
     ImeSessionState* state = imfw::acquire_session(hIMC);
@@ -323,7 +368,7 @@ UINT process_key(rpimm::InputContext hIMC, UINT vk, const BYTE* lpbKeyState,
     if (vk == VK_BACK) {
         const imfw::Result result = state->engine->backspace();
         adopt_result(*state, result);
-        state->pager.reset(result.candidates);
+        state->pager.reset(renderable_candidates(result.candidates));
         state->composing = !result.composition.empty();
         if (state->composing) refresh_ui(hIMC, *state);
         else imfw::UiHide(hIMC);
@@ -347,10 +392,16 @@ UINT process_key(rpimm::InputContext hIMC, UINT vk, const BYTE* lpbKeyState,
         // A local buffer, not std::string(1, c).c_str(): the temporary would be
         // destroyed before TraceLine's destructor writes the line.
         char shown[2] = {static_cast<char>(input < 0x80 ? input : '?'), '\0'};
+        const imfw::UiCounters ui = imfw::UiCountersSnapshot();
         IMFW_TRACE("feed ch=").s(shown)
             .s(" act=").d(static_cast<long long>(result.action))
             .s(" comp=[").s(result.composition.c_str()).s("] cand=")
-            .d(static_cast<long long>(result.candidates.size()));
+            .d(static_cast<long long>(result.candidates.size()))
+            // Window work done for this key: moves+resizes that actually
+            // changed something, and repaint requests. P0-3 measured the
+            // "composition window jumps" report against these two numbers.
+            .s(" wmove=").d(static_cast<long long>(ui.place_changes))
+            .s(" wrep=").d(static_cast<long long>(ui.invalidates));
     }
     switch (result.action) {
     case imfw::Action::Commit:
@@ -362,7 +413,7 @@ UINT process_key(rpimm::InputContext hIMC, UINT vk, const BYTE* lpbKeyState,
         break;
     case imfw::Action::Absorb:
         adopt_result(*state, result);
-        state->pager.reset(result.candidates);
+        state->pager.reset(renderable_candidates(result.candidates));
         state->composing = !result.composition.empty();
         refresh_ui(hIMC, *state);
         break;
@@ -457,12 +508,45 @@ BOOL WINAPI ImeSelect(rpimm::InputContext hIMC, BOOL fSelect) {
     return TRUE;  // select/deselect must never fail during a layout switch
 }
 
+namespace {
+
+// P0-2 (M2-REMAINING): align IMM32's own "IME is open" flag with reality.
+//
+// ReactOS creates the input context with pIC->fOpen = FALSE
+// (imm32_imm.c, IntCreateInputContext) and nothing in the layout-activation
+// path sets it back: ImmSetActiveContext only reads it to feed
+// NtUserNotifyIMEStatus. Consequences of the stale FALSE:
+//   * ImmGetOpenStatus() reports "closed" for an IME that is processing keys
+//     — this is what the trace line `open=0` was showing; the `-1` that
+//     imhost printed came from its own `g_himc == NULL` sentinel, not from
+//     IMM32, so the two readings never contradicted each other;
+//   * the shell never sees 中/英 state (UserSetImeConversionKeyState is
+//     called with ALPHANUMERIC);
+//   * the next Ctrl+Space takes imm32_keymsg.c!Imm32CImeNonImeToggle's
+//     "closed" branch, so it opens instead of switching to the EN layout.
+// Setting it once per activation makes ImmGetOpenStatus agree with what the
+// user sees and gives M3's Shift temporary-English a well-defined baseline.
+// Deliberately not a gate: key routing never depends on this value, because
+// ReactOS hands keys to ImeProcessKey whatever fOpen says.
+void AlignOpenStatus(rpimm::InputContext hIMC) {
+    HIMC imc = reinterpret_cast<HIMC>(hIMC);
+    const int before = ImmGetOpenStatus(imc) ? 1 : 0;
+    int after = before;
+    if (before == 0 && ImmSetOpenStatus(imc, TRUE)) {
+        after = ImmGetOpenStatus(imc) ? 1 : 0;
+    }
+    IMFW_TRACE("openalign before=").d(before).s(" after=").d(after);
+}
+
+}  // namespace
+
 BOOL WINAPI ImeSetActiveContext(rpimm::InputContext hIMC, BOOL fFlag) {
     IMFW_TRACE("active f=").d(fFlag)
         .s(" imc=").h(static_cast<unsigned long>(
             reinterpret_cast<std::uintptr_t>(hIMC)));
     if (hIMC == nullptr) return TRUE;
     if (fFlag) {
+        AlignOpenStatus(hIMC);
         // Some IMM32 implementations only deliver ImeSetActiveContext for a
         // newly focused HIMC; activating here as well is idempotent.
         ImeSessionState* state = imfw::acquire_session(hIMC);
@@ -499,11 +583,10 @@ BOOL WINAPI ImeProcessKey(rpimm::InputContext hIMC, UINT uVirtKey, LPARAM lParam
     ImeSessionState* state = imfw::acquire_session(hIMC);
     const bool consume = should_consume_key(state, uVirtKey, lpbKeyState);
 #if defined(ROSPINYIN_TRACE)
-    // open= is an observation, deliberately not a gate. ReactOS sets
-    // pIC->fOpen = FALSE when the IMC is created (imm32_imm.c, ImmCreateContext)
-    // and nothing in the layout-activation path sets it back, so it may well
-    // read 0 while the IME is working perfectly. Until the real value is known
-    // from a VM run, gating on it would risk disabling the IME entirely.
+    // open= is an observation, never a gate. After AlignOpenStatus() ran in
+    // ImeSetActiveContext it should read 1; a persistent 0 means the
+    // activation callback never fired for this HIMC (see P0-2 in
+    // m2/M2-REMAINING.md for the full derivation from the ReactOS sources).
     const int open = ImmGetOpenStatus(reinterpret_cast<HIMC>(hIMC)) ? 1 : 0;
     IMFW_TRACE("processkey vk=").h(uVirtKey)
         .s(" state=").d(state != nullptr)

@@ -885,6 +885,97 @@ ReactOS 这版没有 psapi、也没有 toolhelp 的模块枚举（`EnumProcessMo
 **长期口径**：验证期用 dev 布局即可，不必重启；要让 `rospinyin7.ime` 本身更新，需要先关掉所有加载过它的进程（或重启 VM），因为文件被 image 映射时无法原地覆盖。这一点应在 M2 验收单里写清，避免下次又误判成"改了没生效"。
 
 
+### 11.11 P0-2 收口：`open=-1` 是探针假象，`open=0` 是 ReactOS 的出厂值（2026-11-17 22:4x）
+
+M2 清单里挂着的"`ImmGetOpenStatus` 读数异常"，其实是**两个不同来源的数字被当成了同一个**：
+
+| 读数 | 出处 | 真实含义 |
+|---|---|---|
+| `open=-1` | `imhost` 状态栏/`tick` 行：`g_himc ? ImmGetOpenStatus(g_himc) : -1` | `g_himc == NULL`，即"这个窗口还没有关联输入上下文"。`-1` 是探针的哨兵值，恰好等于 `TRUE`，所以看起来像"IMM32 说已打开" |
+| `open=0` | `.ime` 内 `processkey` 行 | 真实的 `pIC->fOpen`，ReactOS 建上下文时就是 `FALSE` |
+
+ReactOS 侧的三条事实（0.4.16 源码）：
+
+1. `win32ss/user/imm32/imm.c` 建上下文时 `pIC->fOpen = FALSE`，`fdwConversion = fdwSentence = 0`；
+2. `ImmSetActiveContext`（`imm.c`）只**读** `pIC->fOpen` 去调 `NtUserNotifyIMEStatus`，从不回置；
+   `ImmInstallIMEW` 也不碰它。所以布局切换多少次，它都还是 `FALSE`；
+3. 按键路由**不看**这个值：`ImmProcessKey`（`keymsg.c`）无条件调 `pImeDpi->ImeProcessKey`，
+   只有 `VK_PACKET` + 非 Unicode IME 的分支才看 `pIC->fOpen`。这就是"IME 明明在工作，`open` 却是 0"。
+
+**结论**：`open=0` 不是 bug 而是 ReactOS 的默认状态；把它当门禁会直接废掉输入法。真正的危害有三条：
+语言栏的 中/英 状态永远显示为关（`UserSetImeConversionKeyState(..., IME_CMODE_ALPHANUMERIC)`）、
+下一次 `Ctrl+Space` 走 `Imm32CImeNonImeToggle` 的"关闭"分支（本该切 EN 布局）、
+以及 M3 的 Shift 临时英文没有确定的基线。
+
+**修法**：`ImeSetActiveContext(fFlag=TRUE)` 里把 OS 侧状态对齐一次（`AlignOpenStatus()`，
+`framework/host/imm_entry.cpp`）：读 `before`，为 0 则 `ImmSetOpenStatus(TRUE)` 再读 `after`，
+trace 打 `openalign before=0 after=1`。键路由仍不依赖它（`check_m1.py` 已加门禁：
+`should_consume_key` 体内不得出现 `OpenStatus`）。
+
+**最小复现序列**（`imhost.exe` 窗口里即可）：
+
+```
+1. 启动 imhost（任何模式），窗口获得焦点
+2. 状态栏 ImmProp=0x00090000、IME文件=rospinyin.ime 时，trace 里 processkey 行的 open= 为 1
+3. 若某轮仍是 0：说明该 HIMC 没走过 ImeSetActiveContext（例如从 imhost 自带 IME 窗口直接取到的上下文）
+```
+
+### 11.12 P0-3 收口：抖动来自 ReactOS 的 EDIT 光标同步，不是引擎在动窗口（2026-11-17 22:5x）
+
+原先的猜测"引擎每次 feed 都调 `ImmSetCompositionWindow`"是错的——全仓库没有一处
+`ImmSetCompositionWindow` 调用。真正的发送者在应用侧：
+
+```c
+/* win32ss/user/user32/controls/edit.c, 仅 __REACTOS__ 分支 */
+static void EDIT_SetCaretPos(EDITSTATE *es, INT pos, BOOL after_wrap) {
+    ...
+    SetCaretPos(pt.x, pt.y);
+    if (ImmIsIME(hKL))
+        EDIT_ImmSetCompositionWindow(es, pt);   /* -> ImmSetCompositionWindow -> IMN_SETCOMPOSITIONWINDOW */
+}
+```
+
+`EDIT_SetCaretPos` 在每次插入、`EDIT_EM_ScrollCaret`、`EDIT_AdjustFormatRect` 后都会跑，
+而且**不检查当前是否在组合中**，只看 `ImmIsIME(hKL)`。这解释了"每键 1–3 次通知"：一次按键
+依次触发"插入字符→滚动→格式化矩形"三条光标同步。通知数**不能从 IME 侧降低**，
+它只影响 `pIC->cfCompForm`，而我们从不读 `ImmGetCompositionWindow`。
+
+用户看到的跳动是另一回事，出在我们自己的窗口上，两条真 bug：
+
+1. `CompositionWindow::update()` 量了文本、写了 `width_/height_`，却**从未** `SetWindowPos`：
+   `zhong` 建窗 61 px 宽，`zhongguo` 仍按 61 px 画，后半截被裁掉；
+2. `update()` 每次都 `InvalidateRect + ShowWindow`，`place_windows()` 每次都 `SetWindowPos`，
+   于是每来一条 `IMN_SETCOMPOSITIONWINDOW` 就整窗重绘一次。
+
+**修法**：几何只有一个 owner——`ime_ui.cpp:place_windows()` 调 `UiWindow::apply_geometry(x,y,w,h)`，
+它把位置和尺寸一起下发，且**只有真正变化时才发消息**；`show()` 只在隐藏时调 `ShowWindow`；
+两个窗口的重绘都以"文本/候选页内容是否变化"为前提。trace 的 `feed` 行新增绝对计数
+`wmove=`（真正改变几何的次数）与 `wrep=`（重绘请求次数），一次键正常应为每窗 0–1。
+
+### 11.13 P1 收口：安装器要两份文件、候选按字形过滤、生僻字开关说明
+
+**P1-1 安装器只拷 `.ime`（已修）**。M2 的 IME 还依赖 `system32\rospinyin.dat`，
+旧 `install.cpp` 只 `copy` 了 `.ime`，装完就是"候选窗空白"——而这条故障和"数据没生效"
+长得一模一样。现在 `/step1` 拷两份并**逐字节比大小**（`kVerifyFailed=4`），
+`/status` 分别报告，`/u` 两份都删（含 `.old`）。另外文件被 image 映射时
+`CopyFile` 会 `ERROR_SHARING_VIOLATION(32)`：现在先 `MoveFileEx(name -> name.old)`
+腾名字再写，并明确提示"运行中的 IME 仍用旧文件，重启后生效"——与 imhost 的
+`ReplaceFileBestEffort()` 是同一套退让链，只是搬进了安装器。
+
+**P1-2 扩展 A 区方框（已修）**。随包字体子集是 `U+4E00–U+9FA5`（实测 cmap 21,287 字，
+扩展 A 区 0 个），而 `shi` 的候选里有一个**有字频**的扩展 A 字，于是显示成豆腐块、
+选中后把方框写进文档。修法不是扩字体（11 MB → 更大），而是**运行时按字形过滤**：
+`UiCanRender()` 用候选窗同一个 HFONT 调 `GetGlyphIndicesW(..., GGI_MARK_NONEXISTING_GLYPHS)`
+（结果按码点缓存，`shi` 95 个候选只探一次），`imm_entry.cpp:renderable_candidates()`
+在进分页器**之前**剔除——必须在分页器之前，否则数字键会与屏幕上的行号错位。
+两条护栏：探针不可用一律**放行**（`GDI_ERROR` 视为可画）；若超过一半候选被剔
+（说明当前字体根本没有 CJK），整体放行并 trace `cand-filter ... keeping all`。
+
+**P1-3 生僻字开关**。`PinyinSession::set_show_rare(true)` 让无字频字也进候选；
+M2 没有 UI 入口，需要时改 `pinyin/src/pinyin_session.cpp` 的默认值或由 Scheme 传入。
+默认关闭是有意的：打开后 `shi` 这类音节会从 95 条涨到数百条，且多数在子集外
+（会被 P1-2 的过滤器挡掉，等于白翻页）。M3 再给语言栏菜单项。
+
 ### 11.2 其他待办
 
 - ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。
@@ -901,7 +992,7 @@ ReactOS 这版没有 psapi、也没有 toolhelp 的模块枚举（`EnumProcessMo
 **改代码**
 
 1. `cmake --build build --parallel && ctest --test-dir build` → 11/11；
-2. `python3 tools/check_m1.py` → 50/50；
+2. `python3 tools/check_m1.py` → 57/57（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
 3. 动了 `framework/host` 或 `framework/ui`：跑 CI 那步宿主语法检查（§6.3），确认 `-Wchanges-meaning` / ABI 断言不炸；
 4. 动了 ABI：本地用 zig 真实 MinGW 头编译一次 `framework/host/imm_entry.cpp`（`-target x86-windows-gnu -c`）。
 
@@ -972,6 +1063,8 @@ GIT_CONFIG_SYSTEM=/dev/null GIT_CONFIG_GLOBAL=/dev/null \
 | `framework/README.md` | 框架模块地图、Scheme 复用缝、G1–G4 处置、生命周期红线 |
 | `pinyin/README.md` | 拼音插件文件职责与数据所有权 |
 | `m2/M2-ACCEPTANCE.md` | 15 项真机验收操作单（含判定口径） |
+| `m2/M2-REPORT.md` | M2 报告：结论、交付物、根因修复 10 条、已知限制、门禁 |
+| `m2/M2-REMAINING.md` | M2 剩余事项与优先级（当前只剩真机验收单） |
 | `m2/M2-DATA-PLAN.md` | 数据源选型、声调/`ü` 处理、规模核算 |
 | `m0/vm/NOVNC-GUIDE.md` | VM 人机协作操作单（v7，含所有键位坑与图标修复说明） |
 | `xingma/XINGMA-PLAN.md` | 形码产品线正式计划（1.0） |

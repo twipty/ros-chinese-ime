@@ -51,6 +51,48 @@
 
 ---
 
+## 未发布（`alpha0.0.2` 候选）— 2026-11-17
+
+M2 收口改动。**不改数据格式、不改 IMM32 ABI**，`alpha0.0.1` 的数据表可直接沿用。
+
+### 修复
+
+- **`ImmGetOpenStatus` 读数"异常"**：`-1` 是宿主程序的 `g_himc == NULL` 哨兵（恰等于 `TRUE`），
+  `0` 是 ReactOS 建输入上下文时的出厂值（`imm32_imm.c` `pIC->fOpen = FALSE`，激活路径从不回置）。
+  现在 `ImeSetActiveContext` 激活时把 OS 侧状态对齐为 `TRUE`，trace 记录 `openalign before=/after=`；
+  键路由仍不依赖该值（契约闸门已加：`should_consume_key` 内不得出现 `OpenStatus`）。
+- **组合串窗口被裁切**：窗口量完文本只更新了缓存宽高，从未 `SetWindowPos`，
+  `zhongguo` 仍按 `zhong` 的宽度绘制。几何改为单一 owner（`place_windows()` → `apply_geometry()`）。
+- **快速输入时窗口跳动**：每次引擎更新都 `InvalidateRect + ShowWindow + SetWindowPos`。
+  现在只有几何真正变化才下发、只有窗口隐藏时才 `ShowWindow`、只有内容变化才重绘。
+  顺带查清：`IMN_SETCOMPOSITIONWINDOW` 每键 1–3 次是 ReactOS 的 `EDIT_SetCaretPos` 发的
+  （`edit.c`，仅 `__REACTOS__` 分支），不是引擎行为，IME 侧无法减少。
+- **安装器只拷贝 `.ime`**：装完缺 `rospinyin.dat` → 候选窗空白。`/step1` 现在两份都拷并校验字节数；
+  文件被映射（`ERROR_SHARING_VIOLATION`）时先改名 `.old` 再写，`/status` 报告两份，`/u` 两份都删。
+- **扩展 A 区字符显示为方框**：随包字体子集到 `U+9FA5` 为止，`shi` 里有一个**有字频**的扩展 A 字。
+  候选进分页器前按 `GetGlyphIndicesW` 过滤（按码点缓存）；探针不可用或过半被剔时整体放行，
+  避免字体异常时把候选清空。
+
+### 工程
+
+- `tools/check_m1.py`：53 → **57** 项，新增 4 条 M2 不变量（组合窗几何 owner、重绘条件化、
+  安装器两份 payload、open 状态不得作为门禁）。
+- 新增 `m2/M2-REPORT.md`；`m2/M2-REMAINING.md` 更新为"仅剩真机验收单"。
+- trace 新增 `wmove=`（真正改变窗口几何的次数）与 `wrep=`（重绘请求次数）、
+  `cand-filter`（字形过滤剔除数）。
+
+### 已知限制（未变）
+
+- 单字上屏；无中文标点/全半角/Shift 临时英文（M3）
+- 字体子集不含扩展 A 区，该区候选被过滤（不出现，而不是显示方框）
+- 安装器仍是命令行工具，ReactOS 上需 `/step1`…`/step4` 分步 + 重启
+
+### 回归基线
+
+`ctest` 11/11、`tools/check_m1.py` 57/57、`xingma/` 零改动。
+
+---
+
 ## 版本号约定
 
 - `alpha0.0.x`：M2 阶段，单字可用，数据与接口可能随时调整
