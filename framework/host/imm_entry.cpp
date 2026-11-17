@@ -29,6 +29,7 @@
 #include <imfw/utf8.hpp>
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <cwchar>
 #include <string>
@@ -69,13 +70,28 @@ char32_t framework_key_char(UINT vk) {
 // unit, surrogate pairs for non-BMP). The UTF-16 logic lives in
 // imfw-engine (imfw/emit_text.hpp) so it is unit-tested on the host; the
 // slot struct is layout-compatible with TRANSMESSAGE, guarded below.
-UINT emit_text(rpimm::TransMsg* messages, const std::u32string& text) {
+//
+// Audit 2026-11-17 §2.1 (P0): the buffer ImeToAsciiEx receives is a
+// TRANSMSGLIST whose uMsgCount header is pre-filled by IMM32 with the
+// buffer capacity. Messages must be written at list->TransMsg[0] (offset
+// sizeof(UINT)), never at offset 0 — that would clobber the header and
+// shift every message by one slot, so IMM32 would read garbage and drop
+// the last message. The capacity we honor is min(uMsgCount, kMaxEmit).
+UINT emit_text(rpimm::TransMsgList* lpTransMsgList, const std::u32string& text) {
     static_assert(sizeof(imfw::TransMsgSlot) == sizeof(rpimm::TransMsg),
                   "TRANSMESSAGE must stay layout-compatible with "
                   "imfw::TransMsgSlot");
+    using rpimm_list = rpimm::TransMsgList;
+    static_assert(offsetof(rpimm_list, TransMsg) == sizeof(UINT),
+                  "TRANSMSGLIST.TransMsg must follow uMsgCount directly "
+                  "(no padding) on the Win32 ABI");
+    if (lpTransMsgList == nullptr || lpTransMsgList->uMsgCount == 0) return 0;
+    const UINT capacity = lpTransMsgList->uMsgCount < imfw::kMaxEmitMessages
+                              ? lpTransMsgList->uMsgCount
+                              : imfw::kMaxEmitMessages;
     return imfw::emit_text(
-        reinterpret_cast<imfw::TransMsgSlot*>(messages),
-        imfw::kMaxEmitMessages, text);
+        reinterpret_cast<imfw::TransMsgSlot*>(lpTransMsgList->TransMsg),
+        capacity, text);
 }
 
 void refresh_ui(rpimm::InputContext hIMC, ImeSessionState& state) {
@@ -128,7 +144,7 @@ void adopt_result(ImeSessionState& state, const imfw::Result& result) {
 }
 
 UINT process_key(rpimm::InputContext hIMC, UINT vk, const BYTE* lpbKeyState,
-                 rpimm::TransMsg* lpTransMsg) {
+                 rpimm::TransMsgList* lpTransMsgList) {
     ImeSessionState* state = imfw::acquire_session(hIMC);
     if (state == nullptr || state->engine == nullptr) return 0;
 
@@ -148,7 +164,7 @@ UINT process_key(rpimm::InputContext hIMC, UINT vk, const BYTE* lpbKeyState,
         if (chosen == nullptr || chosen->text.empty()) return 0;
         const std::u32string commit_text = chosen->text;
         finish_composition(hIMC, *state);
-        return emit_text(lpTransMsg, commit_text);
+        return emit_text(lpTransMsgList, commit_text);
     }
 
     // Paging direction is likewise the Scheme's policy (G4).
@@ -186,7 +202,7 @@ UINT process_key(rpimm::InputContext hIMC, UINT vk, const BYTE* lpbKeyState,
         if (!result.commit_text.empty()) {
             const std::u32string commit_text = result.commit_text;
             finish_composition(hIMC, *state);
-            return emit_text(lpTransMsg, commit_text);
+            return emit_text(lpTransMsgList, commit_text);
         }
         break;
     case imfw::Action::Absorb:
@@ -301,10 +317,10 @@ BOOL WINAPI ImeProcessKey(rpimm::InputContext hIMC, UINT uVirtKey, LPARAM lParam
 }
 
 UINT WINAPI ImeToAsciiEx(UINT uVirtKey, UINT uScanCode, const BYTE* lpbKeyState,
-                         rpimm::TransMsg* lpTransMsg, UINT fuState,
+                         rpimm::TransMsgList* lpTransMsgList, UINT fuState,
                          rpimm::InputContext hIMC) {
     (void)uScanCode; (void)fuState;
-    return process_key(hIMC, uVirtKey, lpbKeyState, lpTransMsg);
+    return process_key(hIMC, uVirtKey, lpbKeyState, lpTransMsgList);
 }
 
 BOOL WINAPI NotifyIME(rpimm::InputContext hIMC, DWORD dwAction, DWORD dwIndex,

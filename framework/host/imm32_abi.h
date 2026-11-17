@@ -42,6 +42,18 @@ struct TransMsg {
     LPARAM lParam;
 };
 
+// TRANSMSGLIST / LPTRANSMSGLIST (audit 2026-11-17 §2.1, DDK <immdev.h>).
+// ImeToAsciiEx does NOT receive a bare TRANSMSG array: it receives this
+// list, whose uMsgCount field is pre-filled by IMM32 with the capacity of
+// the buffer that follows. ReactOS win32ss/user/imm32/keymsg.c reads the
+// messages back from ->TransMsg[0] using the count we return, so writing
+// at offset 0 would overwrite the capacity header and shift every message
+// by one slot. The message array therefore starts right after the header.
+struct TransMsgList {
+    UINT     uMsgCount;   // in: capacity pre-filled by IMM32
+    TransMsg TransMsg[1]; // out: messages written here, count == return value
+};
+
 // Opaque at M1: no conversion list, no candidate list, no menu items.
 struct CandidateList;
 struct StyleBuf;
@@ -79,7 +91,7 @@ BOOL WINAPI ImeProcessKey(rpimm::InputContext hIMC, UINT uVirtKey, LPARAM lParam
                           const BYTE* lpbKeyState);
 
 UINT WINAPI ImeToAsciiEx(UINT uVirtKey, UINT uScanCode, const BYTE* lpbKeyState,
-                         rpimm::TransMsg* lpTransMsg, UINT fuState, rpimm::InputContext hIMC);
+                         rpimm::TransMsgList* lpTransMsgList, UINT fuState, rpimm::InputContext hIMC);
 
 BOOL WINAPI NotifyIME(rpimm::InputContext hIMC, DWORD dwAction, DWORD dwIndex, DWORD dwValue);
 
