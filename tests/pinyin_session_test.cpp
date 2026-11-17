@@ -157,6 +157,108 @@ int main() {
     check(session.composition().empty(), "deselect must clear composition");
     check(session.feed(U'g').action == Action::Passthrough,
           "deselected session must passthrough again");
+    session.on_select(true);
+
+    // Uppercase virtual keys are normalized by feed() itself, not only by
+    // the Scheme's input_char(): ZHONG composes exactly like lowercase.
+    session.cancel();
+    session.feed(U'Z'); session.feed(U'H'); session.feed(U'O');
+    session.feed(U'N'); session.feed(U'G');
+    check_equal(session.composition(), "zhong", "uppercase input normalized");
+    check(!session.candidates().empty() && session.candidates()[0].text == U"中",
+          "uppercase input still yields 中");
+
+    // Apostrophe is a hard boundary through the interactive feed() path too,
+    // not only segment_syllables(): the separator must be kept and the
+    // candidates must come from the syllable after it.
+    session.cancel();
+    feed_string(session, "xi'an");
+    check_equal(session.composition(), "xi'an", "typed apostrophe is kept");
+    check(session.syllables().size() == 2,
+          "xi'an splits into two typed syllables");
+    if (session.syllables().size() == 2) {
+        check_equal(session.syllables()[0], "xi", "xi'an first syllable");
+        check_equal(session.syllables()[1], "an", "xi'an second syllable");
+    }
+    check(!session.candidates().empty() && session.candidates()[0].text == U"安",
+          "xi'an candidates come from the last syllable an");
+
+    // A separator may end the buffer mid-typing ("xi'" waits for the next
+    // syllable), but the tail after it must still be a legal pinyin prefix.
+    session.cancel();
+    feed_string(session, "xi'");
+    check_equal(session.composition(), "xi'", "trailing separator is accepted");
+    check(session.syllables().empty(), "trailing separator has no candidates");
+    session.cancel();
+    feed_string(session, "xi'b");
+    check_equal(session.composition(), "xi'",
+                "illegal syllable after separator is rejected, separator kept");
+
+    // Invalid input is rejected without corrupting a valid in-flight prefix.
+    session.cancel();
+    feed_string(session, "zhon");
+    const Result rejected = session.feed(U'b');
+    check(rejected.action == Action::Absorb &&
+              rejected.commit_text.empty(),
+          "non-pinyin letter is absorbed, never committed");
+    check_equal(session.composition(), "zhon",
+                "rejected letter leaves the valid prefix intact");
+
+    // No-op paths on an empty composition must pass through, not absorb.
+    session.cancel();
+    check(session.backspace().action == Action::Passthrough,
+          "backspace on empty composition passes through");
+    check(session.feed(U' ').action == Action::Passthrough,
+          "space with no candidates passes through");
+    check(session.feed(U'1').action == Action::Passthrough,
+          "digit with no candidates passes through");
+    check(session.feed(0x1B).action == Action::Absorb,
+          "Esc still absorbs even when composition is empty");
+
+    // ---- rare candidates are hidden by default, never silently dropped ----
+    {
+        imfw::CodeTable table;
+        rospinyin::add_reading(table, U'水', 202, "shui3");
+        rospinyin::add_reading(table, U'谁', 648, "shui2");
+        // Unihan-only character: present in the table, no frequency rank.
+        rospinyin::add_reading(table, U'\u3968', imfw::dat::kUnknownRank, "shui4");
+        table.build_index();
+        auto shared = std::make_shared<const imfw::CodeTable>(std::move(table));
+
+        rospinyin::PinyinSession session(shared);
+        session.on_select(true);
+        feed_string(session, "shui");
+        check(session.candidates().size() == 2,
+              "unranked (glyph-less) characters stay out of the default list");
+        if (session.candidates().size() == 2) {
+            check(session.candidates()[0].text == std::u32string(1, U'水'),
+                  "ranked candidates keep frequency order");
+            check(session.candidates()[1].text == std::u32string(1, U'谁'),
+                  "谁 is offered for shui");
+        }
+
+        rospinyin::PinyinSession rare_session(shared);
+        rare_session.on_select(true);
+        rare_session.set_show_rare(true);
+        feed_string(rare_session, "shui");
+        check(rare_session.candidates().size() == 3,
+              "set_show_rare(true) restores the full list");
+    }
+
+    // When a syllable has *only* unranked characters the filter must not leave
+    // the user with nothing to pick.
+    {
+        imfw::CodeTable table;
+        rospinyin::add_reading(table, U'\u3968', imfw::dat::kUnknownRank, "guo2");
+        table.build_index();
+        auto shared = std::make_shared<const imfw::CodeTable>(std::move(table));
+
+        rospinyin::PinyinSession session(shared);
+        session.on_select(true);
+        feed_string(session, "guo");
+        check(session.candidates().size() == 1,
+              "a rare-only syllable still yields its candidate");
+    }
 
     if (failures != 0) {
         std::fprintf(stderr, "%d pinyin session test(s) failed\n", failures);

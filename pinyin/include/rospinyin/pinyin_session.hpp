@@ -52,6 +52,14 @@ public:
         return syllables_;
     }
 
+    // Characters with no frequency rank come from Unihan alone: 34,457 of the
+    // 44,355 entries, mostly CJK Ext-A/B. Most have no glyph in the bundled
+    // font subset, so rendering them only produces boxes. They stay out of the
+    // candidate list by default; the syllable still works because the filter
+    // falls back to the full list when it would leave nothing to choose from.
+    void set_show_rare(bool show) noexcept { show_rare_ = show; }
+    bool show_rare() const noexcept { return show_rare_; }
+
 private:
     void recompute();
     imfw::Result commit(std::size_t index);
@@ -61,6 +69,7 @@ private:
     std::vector<imfw::Candidate> candidates_;
     std::vector<std::string> syllables_;
     bool active_ = false;
+    bool show_rare_ = false;
 };
 
 }  // namespace rospinyin

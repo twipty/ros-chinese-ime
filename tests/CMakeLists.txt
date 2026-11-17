@@ -42,6 +42,12 @@ add_executable(rospinyin-utf8 utf8_test.cpp)
 target_link_libraries(rospinyin-utf8 PRIVATE imfw-engine)
 add_test(NAME utf8 COMMAND rospinyin-utf8)
 
+# Generic CodeTable utility: synthetic dat parsing, candidate ordering and
+# corruption rejection (framework/src/code_table.cpp, pinyin-agnostic).
+add_executable(rospinyin-code-table code_table_test.cpp)
+target_link_libraries(rospinyin-code-table PRIVATE imfw-engine)
+add_test(NAME code-table COMMAND rospinyin-code-table)
+
 # Static M1 contract checks (exports, version resource, M0 red lines).
 find_program(ROSPINYIN_PYTHON NAMES python3 python QUIET)
 if(ROSPINYIN_PYTHON)

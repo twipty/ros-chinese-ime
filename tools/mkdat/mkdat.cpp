@@ -371,19 +371,34 @@ bool choose_primary(const UniReading* uni, const FreqEntry* freq,
         primary.clear();
         // kHanyuPinlu breaks ties among polyphonic kMandarin readings by
         // matching on the toneless syllable (it may omit the tone mark).
+        std::string pinlu_reading;
+        bool pinlu_matched = false;
         if (uni != nullptr && !uni->pinlu_primary.empty()) {
             const std::string wanted =
                 rospinyin::pinyin::syllable_of(uni->pinlu_primary);
             for (const auto& reading : candidates) {
                 if (rospinyin::pinyin::syllable_of(reading) == wanted) {
-                    primary = reading;
+                    pinlu_reading = reading;
+                    pinlu_matched = true;
                     break;
                 }
             }
+            // Not in kMandarin at all: keep it as a lower-priority reading
+            // (see below) instead of silently dropping it.
+            if (!pinlu_matched) pinlu_reading = uni->pinlu_primary;
         }
-        if (primary.empty()) primary = candidates.front();
+        primary = pinlu_matched ? pinlu_reading : candidates.front();
         for (const auto& reading : candidates) {
             if (reading != primary) alts.push_back(reading);
+        }
+        // Unihan is inconsistent between the simplified and traditional
+        // records of the same word: U+8C01 谁 has kMandarin=shéi only, while
+        // U+8AB0 誰 has kMandarin="shuí shéi". Dropping the kHanyuPinlu
+        // reading therefore made 谁 reachable only by typing "shei" -- typing
+        // "shui" offered the traditional form alone. Keep the corpus reading
+        // as an alternative so both spellings resolve.
+        if (!pinlu_matched && !pinlu_reading.empty()) {
+            alts.push_back(pinlu_reading);
         }
         return true;
     }

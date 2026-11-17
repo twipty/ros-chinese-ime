@@ -47,7 +47,8 @@ bool is_dat_reading(std::string_view s) {
 
 }  // namespace
 
-std::size_t CodeTable::load_dat(std::string_view bytes) {
+std::size_t CodeTable::load_dat(std::string_view bytes,
+                                KeyOfReading key_of_reading) {
     dat::Header header{};
     if (!read_record(bytes, 0, header)) return 0;
     if (std::memcmp(header.magic, dat::kMagic, sizeof(dat::kMagic)) != 0) {
@@ -109,6 +110,37 @@ std::size_t CodeTable::load_dat(std::string_view bytes) {
         entry.rank = record.rank;
         entry.reading = std::move(reading);
         entry.key = key_names[record.syl_id];
+
+        if (key_of_reading != nullptr && record.alt_off != 0) {
+            std::string alts;
+            if (!pool_string(bytes, header.pool_off, header.pool_size,
+                             record.alt_off, alts)) {
+                clear();
+                return 0;
+            }
+            std::size_t begin = 0;
+            while (begin < alts.size()) {
+                std::size_t end = alts.find(' ', begin);
+                if (end == std::string::npos) end = alts.size();
+                const std::string_view piece(alts.data() + begin, end - begin);
+                begin = end + 1;
+                if (!is_dat_reading(piece)) {
+                    clear();
+                    return 0;
+                }
+                std::string alt_key = key_of_reading(piece);
+                if (alt_key.empty() || alt_key == entry.key) continue;
+                bool seen = false;
+                for (const auto& known : entry.alt_keys) {
+                    if (known == alt_key) {
+                        seen = true;
+                        break;
+                    }
+                }
+                if (!seen) entry.alt_keys.push_back(std::move(alt_key));
+            }
+        }
+
         entries_.push_back(std::move(entry));
     }
 
@@ -144,6 +176,15 @@ void CodeTable::build_index() {
         codes_.insert(code);
         for (std::size_t length = 1; length <= code.size(); ++length) {
             prefixes_.insert(code.substr(0, length));
+        }
+        // Polyphonic readings answer to their own key as well. The character
+        // still appears once per lookup, because each bucket holds its index.
+        for (const auto& alt : entries_[i].alt_keys) {
+            by_code_[alt].push_back(i);
+            codes_.insert(alt);
+            for (std::size_t length = 1; length <= alt.size(); ++length) {
+                prefixes_.insert(alt.substr(0, length));
+            }
         }
     }
 

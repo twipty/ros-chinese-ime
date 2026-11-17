@@ -51,8 +51,27 @@ bool is_typed_letter(char32_t cp) {
 // and even the mid-word state "zhongg" is legal ([zhong] + prefix "g").
 // Accept when the whole buffer is a prefix, or when some split leaves a
 // valid prefix after one or more complete syllables.
+//
+// Apostrophes are hard syllable boundaries (see segment_syllables()). The
+// CodeTable prefix set contains only letters, so a text with a quote can
+// never be a prefix there; handle the boundary explicitly instead. The head
+// before the quote must form complete syllables and the tail after it must
+// remain extendable (empty is legal mid-typing, e.g. right after "xi'").
+// Without this branch feed() rejects and drops the separator typed in
+// "xi'an", silently degrading it to "xian".
 bool can_extend(const std::string& text, const imfw::CodeTable& table) {
     if (table.is_prefix(text)) return true;
+
+    const std::size_t apostrophe = text.find('\'');
+    if (apostrophe != std::string::npos) {
+        const std::string head = text.substr(0, apostrophe);
+        const std::string tail = text.substr(apostrophe + 1);
+        if (!head.empty() && !segment_syllables(head, table).empty() &&
+            (tail.empty() || can_extend(tail, table))) {
+            return true;
+        }
+    }
+
     for (std::size_t split = 1; split < text.size(); ++split) {
         if (table.is_prefix(text.substr(split)) &&
             !segment_syllables(text.substr(0, split), table).empty()) {
@@ -99,6 +118,10 @@ void PinyinSession::recompute() {
 
     const auto entries = table_->lookup(syllables_.back());
     candidates_.reserve(entries.size());
+    // Two passes: ranked characters first, then (only if that left nothing to
+    // pick) the Unihan-only ones. Rare characters are not dropped from the
+    // table -- they are just not offered while a common reading exists.
+    std::vector<Candidate> rare;
     for (const auto& entry : entries) {
         Candidate candidate;
         candidate.text.assign(1, static_cast<char32_t>(entry.codepoint));
@@ -106,8 +129,13 @@ void PinyinSession::recompute() {
         candidate.score = entry.rank == kUnknownRank
                               ? 0
                               : static_cast<int>(1000000u - entry.rank);
-        candidates_.push_back(std::move(candidate));
+        if (entry.rank == kUnknownRank && !show_rare_) {
+            rare.push_back(std::move(candidate));
+        } else {
+            candidates_.push_back(std::move(candidate));
+        }
     }
+    if (candidates_.empty()) candidates_ = std::move(rare);
 }
 
 Result PinyinSession::commit(std::size_t index) {

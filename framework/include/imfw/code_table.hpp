@@ -10,6 +10,11 @@
 // the toneless syllable ("zhong"); for a shape-based IME it is the shape code
 // ("wqvb"). The dat file carries its own key table (dat::SylEntry names), so
 // the table never needs pinyin-specific knowledge to index itself.
+//
+// Polyphonic characters carry extra readings in CharEntry::alt_off (space
+// separated, e.g. "zho4ng"). Those are only usable when the caller supplies a
+// key deriver, because turning a reading into a lookup key is scheme policy:
+// pinyin strips the tone digits, a shape IME would do something else.
 
 #pragma once
 
@@ -31,12 +36,21 @@ struct TableEntry {
     std::string reading;  // full canonical reading, e.g. "zho1ng" / "wqvb"
 };
 
+// Maps an alternative reading ("zho4ng") to the lookup key it should answer to
+// ("zhong"). Must be a plain function pointer: the IME PE avoids std::function.
+using KeyOfReading = std::string (*)(std::string_view);
+
 class CodeTable {
 public:
     // Parse a .dat blob. Returns the number of loaded characters, or 0 when
     // the header/offsets are invalid (caller keeps ownership of the bytes;
     // all strings are copied into this object).
-    std::size_t load_dat(std::string_view bytes);
+    //
+    // `key_of_reading` (optional) makes the alt readings reachable: every
+    // character is then also indexed under each of them, so 谁 answers to both
+    // "shei" and "shui". Pass nullptr to ignore alt readings entirely.
+    std::size_t load_dat(std::string_view bytes,
+                         KeyOfReading key_of_reading = nullptr);
 
     // Small-builder API used by host tests, fallback tables and embedded
     // data. `key` is the lookup key (the Scheme decides how to derive it
@@ -63,6 +77,9 @@ private:
         std::uint32_t rank = dat::kUnknownRank;
         std::string reading;
         std::string key;
+        // Additional keys this character answers to, derived from the dat's
+        // alt readings. Empty unless load_dat() was given a key deriver.
+        std::vector<std::string> alt_keys;
     };
 
     std::vector<Entry> entries_;

@@ -140,12 +140,28 @@ constexpr BuiltinReading kBuiltin[] = {
 
 }  // namespace
 
+namespace {
+
+// The IME class name handed to IMM32 through ImeInquire must fit in
+// IMEINFOEX.wszUIClass[16] (15 chars + NUL). imm32!Imm32InquireIme copies it
+// with StringCchCopyW into IMEDPI.szUIClass[16] and then calls
+// GetClassInfoW() **on the truncated name**: the 17-character
+// "RosPinyinUIServer" is cut to "RosPinyinUIServe", the lookup misses,
+// Imm32InquireIme fails, imm32 FreeLibrary()s us and stamps fLoadFlag=1 on
+// the layout. From outside that looks exactly like "the IME never loads" —
+// no error, no trace line, and ImmGetProperty() returns 0. Hence the assert.
+constexpr wchar_t kUiServerClass[] = L"RosPinyinUISrv";
+static_assert(sizeof(kUiServerClass) / sizeof(wchar_t) - 1 <= 15,
+              "UI server class name must fit IMEINFOEX.wszUIClass[16]");
+
+}  // namespace
+
 // ---- identity and resources -------------------------------------------
 
 PinyinScheme::PinyinScheme() : table_(load_pinyin_table()) {}
 
 const wchar_t* PinyinScheme::ui_server_class() const {
-    return L"RosPinyinUIServer";
+    return kUiServerClass;
 }
 
 const wchar_t* PinyinScheme::composition_class() const {

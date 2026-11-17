@@ -45,6 +45,11 @@ public:
     // data ownership moved fully into the schemes.
 
     // UI server window class returned by ImeInquire (IMM32 registers it).
+    // Hard limit: at most 15 characters. imm32 copies what ImeInquire returns
+    // into IMEINFOEX.wszUIClass[16] / IMEDPI.szUIClass[16] with StringCchCopyW
+    // and then looks the class up by the *truncated* name; a longer name makes
+    // GetClassInfoW fail and imm32 rejects the IME with fLoadFlag=1, which
+    // shows up only as "the IME never loads" (see PinyinScheme for the assert).
     virtual const wchar_t* ui_server_class() const = 0;
     // Window class names for the composition / candidate / toolbar windows.
     // Per-IME names let two IME DLLs coexist in one process.

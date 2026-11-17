@@ -157,8 +157,16 @@ def run(root: Path) -> int:
     ascii_body = function_body(entry, r"UINT\s+WINAPI\s+ImeToAsciiEx\s*\([^)]*\)")
     c.check("ImeProcessKey delegates key ownership to should_consume_key",
             process_body is not None and "should_consume_key" in process_body)
+    # The M1 stub was "return FALSE;" and nothing else. Detect that shape
+    # precisely: the live function must return the decision, not a constant.
     c.check("ImeProcessKey no longer unconditionally returns FALSE",
-            process_body is not None and "return FALSE;" not in process_body)
+            process_body is not None and "consume ? TRUE : FALSE" in process_body)
+    # Key-up must be declined here and nowhere else: ReactOS routes WM_KEYUP
+    # through IntImmProcessKey too, and ImeToAsciiEx gets no lParam, so a
+    # claimed key-up feeds every keystroke to the engine twice (doubled or
+    # missing characters). See HANDOVER §11.4.
+    c.check("ImeProcessKey declines key-up (ImeToAsciiEx cannot see lParam)",
+            process_body is not None and "kKeyUpBit" in process_body)
     c.check("ImeToAsciiEx dispatches key processing to process_key",
             ascii_body is not None and "process_key" in ascii_body)
     c.check("M2 commits text through WM_IME_CHAR TRANSMESSAGEs",
@@ -246,7 +254,10 @@ def run(root: Path) -> int:
         "FILETYPE=VFT_DRV": bool(re.search(r"FILETYPE\s+0x3L?\b", rc)),
         "FILESUBTYPE=VFT2_DRV_INPUTMETHOD": bool(re.search(r"FILESUBTYPE\s+0xBL?\b", rc)),
         "zh-CN/Unicode StringFileInfo block": 'BLOCK "080404b0"' in rc,
-        "Translation 0x804/1200": bool(re.search(r"Translation\",\s*0x804,\s*1200", rc)),
+        # The langid now comes from a macro so a 0409 A/B control build can be
+        # produced; the zh-CN default is asserted by the gate below.
+        "Translation langid/1200 from ROSPINYIN_TRANSLATION_LANGID":
+            bool(re.search(r"Translation\",\s*ROSPINYIN_TRANSLATION_LANGID,\s*1200", rc)),
         "OriginalFilename=rospinyin.ime": 'VALUE "OriginalFilename", "rospinyin.ime' in rc,
         "FileDescription names RosPinyin": "RosPinyin" in rc,
     }
@@ -310,15 +321,39 @@ def run(root: Path) -> int:
     ui_server = read(root, "framework/host/ui_server.cpp")
     c.check("UI server class name comes from the Scheme",
             "ui_server_class" in ui_server and
-            "L\"RosPinyinUIServer\"" in scheme_cpp)
+            "L\"RosPinyinUISrv\"" in scheme_cpp)
+    # IMM32 truncates the ImeInquire class name into IMEINFOEX.wszUIClass[16]
+    # and then looks it up; 16+ characters means imm32 rejects the IME with
+    # fLoadFlag=1 and nothing else to show for it. Guard the contract here so
+    # the failure cannot come back through a rename.
+    uiclass = re.search(r'kUiServerClass\[\]\s*=\s*L"([^"]*)"', scheme_cpp)
+    c.check("ImeInquire UI class name fits IMEINFOEX.wszUIClass[16]",
+            uiclass is not None and len(uiclass.group(1)) <= 15,
+            f"len={len(uiclass.group(1))}" if uiclass else "kUiServerClass not found")
     c.check("scheme_reg hands the framework its Scheme",
             "scheme_instance" in read(root, "ime/scheme_reg.cpp") and
             "PinyinScheme" in read(root, "ime/scheme_reg.cpp"))
+    # The layout's language (which "keyboard" ImmInstallIMEW files it under)
+    # comes solely from the first VarFileInfo\Translation entry, so it is a
+    # build-time fact, not a runtime one. A Simplified Chinese IME must ship as
+    # zh-CN (0804); 0409 exists only as an A/B control against the system's
+    # built-in Japanese IME. Guard the default so a control build cannot ship.
+    ime_cmake = read(root, "ime/CMakeLists.txt")
+    res_rc = read(root, "ime/rospinyin_res.rc")
+    c.check("ime version resource defaults to zh-CN, 0409 stays a control build",
+            'set(ROSPINYIN_IME_LANGID "0804" CACHE STRING' in ime_cmake and
+            "ROSPINYIN_IME_LANG_EN" in res_rc and
+            "ROSPINYIN_TRANSLATION_LANGID 0x804" in res_rc)
     framework_pinyin_refs = []
     for rel in ["framework/src/code_table.cpp", "framework/host/imm_entry.cpp",
                 "framework/src/engine.cpp", "framework/host/session_store.cpp"]:
-        text = read(root, rel)
-        if "pinyin" in strip_cpp_comments(text).lower():
+        # The diagnostic channel is compiled in under ROSPINYIN_TRACE (the
+        # product name, not the language); matching that against "pinyin"
+        # would make this gate fire on the trace build alone, which is noise.
+        # Strip the product token before looking for language knowledge.
+        text = strip_cpp_comments(read(root, rel)).replace("ROSPINYIN", "")
+        text = text.replace("rospinyin", "")
+        if "pinyin" in text.lower():
             framework_pinyin_refs.append(rel)
     c.check("framework core contains no pinyin knowledge",
             not framework_pinyin_refs, ", ".join(framework_pinyin_refs))

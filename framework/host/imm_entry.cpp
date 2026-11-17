@@ -22,6 +22,7 @@
 #include "ime_host.h"
 #include "ime_ui.h"
 #include "session_store.hpp"
+#include "trace_stamp.h"
 
 #include <imfw/candidate_pager.hpp>
 #include <imfw/emit_text.hpp>
@@ -39,8 +40,143 @@ namespace {
 using imfw::CandidatePager;
 using imfw::ImeSessionState;
 
+// ---- diagnostic trace (ROSPINYIN_TRACE) ------------------------------
+// Why a file instead of DbgPrint: ReactOS only forwards DbgPrint to the
+// serial port while the kernel debugger is enabled (a FreeLoader boot option
+// the default entry does not pass), and ntdll!DbgPrint would add an import
+// the shipping .ime does not otherwise need. Appending a line to
+// C:\rospinyin-trace.log needs nothing but kernel32, is readable from inside
+// the guest, and survives a crash because each line is opened, written and
+// closed. The whole block (and the writes) compile out unless
+// ROSPINYIN_TRACE is defined — see the option of the same name in
+// ime/CMakeLists.txt.
+#if defined(ROSPINYIN_TRACE)
+// The path constant lives in trace_stamp.h so DllMain writes the same file.
+using imfw::trace::kTracePath;
+
+class TraceLine {
+public:
+    TraceLine() : len_(0) { line_[0] = '\0'; }
+    ~TraceLine() { commit(); }
+
+    TraceLine& s(const char* text) {
+        while (text != nullptr && *text != '\0' && len_ + 1 < sizeof(line_)) {
+            line_[len_++] = *text++;
+        }
+        line_[len_] = '\0';
+        return *this;
+    }
+    TraceLine& d(long long value) { return number(value, false); }
+    TraceLine& h(unsigned long value) {
+        return number(static_cast<long long>(value), true);
+    }
+
+private:
+    TraceLine& number(long long value, bool hex);
+    void commit();
+
+    char line_[320];
+    std::size_t len_;
+};
+
+TraceLine& TraceLine::number(long long value, bool hex) {
+    const unsigned base = hex ? 16u : 10u;
+    unsigned long long magnitude = value < 0
+        ? 0ULL - static_cast<unsigned long long>(value)
+        : static_cast<unsigned long long>(value);
+    char tmp[24];
+    int count = 0;
+
+    if (hex) s("0x");
+    do {
+        const unsigned digit = static_cast<unsigned>(magnitude % base);
+        tmp[count++] = static_cast<char>(digit < 10 ? '0' + digit
+                                                    : 'a' + digit - 10);
+        magnitude /= base;
+    } while (magnitude != 0 && count < 23);
+    if (value < 0 && !hex) tmp[count++] = '-';
+    while (count > 0 && len_ + 1 < sizeof(line_)) line_[len_++] = tmp[--count];
+    line_[len_] = '\0';
+    return *this;
+}
+
+void TraceLine::commit() {
+    if (len_ == 0) return;
+
+    // Prefix the line with wall clock + tick count (see trace_stamp.h for why
+    // both) so interleaved lines keep their order and lines from different
+    // boots stay distinguishable.
+    char out[400];
+    unsigned n = imfw::trace::stamp(out, 0, sizeof(out));
+
+    // pid/tid: several processes probe the .ime during bring-up (our imhost,
+    // the shell, the app under test). Without them "ImeInquire ran" cannot be
+    // attributed to the instance imm32 was supposed to load.
+    out[n++] = 'p';
+    out[n++] = '=';
+    {
+        char num[12];
+        int c = 0;
+        unsigned long v = static_cast<unsigned long>(GetCurrentProcessId());
+        do {
+            num[c++] = static_cast<char>('0' + v % 10);
+            v /= 10;
+        } while (v != 0 && c < 11);
+        while (c > 0 && n + 2 < sizeof(out)) out[n++] = num[--c];
+    }
+    out[n++] = ' ';
+    out[n++] = 't';
+    out[n++] = '=';
+    {
+        char num[12];
+        int c = 0;
+        unsigned long v = static_cast<unsigned long>(GetCurrentThreadId());
+        do {
+            num[c++] = static_cast<char>('0' + v % 10);
+            v /= 10;
+        } while (v != 0 && c < 11);
+        while (c > 0 && n + 2 < sizeof(out)) out[n++] = num[--c];
+    }
+    out[n++] = ' ';
+
+    for (std::size_t i = 0; i < len_ && n + 2 < sizeof(out); ++i) {
+        out[n++] = line_[i];
+    }
+    out[n++] = '\n';
+
+    const HANDLE file = CreateFileA(kTracePath, FILE_APPEND_DATA,
+                                    FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                    nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL,
+                                    nullptr);
+    if (file == INVALID_HANDLE_VALUE) return;
+    // FILE_APPEND_DATA alone was not enough: a run that should have produced
+    // three lines (attach, attach, detach) left only the last one, which
+    // silently drops evidence. Seek explicitly before writing.
+    SetFilePointer(file, 0, nullptr, FILE_END);
+    DWORD written = 0;
+    WriteFile(file, out, static_cast<DWORD>(n), &written, nullptr);
+    CloseHandle(file);
+}
+#define IMFW_TRACE(tag) TraceLine().s(tag)
+#else
+// Same call syntax so instrumented code compiles unchanged when the channel
+// is off; the optimiser drops every call.
+class TraceNoop {
+public:
+    TraceNoop& s(const char*) { return *this; }
+    TraceNoop& d(long long) { return *this; }
+    TraceNoop& h(unsigned long) { return *this; }
+};
+#define IMFW_TRACE(tag) TraceNoop()
+#endif
+
 constexpr BYTE kCtrlBit = 0x80;
 constexpr BYTE kAltBit = 0x80;
+
+// lParam bit 31 of WM_KEYDOWN/WM_KEYUP: 1 = the key is being released. The
+// same lParam is handed to ImeProcessKey, and it is the only transition
+// information available anywhere in the IME path (ImeToAsciiEx gets none).
+constexpr unsigned long kKeyUpBit = 0x80000000UL;
 
 enum class KeyIndex { Shift = 0x10, Control = 0x11, Alt = 0x12 };
 
@@ -203,6 +339,19 @@ UINT process_key(rpimm::InputContext hIMC, UINT vk, const BYTE* lpbKeyState,
     if (input == 0 || !scheme.is_input_char(input)) return 0;
 
     const imfw::Result result = state->engine->feed(input);
+    // One line per fed character. The composition string after each feed is
+    // the fastest way to separate "the key arrived twice" (letters doubled:
+    // `nn`, `aa`) from "the key arrived once and was rejected by can_extend"
+    // (composition unchanged). Without it both look like a wrong result.
+    {
+        // A local buffer, not std::string(1, c).c_str(): the temporary would be
+        // destroyed before TraceLine's destructor writes the line.
+        char shown[2] = {static_cast<char>(input < 0x80 ? input : '?'), '\0'};
+        IMFW_TRACE("feed ch=").s(shown)
+            .s(" act=").d(static_cast<long long>(result.action))
+            .s(" comp=[").s(result.composition.c_str()).s("] cand=")
+            .d(static_cast<long long>(result.candidates.size()));
+    }
     switch (result.action) {
     case imfw::Action::Commit:
         if (!result.commit_text.empty()) {
@@ -230,6 +379,7 @@ extern "C" {
 
 BOOL WINAPI ImeInquire(rpimm::ImeInfo* lpIMEInfo, LPWSTR lpszClassName,
                        DWORD dwSystemInfoFlags) {
+    IMFW_TRACE("inquire sysinfo=").h(dwSystemInfoFlags);
     if (!lpIMEInfo || !lpszClassName) return FALSE;
 
     lpIMEInfo->dwPrivateDataSize = 0;  // we keep state in session_store
@@ -246,6 +396,10 @@ BOOL WINAPI ImeInquire(rpimm::ImeInfo* lpIMEInfo, LPWSTR lpszClassName,
     // Ignore IME_SYSINFO_WINLOGON: extra work on the logon path is exactly
     // what made the reference IME blue-screen (0xF4).
     (void)dwSystemInfoFlags;
+    IMFW_TRACE("inquire prop=").h(lpIMEInfo->fdwProperty)
+        .s(" caps=").h(lpIMEInfo->fdwUICaps)
+        .s(" priv=").d(lpIMEInfo->dwPrivateDataSize)
+        .s(" -> 1");
     return TRUE;
 }
 
@@ -282,10 +436,15 @@ LRESULT WINAPI ImeEscape(rpimm::InputContext hIMC, UINT uSubFunc, LPVOID lpData)
 }
 
 BOOL WINAPI ImeSelect(rpimm::InputContext hIMC, BOOL fSelect) {
+    IMFW_TRACE("select imc=").h(static_cast<unsigned long>(
+        reinterpret_cast<std::uintptr_t>(hIMC)))
+        .s(" f=").d(fSelect);
     if (fSelect) {
         // The engine contract requires on_select(true) before feed() does
         // anything; without this the IME would silently swallow every key.
         ImeSessionState* state = imfw::acquire_session(hIMC);
+        IMFW_TRACE("select state=").d(state != nullptr)
+            .s(" engine=").d(state != nullptr && state->engine != nullptr);
         if (state != nullptr && state->engine != nullptr) {
             state->engine->on_select(true);
         }
@@ -299,6 +458,9 @@ BOOL WINAPI ImeSelect(rpimm::InputContext hIMC, BOOL fSelect) {
 }
 
 BOOL WINAPI ImeSetActiveContext(rpimm::InputContext hIMC, BOOL fFlag) {
+    IMFW_TRACE("active f=").d(fFlag)
+        .s(" imc=").h(static_cast<unsigned long>(
+            reinterpret_cast<std::uintptr_t>(hIMC)));
     if (hIMC == nullptr) return TRUE;
     if (fFlag) {
         // Some IMM32 implementations only deliver ImeSetActiveContext for a
@@ -317,15 +479,46 @@ BOOL WINAPI ImeSetActiveContext(rpimm::InputContext hIMC, BOOL fFlag) {
 
 BOOL WINAPI ImeProcessKey(rpimm::InputContext hIMC, UINT uVirtKey, LPARAM lParam,
                           const BYTE* lpbKeyState) {
-    (void)lParam;
+    // A key-UP must never be claimed. This is the only place the decision can
+    // be made: ReactOS routes every key message through IntImmProcessKey
+    // (co_IntProcessKeyboardMessage sets bKeyUpDown for WM_KEYUP as well) and
+    // imm32!ImmProcessKey ignores the transition bit. Claiming a key-up sets
+    // pIC->bNeedsTrans, and the following ImmGenerateMessage calls
+    // ImeToAsciiEx — which receives no lParam, so it cannot filter either.
+    //
+    // Symptom when it is wrong: every keystroke reaches the engine twice.
+    // "n" becomes "nn", "a" becomes "aa". Doubled letters that still form a
+    // legal pinyin prefix are kept (extra characters); the rest are rejected
+    // by can_extend() and vanish (missing characters). Both halves of the
+    // "extra / lost characters" report come from this one line.
+    if ((static_cast<unsigned long>(lParam) & kKeyUpBit) != 0) {
+        IMFW_TRACE("processkey vk=").h(uVirtKey).s(" up -> 0");
+        return FALSE;
+    }
+
     ImeSessionState* state = imfw::acquire_session(hIMC);
-    return should_consume_key(state, uVirtKey, lpbKeyState) ? TRUE : FALSE;
+    const bool consume = should_consume_key(state, uVirtKey, lpbKeyState);
+#if defined(ROSPINYIN_TRACE)
+    // open= is an observation, deliberately not a gate. ReactOS sets
+    // pIC->fOpen = FALSE when the IMC is created (imm32_imm.c, ImmCreateContext)
+    // and nothing in the layout-activation path sets it back, so it may well
+    // read 0 while the IME is working perfectly. Until the real value is known
+    // from a VM run, gating on it would risk disabling the IME entirely.
+    const int open = ImmGetOpenStatus(reinterpret_cast<HIMC>(hIMC)) ? 1 : 0;
+    IMFW_TRACE("processkey vk=").h(uVirtKey)
+        .s(" state=").d(state != nullptr)
+        .s(" open=").d(open)
+        .s(" pf=").h(static_cast<unsigned long>(HIWORD(lParam)))
+        .s(" -> ").d(consume ? 1 : 0);
+#endif
+    return consume ? TRUE : FALSE;
 }
 
 UINT WINAPI ImeToAsciiEx(UINT uVirtKey, UINT uScanCode, const BYTE* lpbKeyState,
                          rpimm::TransMsgList* lpTransMsgList, UINT fuState,
                          rpimm::InputContext hIMC) {
     (void)uScanCode; (void)fuState;
+    IMFW_TRACE("toascii vk=").h(uVirtKey);
     return process_key(hIMC, uVirtKey, lpbKeyState, lpTransMsgList);
 }
 
