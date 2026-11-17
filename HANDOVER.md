@@ -918,6 +918,41 @@ ReactOS 这版没有 psapi、也没有 toolhelp 的模块枚举（`EnumProcessMo
 2. VM 拉取产物 → 重启 → 跑 `m2/M2-ACCEPTANCE.md`；
 3. 更新 `M2-REPORT.md`（若新建）与 `PLAN.md`/`ROADMAP.md` 状态。
 
+#### 推送通道（2026-11-17 实测，务必按此执行）
+
+本机 `~/.gitconfig` 有一条 `url.https://gh-proxy.com/https://github.com/.insteadOf`，
+它会把**任何** `https://github.com/...` 改写成走 gh-proxy。这条改写对 fetch 无害，
+但 **push 会静默失败**：请求发给 proxy 后丢了认证头，代理返回 `401 Basic realm="GitHub"`，
+git 转而问 credential-store，然后长时间无输出（实测 4 分钟以上不返回，`timeout` 掉之后
+远程 ref 毫无变化——看起来像"推了但没生效"）。
+
+绕过方式是一次性屏蔽全局配置并直连（需要 fine-grained PAT，`Contents: read and write`）：
+
+```bash
+AUTH=$(printf "x-access-token:%s" "$(cat ~/mygithubpak/key.txt)" | base64 -w0)
+CFG=$(mktemp); chmod 600 "$CFG"
+printf '[http "https://github.com/"]\n\textraheader = Authorization: Basic %s\n' "$AUTH" > "$CFG"
+
+GIT_CONFIG_SYSTEM=/dev/null GIT_CONFIG_GLOBAL=/dev/null \
+  git -c include.path="$CFG" -c credential.helper= \
+  push https://github.com/twipty/ros-chinese-ime.git main
+```
+
+- `GIT_CONFIG_GLOBAL=/dev/null` 是**关键**：没有它，`insteadOf` 仍在，仍会走 proxy；
+- `credential.helper=` 置空，避免 401 后回退到 credential-store 反复重试；
+- 直连走 HTTP/2（本机有 CONNECT 隧道），4.2 MB 的 pack 数秒完成。
+
+诊断手段：`GIT_CURL_VERBOSE=1` 看响应头里的 `web-server:` —— 出现 `gh-proxy.com`
+说明改写没被屏蔽掉。
+
+#### 远程历史与本地不相关（已知）
+
+2026-11-17 之前远程 `main` 是用 API 逐文件提交堆出来的 93 个提交，与本地 31 个提交
+**无共同祖先**（`git merge-base` 为空），但文件树是本地树的子集（远程 113 个文件，
+本地 136 个，远程无本地缺失的文件）。发 `alpha0.0.1` 时已把旧历史保全到
+`legacy/pre-alpha0.0.1` 分支，再 force push 本地历史覆盖 `main`。
+若日后再次遇到"两边历史无关"，先做同样的备份再覆盖，不要 `merge --allow-unrelated-histories`。
+
 **交接/收尾**
 
 - 关闭 QEMU、websockify、http.server（见 §10.5 的 systemd-run 方法），确认 5901/8000/6080 无监听；
