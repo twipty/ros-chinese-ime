@@ -363,14 +363,14 @@ UINT WINAPI ImeEnumRegisterWord(rpimm::EnumRegisterWordProc lpfnEnumProc,
 BOOL WINAPI ImeSetCompositionString(rpimm::InputContext hIMC, DWORD dwIndex,
                                     LPCVOID lpComp, DWORD dwCompLen,
                                     LPCVOID lpRead, DWORD dwReadLen) {
-    (void)hIMC; (void)dwIndex; (void)lpComp; (void)dwCompLen;
-    (void)lpRead; (void)dwReadLen;
+    (void)hIMC; (void)dwIndex; (void)lpComp; (void)dwCompLen; (void)lpRead; (void)dwReadLen;
     return FALSE;  // we render the composition ourselves
 }
 
 DWORD WINAPI ImeGetImeMenuItems(rpimm::InputContext hIMC, DWORD dwFlags, DWORD dwType,
                                 rpimm::ImeMenuItemInfo* lpImeParentMenu,
-                                rpimm::ImeMenuItemInfo* lpImeMenu, DWORD dwSize) {
+                                rpimm::ImeMenuItemInfo* lpImeMenu,
+                                DWORD dwSize) {
     (void)hIMC; (void)dwFlags; (void)dwType; (void)lpImeParentMenu;
     (void)lpImeMenu; (void)dwSize;
     return 0;
