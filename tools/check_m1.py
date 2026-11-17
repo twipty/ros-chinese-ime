@@ -164,8 +164,21 @@ def run(root: Path) -> int:
     c.check("M2 commits text through WM_IME_CHAR TRANSMESSAGEs",
             "WM_IME_CHAR" in entry and "emit_text" in entry)
     c.check("G1: commit path handles multi-codepoint text (words)",
-            "emit_text(lpTransMsg, commit_text)" in entry and
+            "emit_text(lpTransMsgList, commit_text)" in entry and
             "chosen->text[0]" not in entry)
+    # Audit 2026-11-17 §2.1 (P0): ImeToAsciiEx takes a TRANSMSGLIST whose
+    # uMsgCount header is pre-filled with the capacity; messages live at
+    # ->TransMsg[0]. Writing at offset 0 clobbers the header and shifts
+    # every message, which is exactly what broke composition on the VM.
+    abi = read(root, "framework/host/imm32_abi.h")
+    c.check("G1 ABI: ImeToAsciiEx takes TRANSMSGLIST, not a bare TRANSMSG array",
+            "struct TransMsgList" in abi and
+            "rpimm::TransMsgList* lpTransMsgList" in entry and
+            "rpimm::TransMsg* lpTransMsg" not in entry)
+    c.check("G1 ABI: messages written via list->TransMsg with uMsgCount capacity",
+            "lpTransMsgList->TransMsg" in entry and
+            "lpTransMsgList->uMsgCount" in entry and
+            "offsetof(rpimm_list, TransMsg) == sizeof(UINT)" in entry)
     # G1 hardening: the emission logic is host-testable in imfw-engine, and
     # the host delegates instead of re-implementing the UTF-16 conversion.
     c.check("G1: WM_IME_CHAR emission lives in imfw-engine (host-tested)",
@@ -200,9 +213,18 @@ def run(root: Path) -> int:
             "CodeTable" not in store_hpp and
             not (root / "framework/host/dat_loader.hpp").is_file() and
             not (root / "framework/host/dat_loader.cpp").is_file())
-    c.check("G2: reload clears sessions then lets the scheme refresh data",
+    c.check("G2: reload lets the scheme refresh its data (reload_data hook)",
             "scheme_instance().reload_data()" in
             read(root, "framework/host/session_store.cpp"))
+    # Audit 2026-11-17 §2.2: reload must refresh data BEFORE dropping
+    # sessions (data-first), so a throwing reload_data leaves the old
+    # sessions consistent with the old data.
+    reload_body = function_body(
+        read(root, "framework/host/session_store.cpp"),
+        r"void\s+reload\s*\(\s*\)")
+    c.check("G2: reload refreshes data before dropping sessions (data-first)",
+            reload_body is not None and
+            reload_body.index("reload_data()") < reload_body.index("clear()"))
     c.check("G2: the pinyin scheme owns its data (dat_source)",
             (root / "pinyin/include/rospinyin/dat_source.hpp").is_file() and
             (root / "pinyin/src/dat_source.cpp").is_file() and

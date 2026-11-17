@@ -9,6 +9,8 @@
 
 #include <imfw/emit_text.hpp>
 
+#include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <string>
 
@@ -101,6 +103,27 @@ int main() {
         const std::uint32_t n =
             imfw::emit_text(slots, imfw::kMaxEmitMessages, text);
         check(n == imfw::kMaxEmitMessages, "long text stops at the cap");
+    }
+
+    // TRANSMSGLIST layout (audit 2026-11-17 §2.1): the message array starts
+    // after the capacity header. On the ILP32 Win32 target TRANSMESSAGE is
+    // 4-byte aligned so the array follows the header at offset 4 with no
+    // padding; LP64 hosts pad the pointer-sized fields, so the exact offset
+    // there is sizeof(uint32_t) rounded up to the slot alignment. What must
+    // hold everywhere: the header occupies its own leading bytes and is
+    // followed by the first message.
+    {
+        struct ListLayout {
+            std::uint32_t uMsgCount;
+            TransMsgSlot msg;
+        };
+        check(offsetof(ListLayout, uMsgCount) == 0,
+              "TRANSMSGLIST capacity header is the first field");
+        check(offsetof(ListLayout, msg) >= sizeof(std::uint32_t),
+              "TRANSMSGLIST message array never overlaps the header");
+        check(sizeof(ListLayout) ==
+                  offsetof(ListLayout, msg) + sizeof(TransMsgSlot),
+              "TRANSMSGLIST[1] is header + exactly one message slot");
     }
 
     if (failures == 0) {

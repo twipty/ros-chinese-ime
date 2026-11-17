@@ -44,13 +44,16 @@ public:
         LeaveCriticalSection(&cs_);
     }
 
-    // Let the scheme refresh its own data first, then drop every session so
-    // the next key rebuilds engines against the new data. In-flight
-    // compositions are discarded — acceptable after a configuration change.
+    // Refresh the scheme's data FIRST (audit 2026-11-17 §2.2, data-first):
+    // if reload_data throws or the scheme is re-entered, the old sessions
+    // are still consistent with the old data, so callers can retry safely.
+    // Only after data refresh succeeds do we drop every session so the next
+    // key rebuilds engines against the new data. In-flight compositions are
+    // discarded — acceptable after a configuration change.
     void reload() {
         EnterCriticalSection(&cs_);
-        states_.clear();
         scheme_instance().reload_data();
+        states_.clear();
         LeaveCriticalSection(&cs_);
     }
 
