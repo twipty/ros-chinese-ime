@@ -56,7 +56,12 @@ def main():
 
     for sha in shas:
         local_tree = git(repo, "rev-parse", f"{sha}^{{tree}}")
-        raw = git(repo, "diff", "--name-status", f"{sha}^", sha, binary=True).decode()
+        # --no-renames 是必须的：默认的 rename 检测会把「移动」压成一行
+        # `R100 old new`，而下面只取 row[-1]（新路径），旧路径永远不会从
+        # base_tree 里被删掉 —— 2026-11-18 文档归位（21 个文件改名）时就是这样
+        # 被 tree 一致性安全阀拦下的：远端 tree 里旧文件一个没少。
+        raw = git(repo, "diff", "--no-renames", "--name-status", f"{sha}^", sha,
+                  binary=True).decode()
         rows = [l.split("\t") for l in raw.splitlines() if l.strip()]
         entries = []
         for row in rows:
