@@ -50,3 +50,7 @@ m0/downloads/*.zip
 Thumbs.db
 
 m0/probe/
+
+# Python bytecode from tools/*.py (check_m1.py, coverage_report.py, ...)
+__pycache__/
+*.pyc
