@@ -235,6 +235,10 @@ zhong    -> syl=1 cand=108 top=U+4E2D(中)
 rospinyin.dat: 902768 bytes, sha256 ce7ca6e0185c5cbd09146f77dbf16ebe29a2f44ba52990fa6a34af1466b9ddfd
 ```
 
+> ⚠️ **上面这段是 2026-11-16 的历史运行日志**，不是当前指纹。此后做过一次数据修订，
+> 现在的表是 **902,776 B / sha256 `f28b2606338431d2…a23e9b21`**（`alpha0.0.2` 发布物）。
+> 两个数字都真实存在过，引用时别拿错；`tools/mkdat/build_dat.sh` 现在会在末尾断言这个指纹。
+
 > 关键教训：`PinyinSession::feed()` 在 `on_select(true)` 之前是 no-op。
 > M2 IMM32 集成最初漏掉 `ImeSelect(TRUE)` 里的激活调用，导致「IME 吃掉
 > 拼音键但永远不出组合串」。已在 `tools/check_m1.py` 加静态断言防回归。
