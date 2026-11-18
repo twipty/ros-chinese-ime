@@ -26,13 +26,14 @@ jobs:
         run: >-
           g++ -std=c++17 -fsyntax-only
           -Itools/syntax_stub -Iframework/include -Iframework/platform/win32/imm32
-          -Iframework/platform/win32/ui -Ipinyin/include -Iime
+          -Iframework/platform/win32/ui -Ipinyin/include -Iime -Isamples/toy-scheme
           framework/platform/win32/imm32/dllmain.cpp framework/platform/win32/imm32/imm_entry.cpp
           framework/platform/win32/imm32/ui_server.cpp framework/platform/win32/imm32/session_store.cpp
           pinyin/host/dat_source_win.cpp
           framework/platform/win32/ui/ime_ui.cpp framework/platform/win32/ui/ui_window.cpp
           framework/platform/win32/ui/composition_window.cpp framework/platform/win32/ui/candidate_window.cpp
           framework/platform/win32/ui/toolbar.cpp ime/scheme_reg.cpp
+          ime/scheme_reg_toy.cpp samples/toy-scheme/toy_scheme.cpp
           tools/install-rospinyin/install.cpp
       - name: Configure
         run: cmake -S . -B build -DROSPINYIN_BUILD_TESTS=ON
@@ -111,26 +112,50 @@ jobs:
           -DCMAKE_RC_COMPILER=windres
           -DROSPINYIN_IN_TREE=ON
           -DROSPINYIN_BUILD_TESTS=OFF
+      - name: Configure (toy scheme)
+        # X2-a0's standing proof: a *second* scheme assembles from the same
+        # framework by switching one option. If this job disappears, the "add a
+        # folder, not a framework patch" claim stops being tested anywhere.
+        shell: msys2 {0}
+        run: >-
+          cmake -S . -B build-toy -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_CXX_COMPILER=g++
+          -DCMAKE_RC_COMPILER=windres
+          -DROSPINYIN_BUILD_TESTS=OFF
+          -DROSPINYIN_SCHEME=toy
       - name: Build (standalone)
         shell: msys2 {0}
         run: cmake --build build-standalone --parallel
       - name: Build (in-tree target)
         shell: msys2 {0}
         run: cmake --build build-intree --parallel
+      - name: Build (toy scheme)
+        shell: msys2 {0}
+        run: cmake --build build-toy --parallel
       - name: Verify PE imports (ReactOS 0.4.16 compatibility)
         shell: msys2 {0}
         run: |
           set -eu
           IME=$(find build-standalone -type f -name rospinyin.ime | head -n 1)
+          TOY=$(find build-toy -type f -name rospinyin.ime | head -n 1)
           EXE=$(find build-standalone -type f -name install-rospinyin.exe | head -n 1)
           WGET=$(find build-standalone -type f -name wget.exe | head -n 1)
           CURL=$(find build-standalone -type f -name curl.exe | head -n 1)
-          test -n "$IME" && test -n "$EXE" && test -n "$WGET" && test -n "$CURL"
+          test -n "$IME" && test -n "$TOY" && test -n "$EXE" && test -n "$WGET" && test -n "$CURL"
           echo "IME=$IME"
+          echo "TOY=$TOY"
           echo "EXE=$EXE"
           echo "WGET=$WGET"
           echo "CURL=$CURL"
-          for f in "$IME" "$EXE" "$WGET" "$CURL"; do
+          # A toy build that came out byte-identical to the product build means
+          # ROSPINYIN_SCHEME was ignored: one of the two branches silently did
+          # the other one's work.
+          if cmp -s "$IME" "$TOY"; then
+            echo "FATAL: -DROSPINYIN_SCHEME=toy produced the pinyin binary"
+            exit 1
+          fi
+          for f in "$IME" "$TOY" "$EXE" "$WGET" "$CURL"; do
             echo "===== imports of $f ====="
             objdump -p "$f" | sed -n '/The Import Tables/,$p'
             if objdump -p "$f" | grep -Eqi 'InitializeCriticalSectionEx'; then

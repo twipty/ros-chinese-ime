@@ -39,6 +39,15 @@ add_executable(rospinyin-scheme-registry scheme_registry_test.cpp)
 target_link_libraries(rospinyin-scheme-registry PRIVATE imfw-engine)
 add_test(NAME scheme-registry COMMAND rospinyin-scheme-registry)
 
+# X2-a0: the seam's second consumer. samples/toy-scheme is what a new input
+# method looks like, so it is exercised on the host instead of being a folder
+# nobody links. Links imfw-engine only — no pinyin, no data.
+add_executable(rospinyin-toy-scheme toy_scheme_test.cpp ../samples/toy-scheme/toy_scheme.cpp)
+target_include_directories(rospinyin-toy-scheme PRIVATE
+    "${CMAKE_SOURCE_DIR}/samples/toy-scheme")
+target_link_libraries(rospinyin-toy-scheme PRIVATE imfw-engine)
+add_test(NAME toy-scheme COMMAND rospinyin-toy-scheme)
+
 # G1 regression: multi-codepoint commits (WM_IME_CHAR per UTF-16 unit).
 add_executable(rospinyin-emit-text emit_text_test.cpp)
 target_link_libraries(rospinyin-emit-text PRIVATE imfw-engine)

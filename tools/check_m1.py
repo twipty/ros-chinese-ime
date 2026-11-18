@@ -493,6 +493,14 @@ def run(root: Path) -> int:
     c.check("X2-a0: the injection seam lives in the reusable core (imfw-engine)",
             (root / "framework/include/imfw/scheme_registry.hpp").is_file() and
             "src/scheme_registry.cpp" in read(root, "framework/CMakeLists.txt"))
+    # The seam's second consumer: a letters-only scheme in samples/ assembled by
+    # -DROSPINYIN_SCHEME=toy. G4 says a second input method needs no framework
+    # edit; this is the cheapest standing proof that the claim still holds.
+    scheme_reg_toy = read(root, "ime/scheme_reg_toy.cpp")
+    c.check("X2-a0: the toy scheme is assembled through the same three lines",
+            "Scheme* scheme_factory()" in scheme_reg_toy and
+            "ToyScheme" in scheme_reg_toy and
+            "ROSPINYIN_SCHEME" in read(root, "ime/CMakeLists.txt"))
     # The layout's language (which "keyboard" ImmInstallIMEW files it under)
     # comes solely from the first VarFileInfo\Translation entry, so it is a
     # build-time fact, not a runtime one. A Simplified Chinese IME must ship as
