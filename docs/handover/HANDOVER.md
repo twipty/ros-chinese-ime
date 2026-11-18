@@ -1460,6 +1460,19 @@ stub 补全后这些兜底都成了死代码，但保留它们无害（真实 Wi
 排查时应先区分"真红"与"连带红"：`publish-artifacts-branch` 的失败本身不是 bug，
 它只是 engine-smoke 失败的后果。
 
+**修复结果：这个仓库第一次 CI 全绿。** 推送后 run `44323972260`（`4e150a5`）
+三个 job 全部 success，且**每一步都真的执行了**（不是跳过）：
+
+| job | 步骤 |
+|---|---|
+| engine-smoke | 语法检查 → Configure → Build → Test → **Build rospinyin.dat** → 覆盖率 → 文档门禁，10/10 |
+| windows-build | 两套 configure（standalone / in-tree）→ 构建 → PE 导入表校验，11/11 |
+| publish-artifacts-branch | 两次 download-artifact → 图标资源校验 → 提交二进制，6/6 |
+
+其中 `Build rospinyin.dat from pinned sources` 与 `First-page coverage` 是
+**首次在 CI 上真正运行**——此前它们在列表里排队，从来没轮到过。
+历史 107 次运行中，这是第一次 `conclusion == success`。
+
 ### 11.2 其他待办
 
 - ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。
