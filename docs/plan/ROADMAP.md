@@ -69,7 +69,7 @@ v0.1「墨」→ v0.2「联」→ v0.3「全」→ v1.0「正」
 | 阶段 | 内容 | 工期 | 位置 |
 |---|---|---|---|
 | **X1** ✅ | 目录归位：`framework/host` + `framework/ui` → `framework/platform/win32/{imm32,ui}/`，纯 `git mv` | 0.5-1 天 | ✅ 2026-11-18（字节比对 equivalent） |
-| **X2** | 安全网 + 构建收敛：注入缝（`SchemeRegistry`+toy scheme，**a0 ✅ 2026-11-18**）→ `handle_key` 剥离 → 宿主冒烟 → `route_key/Intent` → 拆 god object → 库目标/presets/版本收敛 | 6-8 天（已用 0.5） | **M3 开工前**（M3 全在 `process_key` 里加键） |
+| **X2** | 安全网 + 构建收敛：注入缝（`SchemeRegistry`+toy scheme，**a0 ✅ 2026-11-18**）→ `handle_key` 剥离（**a ✅ 2026-11-18**）→ 宿主冒烟 → `route_key/Intent` → 拆 god object → 库目标/presets/版本收敛 | 6-8 天（已用 1） | **M3 开工前**（M3 全在 `handle_key` 里加键） |
 | **X3** | 可插拔验收：`samples/toy-scheme/` 接入演练 + per-instance 隔离（双 IME 同进程共存） | 2-3 天 | 与 M4 并行或推迟 |
 | **X4** | 前端抽象：**只立门不排期**（触发条件见计划 §3） | — | 等第二个消费者 |
 

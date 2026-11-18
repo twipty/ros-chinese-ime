@@ -1568,6 +1568,72 @@ guarded static 从 `ime/scheme_reg.cpp` 搬到了 `get()` 内部，**触发点�
 > 被顺手抄了过来。真实数字以 `grep -rn 'scheme_instance()' framework/platform | wc -l`
 > 为准（imm_entry 4、session_store 2、ui_server 2、ime_ui 2）。
 
+### 11.25 X2-a 键策略剥离：最忙的 90 行第一次有宿主测试（2026-11-18 23:0x）
+
+`process_key()` 是 IME 里执行次数最多的函数，而它此前**宿主侧覆盖为零**。原因不是没人想测，
+是它写不出来测试：一个函数里同时读 256 字节 `lpbKeyState`、问 `ImmGetOpenStatus`、开自己的
+窗口、往 `TRANSMSGLIST` 里写 WM_IME_CHAR。四件平台事包着一个判定，判定本身就被钉死在
+ReactOS 的键盘上。M2 报告里的每个 bug —— 字母翻倍、候选窗冻结、"多出字 / 丢字" —— 都是这
+90 行里某个 `if` 的事；它们全靠真机 trace 逐条回溯。
+
+**做法**：把判定搬进可移植核心，平台事留在适配器。
+
+| 层 | 文件 | 内容 |
+|---|---|---|
+| 契约 | `framework/include/imfw/host.hpp` | `KeyEvent`（vk / ch / kind / key_up / ctrl / alt）、`KeyResult`（commit）、`Host`（open 读写、show/hide、can_render、2 个诊断钩子） |
+| 状态 | `framework/include/imfw/session_state.hpp` | `ImeSessionState` 从 IMM32 侧搬出——它本来就全是可移植类型，以前只是"和 store 放一起" |
+| 策略 | `framework/src/host_key.cpp`（254 行，进 `imfw-engine`） | `wants_key()`（原 `should_consume_key`）+ `handle_key()`（原 `process_key`） |
+| 适配器 | `imm_entry.cpp`（783 → 609 行） | `key_event_from()` 做 vk→`KeyKind`/字符翻译；`Win32Host` 实现 `Host` |
+
+**为什么不是"再包一层函数"。** 只把签名换成 `handle_key(Session&, KeyEvent)` 而仍调
+`ImmGetOpenStatus`、`UiShow`，测试照样得链接 windows.h 与 UI 库——那不是可测，只是改名。
+必须把**四个副作用**都抽成 `Host`，宿主才可能是个假对象。
+
+**三个搬不动的东西，原因比结论重要**：
+
+1. **lone-Shift 的 latch 必须留在"归属"路径。** `ImeProcessKey` 返回 `FALSE` 时 IMM32 不会
+   调 `ImeToAsciiEx`。把切换挪进 `handle_key`，Shift 就永远不生效——而这一点只有真机才看得
+   出来。所以 `wants_key` 收 `ImeSessionState&`（非 const），头文件里写明"唯一的原因是 Shift"。
+2. **key-up 位只有归属侧看得见。** `ImeToAsciiEx` 的 ABI 没有 `lParam`，所以适配器那一侧
+   构造事件时传 0，`key_up` 恒 false。这与"归属侧必须拦 key-up"是同一件事的两面。
+3. **trace 不能跟着策略走。** `feed` 那一行要 `UiCountersSnapshot()`（窗口移动/重绘计数），
+   是宿主的数据；`cand-filter` 那一行才是策略产生的。做法是 `Host` 上两个**默认空实现**的
+   钩子：Win32 宿主转成 `IMFW_TRACE`，宿主测试一个字都不用写（默认实现让假宿主不必知道
+   trace 存在）。`-DROSPINYIN_TRACE=ON` 的交叉构建通过，证明这些钩子真的编进 PE 了。
+
+**判据换了：这条不能用字节。** X1/X2-a0 能拿"产物字节不变"当判据，是因为它们不改变机器码。
+这次代码换了 TU、多了虚调用，字节**必然**变（+4,207 B）。所以判据是两件事：
+**PE 的对外面不变**（16 个导出名逐个一致、导入函数表逐个一致、DLL 依赖仍是
+GDI32/IMM32/KERNEL32/msvcrt/USER32）+ **行为由宿主测试钉住**。
+
+**证据**
+
+| 项 | 结果 |
+|---|---|
+| `ctest` | **14/14**，新增 `host-key`（35 条断言，无 `<windows.h>`） |
+| `check_m1` | **67/67**（+2：策略可移植；Shift 也走同一条策略。5 条改严） |
+| `check_docs` | 7/7 |
+| 拼音版 `.ime` | 946,299 B；16 导出、导入函数表与改动前**逐个一致** |
+| 玩具版 `.ime` | 874,682 B（同一份框架，验证玩具方案没被落下） |
+| trace 版 `.ime` | 971,995 B，`-DROSPINYIN_TRACE=ON` 构建通过 |
+| `imm_entry.cpp` | 783 → **609** 行；策略移到 254 行的 `host_key.cpp` |
+
+**变异验证 8 次，全部变红。** 策略 6 次：不拦 key-up、关态仍吞键、Shift 闩不清、翻页无效也
+刷 UI、丢弃过半不兜底、退格后永远 composing —— 每条都报出对应的那句断言。门禁 2 次：给
+`host.hpp` 加一行 `<windows.h>`、把 `ImeProcessKey` 的 `wants_key` 调用删掉。
+
+**第二次踩同一个假绿的坑。** 门禁第一版写 `"imfw::wants_key(" in process_body`。删掉普通
+分支那处调用后，**检查仍是 66/66 全绿**——因为 Shift 分支里还有一处一模一样的调用。这与
+§11.24 的 `"scheme_instance" in 文件` 是同一类错误，值得当规则写下来：
+
+> **断言问"这个词出现过吗"，就测不出"这一处调用没了"。** 要么钉完整调用形式，要么数出现
+> 次数，要么钉定义/结构化形状。`check_m1` 里凡是 `in body` 的断言，都要问一遍
+> "另一处相同调用会不会让它继续绿"。
+
+**没做**：真机冒烟（不能代用户敲键）。补一次的最小步骤：装拼音版 → 敲 `nihao` → 候选出现 →
+`1` 上屏 → `Esc` 清空 → 按一下 Shift 再敲 `a`，上屏应是 ASCII `a`（说明关态生效）。
+这一步不通过，X2-b 的 `host_smoke` 就没有基线。
+
 ### 11.2 其他待办
 
 - ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。

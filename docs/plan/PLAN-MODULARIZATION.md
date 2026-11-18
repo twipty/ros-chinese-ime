@@ -37,23 +37,23 @@
 - **不做 `.dat` 的 mmap/异步/预加载**（审计 A-P2-10）：属性能，归 M4/M5，与结构治理目标不同；
 - **不重做 `kBuiltin` 的生成管线**（审计 A-P1-7 的数据部分）：M4 扩码表必然重做，现在做是重复劳动。
 
-## 2. 现状基线（2026-11-18 21:5x 实测，`687b3b8` 之后）
+## 2. 现状基线（2026-11-18 23:0x 实测，X2-a 之后）
 
-> **这批数字会失真**：上一版快照写 `ime/*.cpp = 57`，今天实测 19；`framework/host+ui` 上一版记 2584，
-> 现在 2697（+113，一天之内）。所以每项都附生成命令——**用命令，别引用本文的数字**。
+> **这批数字会失真**：上一版快照写 `ime/*.cpp = 57`，实测 19；`framework/host+ui` 上一版记 2584，
+> 实测 2697（+113，一天之内）。所以每项都附生成命令——**用命令，别引用本文的数字**。
 
 ```bash
-wc -l framework/src/*.cpp framework/include/imfw/*.hpp | tail -1   # 1147  可移植层（X2-a0 后 +154）
-wc -l framework/platform/win32/imm32/* framework/platform/win32/ui/* | tail -1  # 2697  平台层（Win32）→ 0 测试
+wc -l framework/src/*.cpp framework/include/imfw/*.hpp | tail -1   # 1576  可移植层（X2-a 后 +429）
+wc -l framework/platform/win32/imm32/* framework/platform/win32/ui/* | tail -1  # 2507  平台层（Win32）→ 0 测试
 wc -l ime/*.cpp                                       | tail -1   # 46    装配（含玩具装配件，不进产品构建）
-wc -l tests/*.cpp samples/toy-scheme/*.cpp | tail -1   # 1614  测试（全 host-side）
-python3 tools/check_m1.py | tail -1                               # 65 项 契约断言（静态）
-(cd build && ctest -N | tail -1)                                  # 13 项 全在可移植层
+wc -l tests/*.cpp samples/toy-scheme/*.cpp | tail -1   # 2030  测试（全 host-side）
+python3 tools/check_m1.py | tail -1                               # 67 项 契约断言（静态）
+(cd build && ctest -N | tail -1)                                  # 14 项 全在可移植层
 ```
 
 | 文件 | 行数 | 性质 |
 |---|---|---|
-| `framework/platform/win32/imm32/imm_entry.cpp` | 783 | IMM32 入口 + 键路由 + 会话，**最重**（6 类职责混在一个 TU） |
+| `framework/platform/win32/imm32/imm_entry.cpp` | 609 | IMM32 入口 + 宿主适配器（X2-a 从 783 降下来，键路由已移出） |
 | `framework/platform/win32/ui/ime_ui.cpp` | 300 | 窗口编排、锚点、`GlyphProbe` 字形探针 |
 | `framework/platform/win32/ui/ui_window.cpp` | — | 几何单一 owner；开头 28 处 `#ifndef` 重定义 Win32 常量 |
 | `framework/include/imfw/{engine,scheme}.hpp` | 72 / 131 | 可移植契约，**Win32 类型 0 处** |
@@ -73,6 +73,7 @@ python3 tools/check_m1.py | tail -1                               # 65 项 契�
 
 | 缺口 | 证据 | 为什么它属于本计划 |
 |---|---|---|
+| 键路由不可测（**已修，X2-a**） | `process_key` / `should_consume_key` 曾整个埋在一个读 `lpbKeyState`、调 `ImmGetOpenStatus`、写 `TRANSMSGLIST` 的 TU 里，**宿主侧 0 覆盖**；现在判定在 `framework/src/host_key.cpp`，`tests/host_key_test.cpp` 用假 engine + 假 host 跑 | M2 报告里"字母翻倍 / 候选窗冻结 / 多字丢字"全是这几个 `if`；没有宿主测试，改 X2-c 的路由就是盲改 |
 | 无注入点（**已修，X2-a0**） | `scheme_instance()` 曾是链接期硬接线（`scheme.hpp:129` → `scheme_reg.cpp:14`）；第二方案靠**换一个 `scheme_reg.cpp` 再编译**（`ime/CMakeLists.txt:7` 注释自述）。现在装配件只提供 `scheme_factory()`，框架经 `SchemeRegistry::get()` 查询 | G3 要假 scheme、G4 要第二个方案，两者都过不去 |
 | 库边界不一致 | `framework/CMakeLists.txt` 只构建 `imfw-engine`（5 cpp）；`framework/host`+`ui` 2697 行**无库目标**，由 `ime/CMakeLists.txt:26-35` 用 9 条相对路径直接编进 `.ime` | G1 说"目录自解释"，但没有库边界时目录只是名字 |
 | 构建碎片 | `EXISTS` 守卫 4 处、`CMAKE_SOURCE_DIR`/`PROJECT_SOURCE_DIR` 混用、C 标准未设、无 `CMakePresets.json`、静态链接策略 3 份、`build-win` 与 `build-win-trace-en` 测试开关漂移 | G6；且 X 阶段的验收要靠可复现构建才有意义 |
@@ -183,11 +184,62 @@ artifact 从未上传，使 `publish-artifacts-branch` 永久失败。补全 `to
 2. 注册表**不能**用静态初始化器绑定（那会让工作在 loader lock 里发生），
    所以走"第一次查询时问工厂"，DllMain 的行为与改动前逐字一致。
 
-**X2-a `handle_key` 剥离（0.5 天）**
+**X2-a `handle_key` 剥离（0.5 天）— ✅ 2026-11-18 完成**
 
 把 `process_key` 从 IMM32 ABI 里剥出来：`handle_key(Session&, KeyEvent) -> KeyResult`，
 入口函数只做 ABI 转换（`lpbKeyState` → `KeyEvent`，`KeyResult` → `TransMsgList`）。
 这一步不改变行为，但让宿主第一次能脱离 imm32 头文件被测试。
+
+**✅ 执行记录（2026-11-18 23:0x）**
+
+| 项 | 计划 | 实际 |
+|---|---|---|
+| 策略位置 | 从 `imm_entry.cpp` 剥出 | `framework/src/host_key.cpp`（254 行）进 `imfw-engine` |
+| 接口 | `KeyEvent` / `KeyResult` | 另加 `imfw::Host`（5 个方法 + 2 个诊断钩子），`KeyKind` 让策略不写任何 VK 常量 |
+| 入口 | 只做 ABI 转换 | `ImeProcessKey`/`ImeToAsciiEx` 各剩构造事件 + 调策略 + 回填 |
+| 调用点 | — | `process_key`→`handle_key`、`should_consume_key`→`wants_key` 各 1 处，无其他调用方 |
+| 行为 | 不变 | 分支逐条搬，**没有任何判定被改动**（见下"没改什么"） |
+| 判据 | — | 字节判据不适用（代码换 TU + 虚调用），改为宿主测试 + PE 面不变 |
+| 门禁 | — | `ctest` **14/14**（新增 `host-key`，35 条断言）、`check_m1` **67/67**（+2）、`check_docs` 7/7 |
+| 拼音版 `.ime` | — | 946,299 B（+4,207 B）；16 导出、导入函数表**逐个一致** |
+| 玩具版 `.ime` | — | 874,682 B（+4,207 B，同一份框架） |
+| trace 构建 | — | `-DROSPINYIN_TRACE=ON` 交叉构建通过（971,995 B）——诊断钩子真的编进 PE 了 |
+
+**为什么这条能把"最忙的一百行"从零覆盖拉起来。** 剥之前 `process_key` 读 256 字节
+`lpbKeyState`、调 `ImmGetOpenStatus`、开我们自己的窗口、往 `TRANSMSGLIST` 里写——四件平台事
+包着一个判定，于是**判定本身只能靠往 ReactOS 里敲键来测**。M2 报告里的每一个 bug（字母翻倍、
+候选窗冻结、"多字/丢字"）都是这 90 行里某个 `if` 的事。现在平台事全在适配器，判定在
+`imfw-engine`，`tests/host_key_test.cpp` 用假 engine + 假 host 直接跑。
+
+**没改什么（这是"搬运"的判据）。** 逐条对过：`wants_key` 的 `if` 序列与
+`should_consume_key` 完全同序（唯一形式变化是 `ch == 0 → vk == VK_BACK || VK_ESCAPE`
+拆成 `kind == Backspace || Escape` 先判，因为适配器已经把这两键映射成 kind，而它们在
+`framework_key_char` 里本来就产出 0）；`handle_key` 与 `process_key` 的五个分支
+（select / page / backspace / escape / feed+switch）与副作用顺序一致。`ImeProcessKey`
+里 Shift 分支、key-up 分支、latch 清除三处的先后顺序也未动。
+
+**三个必须留在原处的东西**（想搬但搬不了，原因值得记）：
+
+1. **lone-Shift 的 latch 只能在"归属"路径里。** `ImeProcessKey` 返回 `FALSE` 时
+   IMM32 根本不会调 `ImeToAsciiEx`，所以把切换挪进 `handle_key` 会让 Shift 永远不生效。
+   这就是 `wants_key` 收 `ImeSessionState&` 而不是 `const&` 的唯一原因，头文件里写明了。
+2. **key-up 位只有 `ImeProcessKey` 看得见。** `ImeToAsciiEx` 的 ABI 里没有 `lParam`，
+   所以 `key_event_from(vk, 0, ...)` 在那一侧恒为 `key_up = false`——这正是"归属侧必须拦"
+   的原因，不是巧合。
+3. **trace 不能留在策略里。** `feed` 那行要 `UiCountersSnapshot()`（窗口移动/重绘计数），
+   属于宿主；`cand-filter` 那行是策略产生的诊断。做法是 `Host` 上两个默认空实现的钩子
+   （`on_feed` / `on_candidates_filtered`），Win32 宿主转成 `IMFW_TRACE`，宿主测试什么都不做
+   ——**默认空实现让假宿主不必知道 trace 存在**。
+
+**变异验证（6 次策略 + 2 次门禁）。** 策略侧：不拦 key-up / 关态仍吞键 / Shift 闩不清 /
+翻页无效也刷 UI / 丢弃过半不兜底 / 退格后永远 composing——全部变红，且报的是对应那条断言。
+门禁侧：`host.hpp` 加一行 `<windows.h>`（X2-a 可移植性断言红）、`ImeProcessKey` 不再调
+`wants_key`（红）。
+
+**又一次假绿，同一个老坑。** 第一版门禁写的是 `"imfw::wants_key(" in process_body`。
+把普通分支那处调用删掉，**检查仍然 66/66 全绿**——因为 Shift 分支里还有一处同样的调用。
+这和 §11.24 的 `"scheme_instance" in 文件` 是同一类错误：**断言问"某个词出现过吗"，
+就永远测不出"某处调用没了"**。改成钉住两处的完整调用形式，再变异，两次都红。
 
 **X2-b 宿主冒烟测试（1.5–2 天）**
 
@@ -336,7 +388,7 @@ Ctrl+Space 与备用热键——**全部改在 `process_key` 里**。先有冒�
 **X2 — 安全网 + 构建收敛**
 
 - [x] X2-a0 `SchemeRegistry` 注入缝 + toy scheme（审计 A-P0-2；达成 G4）— 2026-11-18，见 §3 X2-a0 执行记录
-- [ ] X2-a `handle_key` 剥离 + `KeyEvent`/`KeyResult`（行为不变）
+- [x] X2-a `handle_key` 剥离 + `KeyEvent`/`KeyResult`（行为不变）— 2026-11-18，见 §3 X2-a 执行记录
 - [ ] X2-b `tests/host_smoke_test.cpp`（假 engine/scheme/sink/can_render，5 段键序）（审计 A-P0-1）
 - [ ] X2-c `route_key` + `Intent` 单测；`host_smoke` 序列不变
 - [ ] X2-d `imm_entry` 按 6 类职责拆 TU + 合并两条激活路径 + 合并 trace 十进制转换（审计 A-P0-3、复核 N-1）

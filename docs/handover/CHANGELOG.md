@@ -7,6 +7,22 @@
 
 ## 未发布
 
+### 键策略剥离（X2-a）：最忙的 90 行第一次有宿主测试
+
+- **新增 `framework/src/host_key.cpp`（进 `imfw-engine`）**：`handle_key()` 与 `wants_key()`
+  是原 `process_key()` / `should_consume_key()` 的逐条搬运。判定不再需要 `<windows.h>`。
+- **新增 `framework/include/imfw/host.hpp`**：`KeyEvent`（vk / ch / kind / key_up / ctrl / alt）、
+  `KeyResult`（commit）、`Host`（open 读写、show/hide、can_render、2 个默认空诊断钩子）。
+  `KeyKind` 让策略里不出现任何 `VK_*` 常量。
+- **`ImeSessionState` 搬到 `framework/include/imfw/session_state.hpp`**：它本来就全是可移植
+  类型，之前只是和 IMM32 的 store 放在一起，那也是键路径无法脱离 windows.h 的原因之一。
+- **`imm_entry.cpp` 只剩适配器**（783 → 609 行）：`key_event_from()` 做 vk→kind/字符翻译，
+  `Win32Host` 实现 `Host`。
+- **行为不变**：分支与副作用顺序逐条核对，无判定改动；判据换成"PE 对外面不变 + 宿主测试"，
+  因为代码换 TU 后字节必然变（拼音版 946,299 B，+4,207 B；16 导出、导入函数表逐个一致）。
+- **测试**：新增 `tests/host_key_test.cpp`（35 条断言，假 engine + 假 host），`ctest` **14/14**；
+  `check_m1` **67/67**；两次踩到"关键词出现即通过"的假绿，断言改为钉完整调用形式。
+
 ### 注入缝（X2-a0）：scheme 可替换，框架不动
 
 - **`imfw::SchemeRegistry`**（`framework/include/imfw/scheme_registry.hpp`）：把 `scheme_instance()`
