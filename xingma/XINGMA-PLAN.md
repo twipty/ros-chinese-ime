@@ -1,11 +1,15 @@
-# RosXingMa 形码输入法 · 实施计划（正式版 1.0）
+# RosXingMa 形码输入法 · 实施计划（正式版 1.1）
 
 > 本文件是 RosXingMa 项目的**唯一实施依据**。开发、评审、验收均以本文件为准。
 > 方案调整直接修订本文件并递增版本号；历史版本存入 `xingma/archive/`，不再作为依据。
+>
+> **修订记录**
+> - **v1.1（2026-11-18，现状对齐）**：按 ros-pinyin 主线现状重排实施阶段——框架侧新增前置门禁 **P0**，W1–W5 顺延为 P1–P5；细化见 `xingma/docs/phase0/PHASE0-PLAN.md`。同步五处事实：① X1 目录归位（`framework/host|ui` → `framework/platform/win32/{imm32,ui}`），本计划全部框架路径改指新位置；② M2 VM 验收 15/15 通过、G1 ABI 修复获真机证据；③ M0 红线 #2 降级为部署偏好、约束改为「登录路径零失败初始化」；④ `Scheme::ui_server_class()` 类名 ≤15 字符硬约束（拼音侧 17 字符曾致 IME 从不加载）；⑤ 架构审计新增「注入缝未落地 / 全局单例未隔离」两项风险。产品定义、数据模型、工具链、合规结论不变。
+> - v1.0（2026-11-16）：正式版，12 章 + 2 附录。
 
 | 项 | 内容 |
 |---|---|
-| 版本 | 1.0（正式版） |
+| 版本 | 1.1（正式版） |
 | 适用范围 | `rosxingma.ime`、`rosxingma-config.exe`、`rosxingma-table.exe`、可选数据包及其文档 |
 | 上游依赖 | ros-pinyin 的共用框架层 `framework/`（命名空间 `imfw`）；拼音产品 `pinyin/` 只读参照 |
 | 实施范围 | `xingma/` 目录内的全部代码、工具与文档 |
@@ -19,6 +23,7 @@
 | `xingma/docs/TABLE-IMPORT-SPEC.md` | 导入格式语法、校验规则、错误码、反导出 |
 | `xingma/docs/DATA-PACK-SPEC.md` | 数据包结构、`pack.ini` 全字段、构建流程 |
 | `xingma/README.md` | 目录导览与边界规则 |
+| `xingma/docs/phase0/PHASE0-PLAN.md` | 前置阶段 P0 细化：框架门禁、注入缝、VM 词组上屏验证、红线新口径 |
 | `NOTICE.txt` 第 8 节 | 授权分层声明（MIT 代码 / 可选数据包 / 用户数据） |
 
 ---
@@ -89,15 +94,19 @@ RosXingMa 是一个**通用形码输入法**：用户导入任意「字母编码
 
 ```
 ros-pinyin/
-  framework/    ← 共用框架（imfw）：契约 include/imfw、宿主 host、界面 ui、核心 src
+  framework/    ← 共用框架（imfw）：契约 include/imfw、核心 src
+  framework/platform/win32/imm32/   ← 宿主层（原 framework/host/，X1 归位）
+  framework/platform/win32/ui/      ← 界面层（原 framework/ui/，X1 归位）
   pinyin/       ← 拼音产品（rospinyin）：Scheme 实现与会话
   ime/          ← 拼音 .ime 的装配件（scheme_reg.cpp、def、资源）
   tools/ tests/ m0/ m2/ vendor/          ← 拼音既有资产
-  CMakeLists.txt  NOTICE.txt  LICENSE  README.md  ROADMAP.md
+  docs/{plan,milestones,reviews,font,handover,releases}/  ← 拼音文档（根目录只留 README）
+  CMakeLists.txt  NOTICE.txt  LICENSE  README.md
   xingma/       ← 本产品线全部文件
     XINGMA-PLAN.md                       # 本文件
     README.md  archive/
     docs/{TABLE-LICENSE-RESEARCH,TABLE-IMPORT-SPEC,DATA-PACK-SPEC}.md
+    docs/phase0/PHASE0-PLAN.md           # 前置阶段 P0 细化（新增）
     packs/{README.md,shape86/,shape98/}   # 模板与许可，无码表数据
     include/roxingma/  src/  host/  res/
     tools/{table-io,table-config,table-convert,mkdat-shape}
@@ -126,9 +135,9 @@ ros-pinyin 交付的 `framework/` 已经把「IME 公共部分」抽成可插拔
 | 方案插件 | `framework/include/imfw/scheme.hpp` | `Scheme`：四类窗口类名、工具栏标签、`input_char` / `is_input_char`、无参 `create_engine`、`reload_data` 数据热重载钩子；`scheme_instance()` 由装配件定义（框架不传递码表，方案完全自管数据） |
 | 码表视图 | `framework/include/imfw/code_table.hpp` | `CodeTable`：`load_dat` / `add` / `build_index` / `lookup` / `is_code` / `is_prefix`，**条目为单个码点** |
 | 候选分页 | `framework/include/imfw/candidate_pager.hpp` | 每页 9 条、跨页选号、`reset/select/next_page/prev_page` |
-| 宿主层 | `framework/host/` | IMM32 全部导出、按键路由、会话存储、`ImeConfigure`、UI server 类注册 |
-| 界面层 | `framework/ui/` | 组合窗、候选窗、工具栏；`UiShow(hIMC, text, segments, pager)` / `UiHide` / `UiDestroy` |
-| 装配范式 | `ime/scheme_reg.cpp` | 5 行定义 `imfw::scheme_instance()`，其余全为框架源码；其 `CMakeLists.txt` 明确「第二个输入法用自己的 scheme_reg 链接同一框架」 |
+| 宿主层 | `framework/platform/win32/imm32/`（原 `framework/host/`） | IMM32 全部导出、按键路由、会话存储、`ImeConfigure`、UI server 类注册 |
+| 界面层 | `framework/platform/win32/ui/`（原 `framework/ui/`） | 组合窗、候选窗、工具栏；`UiShow(hIMC, text, segments, pager)` / `UiHide` / `UiDestroy` |
+| 装配范式 | `ime/scheme_reg.cpp` | 5 行定义 `imfw::scheme_instance()`，其余全为框架源码；其 `CMakeLists.txt` 明确「第二个输入法用自己的 scheme_reg 链接同一框架」。**注意（P0 前置）**：当前 `scheme_instance()` 仍是链接期硬接线、无注入点（架构审计 P0-2），X2-a0 将引入 `SchemeRegistry` 注入缝 + toy scheme；形码开工前须核验该缝已落地，见 `docs/phase0/PHASE0-PLAN.md` |
 
 **框架已经解决的、形码不需要再提的需求**：
 
@@ -154,8 +163,8 @@ ros-pinyin 交付的 `framework/` 已经把「IME 公共部分」抽成可插拔
 ```
 rosxingma.ime
 ├── 装配件      xingma/host/scheme_reg_shape.cpp   → 定义 imfw::scheme_instance()
-├── 框架宿主     ../framework/host/{dllmain,imm_entry,ui_server,session_store}.cpp
-├── 框架界面     ../framework/ui/{ime_ui,ui_window,composition_window,candidate_window,toolbar}.cpp
+├── 框架宿主     ../framework/platform/win32/imm32/{dllmain,imm_entry,ui_server,session_store}.cpp
+├── 框架界面     ../framework/platform/win32/ui/{ime_ui,ui_window,composition_window,candidate_window,toolbar}.cpp
 ├── 形码插件     xingma/src/{shape_table,shape_session,shape_store,shape_scheme}.cpp
 ├── 形码装配     xingma/host/shape_dat_loader.cpp
 └── 资源         xingma/host/rosxingma.def, xingma/res/{rosxingma.rc,rosxingma.ico,resource.h}
@@ -171,7 +180,7 @@ rosxingma.ime
 
 | # | 缺口（原始记录） | 实际影响 | 框架侧落地（已完成） |
 |---|---|---|---|
-| **G1** | 宿主层只上屏**一个码点**：`process_key` 取 `commit_text[0]`，选字取 `chosen->text[0]`；`emit_char` 只写 `messages[0]` 并返回 1 | **词无法上屏**——候选窗能看到词，选中只输出首字，形码词库等于失效 | `imfw::emit_text()`（`framework/include/imfw/emit_text.hpp`，imfw-engine 内、Linux 单测覆盖）按 UTF-16 码单元逐条写 `WM_IME_CHAR`，非 BMP 走代理对，上限 32 条。选字与 Commit 路径均全量上屏，词组候选完整输出。**⚠️ 2026-11-17 审计补充（P0·阻塞）**：多消息写入位置与 ReactOS `TRANSMSGLIST` 契约错位——`ImeToAsciiEx` 的缓冲实为「`uMsgCount` 容量头 + `TransMsg[]` 数组」，IMM32 从 `->TransMsg[0]`（偏移 4）读回；框架当前从偏移 0 直接写，上屏文本会错乱/截断。证据链与修复建议见 `docs/FRAMEWORK-AUDIT-2026-11-17.md` §2.1。**✅ 2026-11-17 框架侧已修复**（`ImeToAsciiEx` 改收 `TRANSMSGLIST`、消息从 `list->TransMsg` 写、容量 `min(uMsgCount, kMaxEmit)`、布局断言；`check_m1.py` 50/50、ctest 10/10、MinGW 头 12/12）；仅剩 VM 词组上屏用例实测（门禁见第 8 章 W2 验收） |
+| **G1** | 宿主层只上屏**一个码点**：`process_key` 取 `commit_text[0]`，选字取 `chosen->text[0]`；`emit_char` 只写 `messages[0]` 并返回 1 | **词无法上屏**——候选窗能看到词，选中只输出首字，形码词库等于失效 | `imfw::emit_text()`（`framework/include/imfw/emit_text.hpp`，imfw-engine 内、Linux 单测覆盖）按 UTF-16 码单元逐条写 `WM_IME_CHAR`，非 BMP 走代理对，上限 32 条。选字与 Commit 路径均全量上屏，词组候选完整输出。**⚠️ 2026-11-17 审计补充（P0·阻塞）**：多消息写入位置与 ReactOS `TRANSMSGLIST` 契约错位——`ImeToAsciiEx` 的缓冲实为「`uMsgCount` 容量头 + `TransMsg[]` 数组」，IMM32 从 `->TransMsg[0]`（偏移 4）读回；框架当前从偏移 0 直接写，上屏文本会错乱/截断。证据链与修复建议见 `docs/FRAMEWORK-AUDIT-2026-11-17.md` §2.1。**✅ 2026-11-17 框架侧已修复**（`ImeToAsciiEx` 改收 `TRANSMSGLIST`、消息从 `list->TransMsg` 写、容量 `min(uMsgCount, kMaxEmit)`、布局断言；`check_m1.py` 50/50、ctest 10/10、MinGW 头 12/12）；**✅ 2026-11-18 M2 VM 验收 15/15 通过**（真机输入"中国"观察到连续 `WM_IME_CHAR 0x4E2D / 0x56FD`，多码点上屏链路已获实机证据）。**形码侧仍须在 P0 做一次自己的词组用例**（`≥2 字词组完整上屏`）——拼音 M2 的逐字提交与形码的单次多字提交走的是同一 `emit_text` 路径，但宿主表、窗口类名、装配均不同，门禁见 P0.3 与 `docs/phase0/PHASE0-PLAN.md` |
 | **G2** | 框架只加载 `GetSystemDirectoryW()\<dat_filename>` 单一 `CodeTable`，且 `Store::table_loaded_` 首次加载后不再重载 | 无法多表、无法热切换、无法存词 | **终局（2026-11-17）**：框架不再加载/持有/传递码表——`create_engine()` 无参，引擎数据由 `ShapeStore` 直接供给；`reload_sessions()` 触发 `Scheme::reload_data()`（形码在此刷新当前表）并丢弃全部会话（`ImeConfigure` 成功后自动调用），配置工具换包即刻生效。通用 `CodeTable` 保留为框架工具类，形码可不使用。（顺序细节：框架内部先清会话还是先刷新数据对形码不可见、功能等价，见 `docs/FRAMEWORK-AUDIT-2026-11-17.md` §2.2） |
 | **G3** | `ImeConfigure` 恒返回 `FALSE`，语言栏菜单亦未实现 | 用户需从开始菜单或命令行打开配置工具 | `Scheme::configure(void* parent)` 回调已接入 `ImeConfigure`：返回 `true` 即视为已处理并触发 `reload_data()` + 会话重载。形码在回调内拉起配置工具（进程内 UI 或 `CreateProcess` 外部 exe 均可）；开始菜单快捷方式与 `HKLM\...\Install\ConfigExe` 仍照旧写入，作为冗余入口。语言栏菜单项仍留待框架 M6 |
 | **G4** | 空格与 `-` `=` `,` `.` 被宿主固定为选字/翻页键，引擎收不到 | 「无候选时空格上屏原文」无法实现；标点也不能进组合串 | 选字/翻页键策略下放 Scheme：`is_selection_key()` / `page_key()`（默认即经典行为，形码按需覆盖）；框架仅在「组合中且有候选」时拦截这些键，否则直达应用。**组合串与 `segments` 契约改为 UTF-8**（`imfw::utf8_to_wide` 解码渲染、坏字节按字节兜底），「未安装码表」中文提示可以放进组合串，不再受 ASCII 限制。「无候选且达最大码长自动提交原文」仍按本计划 4.x 由 `ShapeSession` 用 `Action::Commit` 实现——框架保证此时空格/标点直达应用，两者配合即达成「空格上屏原文」的等效体验 |
@@ -279,14 +288,14 @@ HKCU\SOFTWARE\RosXingMa\
 3. 空格、`1`–`9`、翻页键、退格、Esc 由框架处理，引擎不重复实现；引擎只负责 `feed` / `backspace` / `cancel` 的状态。
 4. 无候选且组合已达 `max_code_len`：按 `EmitRawOnNoMatch` 提交原文（`Action::Commit`），避免用户输入丢失。这是「空格上屏原文」的替代路径（见 G4；框架已保证无候选时空格/标点直达应用）。
 5. 唯一候选：码长已满且仅 1 个候选时按 `AutoCommitUnique` 决定是否直接提交，默认关闭。
-6. 通配键：先按普通字母参与查表；W4 实现运行时区间扫描（遍历前缀全部编码做后缀匹配），**不做构建期笛卡尔展开**。
+6. 通配键：先按普通字母参与查表；P5（原 W4）实现运行时区间扫描（遍历前缀全部编码做后缀匹配），**不做构建期笛卡尔展开**。
 7. 上屏多字词依赖 G1；**G1 已在框架侧解决**（`imfw::emit_text`，见 3.4），`ShapeSession` 完整返回词的 `commit_text` 即可全量上屏，无需降级。
 
 ### 5.2 `ShapeScheme`
 
 | 方法 | 返回值 | 理由 |
 |---|---|---|
-| `ui_server_class()` | `L"RosXingMaUI"` | 与拼音窗口类名互不冲突，两个 IME 可同进程共存 |
+| `ui_server_class()` | `L"RosXingMaUI"`（11 字符） | 与拼音窗口类名互不冲突，两个 IME 可同进程共存。**硬约束 ≤15 字符**：ReactOS imm32 把返回类名 `StringCchCopyW` 进 `szUIClass[16]` 后按截断名查类，超长即"IME 从不加载"（拼音 `RosPinyinUIServer` 17 字符曾导致 M2 全盘阻塞，见 `framework/include/imfw/scheme.hpp` 契约注释）；实现处加 `static_assert` |
 | `composition_class()` / `candidate_class()` / `toolbar_class()` | `L"RosXingMaComp"` / `L"RosXingMaCand"` / `L"RosXingMaBar"` | 同上 |
 | `toolbar_label()` | `L"形"` | 固定单字标签，与拼音的「拼」区分 |
 | `input_char(vk)` | 字母键 → 小写码点，其余 `0` | 大小写归一由此完成 |
@@ -319,7 +328,7 @@ IMM32 的 IME DLL 按进程加载，各进程持有各自的 `ShapeStore`，不�
 - 候选窗 1–9 编号，`-` `=` `,` `.` 翻页，沿用框架实现。
 - **无表状态**：不吞键（`is_input_char` 返回 `false`），不弹组合窗；通过首启提示与配置工具空状态引导。这是刻意的——吞键却不显示任何内容会让用户以为键盘坏了。
 - 工具栏显示固定标签「形」；当前表名在配置工具中查看与切换。
-- **已知限制**：达最大码长后继续按字母键，该键被 IME 吞掉（不改变组合串、不产生输出）。v1 不做特殊提示；W4 评估「再按字母即上屏首候选」作为缓解，若实现须补一条 host 测试。
+- **已知限制**：达最大码长后继续按字母键，该键被 IME 吞掉（不改变组合串、不产生输出）。v1 不做特殊提示；P5（原 W4）评估「再按字母即上屏首候选」作为缓解，若实现须补一条 host 测试。
 - 详情页与提示文案统一使用「码表」而非方案专名，避免与商标冲突。
 
 ### 5.5 安装布局
@@ -486,19 +495,24 @@ RosXingMa-Pack-Shape86-v1.0.0/
 
 ## 8. 实施计划
 
+> **v1.1 阶段重排说明**：新增 **P0 前置阶段** 作为新的第一阶段——它不是形码编码，而是「形码能否开工」的框架门禁。原 W0–W5 顺延为 **P1–P5**，编号与内容一一对应，不改变阶段顺序依赖关系。**P0 细化文档 = `xingma/docs/phase0/PHASE0-PLAN.md`**；P0 未完成，P1（原 W0，立项与合规，已随近几日文档工作实质完成）之后的编码阶段不得开工。
+
 | 阶段 | 名称 | 关键任务 | 完成判据 | 人日 |
 |---|---|---|---|---|
-| **W0** | 立项与合规 | 双轨分发定稿；数据包署名与免责文本；「新世纪不分发」决策记录；命名与文案避让 | `docs/` 三份规范与 `NOTICE.txt` 第 8 节齐备，无待决法务项 | 1–2 |
-| **W1** | 引擎与 dat 内核 | `shape_dat_format.hpp`、`ShapeTable`、`ShapeSession`；`libtableio` 的 CSV/TSV 读取与 `dat_writer`；`mkdat-shape`；自造样例表跑通全链路 | `ctest` 全绿；CSV→dat 两次构建字节一致；自造表可查表并在 host 测试中上屏（含词） | 12–16 |
-| **W2** | 装配与宿主集成 | `rosxingma.ime` 装配（scheme_reg、def、资源）；`ShapeScheme`、`ShapeStore`、`ShapeDatLoader`（G1 由框架解决，直接复用共享宿主层，无自建 `imm_entry_shape`；**前置门禁**：框架 G1 的 TRANSMSGLIST ABI 缺陷须先修复并在 VM 词组用例中验证，见 `docs/FRAMEWORK-AUDIT-2026-11-17.md` §2.1）；自带安装器（`.ime` 进 system32、工具进程序文件夹）与 `HKLM` 安装信息 | VM 中可安装；无表不吞键不崩溃；导入演示表后可输入、可选词上屏（**≥2 字词组完整上屏**是 G1 ABI 修复的真机验证用例）；开始菜单能拉起配置工具 | 6–9 |
-| **W3** | 配置工具与切换 | `rosxingma-config.exe`（列表/导入向导/预览/详情/移除/排序）、`rosxingma-table.exe`（全子命令）、注册表模型、revision 自检与延迟换表、LRU；数据包安装流程 | 导入多张表并来回切换；装数据包一次点击完成；组合中途切换不丢字；CLI 退出码矩阵符合规范 | 14–20 |
-| **W4** | 格式兼容与完整度 | fcitx 5、ibus-table 适配器；PC 端 `rime2csv.py` / `ibusdb2csv.py` / `bz2csv.py`；反导出；`z` 通配；唯一候选自动上屏；标点与全半角 | 三类文本格式各导入一份真实表并正确上屏；Rime 文件得到明确引导；导出可被 fcitx 5 / ibus 回读 | 10–15 |
-| **W5** | 验收与发布 | VM 端到端、CI 扩展、文档定稿、构建并发布 86/98 数据包、安装包与发布说明 | 主包无码表可安装；两份数据包可导入/卸载/溯源；全仓库无旧名残留 | 7–11 |
-| | | | **合计** | **50–73 人日** |
+| **P0** | **前置门禁（新增）** | 框架侧：X1 目录归位提交收口；X2-a0 `SchemeRegistry` 注入缝 + toy scheme；G1 ABI 修复复核（`≥2 字词组完整上屏` VM 用例）；M0 红线新口径（登录路径零失败初始化）；UI 类名 ≤15 字符断言。形码侧：以只读复核 + 用例设计配合，**不改框架文件** | 五项门禁逐条通过，判据与证据模板见 `docs/phase0/PHASE0-PLAN.md`；任一未过 → 后续阶段不启动 | 2–4（框架侧，形码只复核） |
+| **P1**（原 W0） | 立项与合规 | 双轨分发定稿；数据包署名与免责文本；「新世纪不分发」决策记录；命名与文案避让 | `docs/` 三份规范与 `NOTICE.txt` 第 8 节齐备，无待决法务项（**当前已达成**） | 1–2 |
+| **P2**（原 W1） | 引擎与 dat 内核 | `shape_dat_format.hpp`、`ShapeTable`、`ShapeSession`；`libtableio` 的 CSV/TSV 读取与 `dat_writer`；`mkdat-shape`；自造样例表跑通全链路 | `ctest` 全绿；CSV→dat 两次构建字节一致；自造表可查表并在 host 测试中上屏（含词） | 12–16 |
+| **P3**（原 W2） | 装配与宿主集成 | `rosxingma.ime` 装配（scheme_reg、def、资源）；`ShapeScheme`、`ShapeStore`、`ShapeDatLoader`（G1 由框架解决，直接复用共享宿主层，无自建 `imm_entry_shape`；**前置门禁**：P0 全部通过，含 X1 路径归位、注入缝可用、UI 类名断言、G1 词组上屏 VM 用例）；自带安装器（`.ime` 进 system32、工具进程序文件夹）与 `HKLM` 安装信息，**遵循登录路径零失败初始化口径** | VM 中可安装；无表不吞键不崩溃；导入演示表后可输入、可选词上屏（**≥2 字词组完整上屏**是 G1 ABI 修复的真机验证用例）；开始菜单能拉起配置工具 | 6–9 |
+| **P4**（原 W3） | 配置工具与切换 | `rosxingma-config.exe`（列表/导入向导/预览/详情/移除/排序）、`rosxingma-table.exe`（全子命令）、注册表模型、revision 自检与延迟换表、LRU；数据包安装流程 | 导入多张表并来回切换；装数据包一次点击完成；组合中途切换不丢字；CLI 退出码矩阵符合规范 | 14–20 |
+| **P5**（原 W4） | 格式兼容与完整度 | fcitx 5、ibus-table 适配器；PC 端 `rime2csv.py` / `ibusdb2csv.py` / `bz2csv.py`；反导出；`z` 通配；唯一候选自动上屏；标点与全半角 | 三类文本格式各导入一份真实表并正确上屏；Rime 文件得到明确引导；导出可被 fcitx 5 / ibus 回读 | 10–15 |
+| **P6**（原 W5） | 验收与发布 | VM 端到端、CI 扩展、文档定稿、构建并发布 86/98 数据包、安装包与发布说明 | 主包无码表可安装；两份数据包可导入/卸载/溯源；全仓库无旧名残留 | 7–11 |
+| | | | **合计** | **52–76 人日**（P0 新增 2–4，其余不变） |
 
-> 人日为粗估，不含法务沟通等待。G1–G4 已由框架侧解决（2026-11-16，见 3.4）；**2026-11-17 审计发现的 G1 TRANSMSGLIST ABI 缺陷（P0）已于同日由框架侧修复**（`docs/FRAMEWORK-AUDIT-2026-11-17.md` §2.1 处置注记），W2 门禁仅剩 VM 词组上屏用例实测。
+> 人日为粗估，不含法务沟通等待。G1–G4 已由框架侧解决（2026-11-16，见 3.4）；**G1 TRANSMSGLIST ABI 缺陷（2026-11-17 审计）已于同日修复并在 2026-11-18 M2 VM 验收（15/15）中获真机证据**，但形码装配仍须在 P0.3 用自己的宿主/窗口类名跑一次词组用例。M0 红线 #2 已于 2026-11-18 降级为部署偏好（平台自写 Preload），实质约束改为「登录路径零失败初始化」，形码安装器与 `.ime` 须按新口径实现，见 P0.4。
+>
+> **架构审计新增的两项前置风险**（`docs/phase0/PHASE0-PLAN.md` 处置）：① `scheme_instance()` 仍是全局工厂、无注入点——这是 `xingma/` 至今零 C++ 的根因，须由 X2-a0 注入缝 + toy scheme 验证第二个方案可接入；② 全局单例（`g_hInst` / `UiStats` / `g_last_geometry` / `GlyphProbe` / `WindowRegistry`）未做 per-instance 隔离，与"两 IME 同进程互不干扰"目标冲突，X3 承担隔离改造，形码侧在 P0.5 做接入核验但不越界改框架。
 
-**阶段顺序依赖**：W1 完成前 W2 无法装配（缺 `ShapeTable`）；W4 的适配器依赖 W3 的 `libtableio` 稳定。
+**阶段顺序依赖**：**P0 是 P2（原 W1）及之后所有编码阶段的硬门禁**；P1 已实质完成。P2 完成前 P3 无法装配（缺 `ShapeTable`）；P5 的适配器依赖 P4 的 `libtableio` 稳定。
 
 ---
 
@@ -576,7 +590,7 @@ xingma/tests/{shape_table_test,shape_session_test,shape_switch_test,
 | 目录边界 | `xingma/tools/check_layout.py`：`xingma/` 之外出现 `xingma/` 路径即失败；`xingma/` 内对 `framework/`、`pinyin/` 出现写操作或非 `<imfw/...>` 形式的 include 即失败 |
 | 命名一致性 | 同脚本扫描旧名与旧路径，白名单仅四类事实引用 |
 | 确定性 | `check_shape_dat.py` 与两次构建哈希比对；数据包构建产物 zip 字节一致（固定时间戳） |
-| 回归 | 既有拼音 ctest 与 M1 契约检查全绿；关闭 `ROSXINGMA` 时拼音二进制行为不变 |
+| 回归 | 既有拼音 ctest 11/11 与 `check_m1.py` 63/63、`check_docs.py` 7/7 全绿（2026-11-18 基线）；关闭 `ROSXINGMA` 时拼音二进制行为不变 |
 
 ---
 
@@ -587,7 +601,7 @@ xingma/tests/{shape_table_test,shape_session_test,shape_switch_test,
 3. **不限数量**：可导入 ≥5 张表（含不同码长 4/5），列表正确显示，可重命名、排序、移除。
 4. **工具闭环**：GUI 与 CLI 均能完成 导入 → 预览 → 切换 → 导出 → 移除；`--dry-run` 无副作用；`rejects.csv` 可导出。
 5. **格式兼容**：CSV、fcitx 5、ibus-table 各至少一份真实表导入成功并正确上屏；Rime 文件得到明确命令引导且转换后的 CSV 可导入；fcitx4 `.mb` 与 `.db`、`.bz2` 返回退出码 6；反导出可被 fcitx 5 / ibus 回读。
-6. **词组能力**：多字词可从候选窗选中并**完整上屏**（G1 已解决，非截断；框架 G1 ABI 缺陷已修复，见 Q5 与 `docs/FRAMEWORK-AUDIT-2026-11-17.md` §2.1）。
+6. **词组能力**：多字词可从候选窗选中并**完整上屏**（G1 已解决，非截断；框架 G1 ABI 缺陷已修复且 M2 VM 验收 15/15 获真机证据，形码侧 P0.3 补一次自身词组用例，见 Q5 与 `docs/FRAMEWORK-AUDIT-2026-11-17.md` §2.1、P0 细化文档）。
 7. **数据包闭环**：86、98 两份各自可一次导入（清单 → 哈希 → 同意屏 → 安装），安装后自带名称/码长/字母表无需手填；可卸载、可升级；许可证与上游提示常驻可查；哈希不符拒绝安装。
 8. **切换行为**：同窗口下一次按键生效；切回其它窗口输入时生效；组合中途切换不丢字、不残留候选、不崩溃；`SwitchMode=1` 时明确提示重启。
 9. **降级可预期**：dat 缺失或损坏 → 标损坏 + 提示 + 保持原表，不静默错码。
@@ -604,10 +618,11 @@ xingma/tests/{shape_table_test,shape_session_test,shape_switch_test,
 | 风险 | 等级 | 缓解 |
 |---|---|---|
 | ~~G1 未解决导致词只能显示不能上屏~~ | ~~高~~（**已消解**） | G1 已由框架 `imfw::emit_text` 解决并有单测与 `check_m1.py` 断言（2026-11-16） |
-| **框架 G1 TRANSMSGLIST ABI 缺陷未修即装配** | **高（2026-11-17 审计新增）** | 证据与修复建议在 `docs/FRAMEWORK-AUDIT-2026-11-17.md` §2.1；W2 开工前核对框架侧修复提交 + M2/形码 VM 词组上屏用例通过；未修则 W2 顺延，形码侧不自行打补丁（不碰框架） |
+| **框架 G1 TRANSMSGLIST ABI 缺陷未修即装配** | ~~高~~（**已消解**） | 框架侧 2026-11-17 已修复、2026-11-18 M2 VM 验收 15/15 获真机证据；P0.3 再做形码自身词组用例确认；未过则 P3（原 W2）不启动，形码侧不自行打补丁（不碰框架） |
+| **Scheme 注入缝未落地 / 全局单例未隔离** | 中（2026-11-18 审计新增） | `scheme_instance()` 无注入点、全局单例无 per-instance 隔离是 `xingma/` 零 C++ 的根因；P0.2/P0.5 核验 X2-a0 注入缝与 X3 隔离规划，形码只读不改框架；详见 `docs/phase0/PHASE0-PLAN.md` |
 | 热切换在个别宿主进程中不生效 | 中 | 两处自检（`on_select` / 组合起点）+ 组合期延迟换表；`SwitchMode=1` 提供确定性模式；文案不夸大 |
 | IMM32 每进程独立，无法全局原子换表 | 高（已由设计消解） | 不做广播依赖；revision 自检；切换只在安全时机发生 |
-| 配置工具在 ReactOS 上的控件兼容性 | 中 | 仅用 user32/comctl32 基础控件；W2 早测 `ListView`，必要时退 `ListBox`；不自绘 |
+| 配置工具在 ReactOS 上的控件兼容性 | 中 | 仅用 user32/comctl32 基础控件；P3（原 W2）早测 `ListView`，必要时退 `ListBox`；不自绘 |
 | 多格式解析的历史变体 | 中 | 解析宽松、校验严格；预览页展示统计与样例供肉眼确认；rejects 可导出 |
 | 表多导致内存/启动开销 | 低 | 按需加载 + LRU 上限 2；启动只读注册表元数据，不读 dat |
 | 用户导入侵权码表 | 低（责任转移） | 首启提示；导入要求填授权依据；工具中立；MIT 不覆盖用户数据 |
@@ -623,9 +638,9 @@ xingma/tests/{shape_table_test,shape_session_test,shape_switch_test,
 |---|---|---|---|
 | Q1 | ~~G1 的责任方~~ | ~~框架侧扩展 / 形码自建宿主层~~ | **已决（2026-11-16）**：框架侧 `imfw::emit_text`，形码直接复用共享宿主层 |
 | Q2 | 数据包下载渠道 | GitHub Releases 附件 / 独立站点 | 均不进主安装包，只影响发布位置与更新指引 |
-| Q3 | 便携模式优先级 | W3 必做 / 延至 W5 | 影响工具参数与测试矩阵 |
-| Q4 | ~~是否请求框架开放 `ImeConfigure` 回调~~ | ~~请求（体验最佳） / 维持开始菜单入口~~ | **已决（2026-11-16）**：框架已开放 `Scheme::configure`，形码 W2/W3 接入，开始菜单入口保留为冗余 |
-| Q5 | ~~框架 G1 TRANSMSGLIST ABI 缺陷的修复时机~~（2026-11-17 审计新增，见 `docs/FRAMEWORK-AUDIT-2026-11-17.md` §2.1） | ~~框架侧立即修 / 与 W1 并行修 / W2 开工前修~~ | **已决（2026-11-17）**：框架侧当日修复并提交（abi 头 + imm_entry + session_store + check 断言 + 布局单测）；W2 门禁仅剩 VM 词组上屏实测 |
+| Q3 | 便携模式优先级 | P4（原 W3）必做 / 延至 P6（原 W5） | 影响工具参数与测试矩阵 |
+| Q4 | ~~是否请求框架开放 `ImeConfigure` 回调~~ | ~~请求（体验最佳） / 维持开始菜单入口~~ | **已决（2026-11-16）**：框架已开放 `Scheme::configure`，形码 P3/P4（原 W2/W3）接入，开始菜单入口保留为冗余 |
+| Q5 | ~~框架 G1 TRANSMSGLIST ABI 缺陷的修复时机~~（2026-11-17 审计新增，见 `docs/FRAMEWORK-AUDIT-2026-11-17.md` §2.1） | ~~框架侧立即修 / 与 W1 并行修 / W2 开工前修~~ | **已决**：框架侧 2026-11-17 修复并提交；2026-11-18 M2 VM 验收 15/15 通过；形码侧 P0.3 补一次自身词组用例即可 |
 
 ---
 
@@ -645,5 +660,6 @@ xingma/tests/{shape_table_test,shape_session_test,shape_switch_test,
 ## 附录 B 文档维护约定
 
 - 本文件为唯一实施依据；章节编号稳定，新增内容追加到末尾或明确子节，避免打乱既有交叉引用。
-- 版本号递增规则：结构性调整（目标、模型、阶段）升次版本；文字修订升修订号。
-- 每次修订同步检查 `xingma/README.md`、`docs/*.md`、`NOTICE.txt` 中对本文件章节号的引用。
+- 版本号递增规则：结构性调整（目标、模型、**阶段**）升次版本；文字修订升修订号。
+- 每次修订同步检查 `xingma/README.md`、`docs/*.md`、`docs/phase0/*.md`、`NOTICE.txt` 中对本文件章节号与阶段编号的引用。
+- 当前版本 1.1 的阶段编号为 **P0（前置门禁）/ P1–P6**（原 W0–W5）；引用时写「P3（原 W2）」以便对照历史文档。

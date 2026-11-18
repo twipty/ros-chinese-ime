@@ -9,18 +9,19 @@
 
 | 路径 | 内容 | 状态 |
 |---|---|---|
-| `XINGMA-PLAN.md` | 实施计划（**正式版 1.0**，唯一实施依据） | 现行 |
+| `XINGMA-PLAN.md` | 实施计划（**正式版 1.1**，唯一实施依据；新增 P0 前置门禁，原 W0–W5 顺延为 P1–P6） | 现行 |
+| `docs/phase0/PHASE0-PLAN.md` | 第一阶段 P0 细化：框架门禁、注入缝、VM 词组上屏、红线新口径 | 现行 |
 | `archive/` | 历史草案存档，仅作追溯，不作依据 | 存档 |
 | `docs/TABLE-LICENSE-RESEARCH.md` | 码表授权尽调：法律定性、13 个来源盘点、分发矩阵 | 已完成 |
 | `docs/TABLE-IMPORT-SPEC.md` | 导入格式规范：CSV/TSV/fcitx5/ibus 语法、嗅探、校验、反导出 | 已完成（v1.1） |
 | `docs/DATA-PACK-SPEC.md` | 可选数据包规范：`pack.ini` 字段、校验顺序、两份实际清单 | 已完成 |
 | `packs/` | 86/98 数据包的模板与许可（**不含码表数据**） | 已完成 |
 | `tools/mkdat-shape/make_pack.py` | 数据包构建/校验脚本（仅标准库） | 已完成，自测通过 |
-| `include/roxingma/`、`src/` | `shape_table`、`shape_session`、`shape_store`、`shape_scheme`、`shape_dat_format` | 待 W1 |
-| `host/`、`res/` | `scheme_reg_shape`、`shape_dat_loader`、`shape_demo_table`、`rosxingma.def`、资源 | 待 W1/W2 |
-| `tools/table-io/`、`tools/table-config/`、`tools/table-convert/` | 格式读写库、配置工具 GUI/CLI、PC 端转换脚本 | 待 W1–W4 |
-| `tests/` | 形码引擎、切换、格式一致性、数据包测试 | 待 W1–W3 |
-| `CMakeLists.txt` | 形码全部构建目标 | 待 W1 |
+| `include/roxingma/`、`src/` | `shape_table`、`shape_session`、`shape_store`、`shape_scheme`、`shape_dat_format` | 待 P2（原 W1） |
+| `host/`、`res/` | `scheme_reg_shape`、`shape_dat_loader`、`shape_demo_table`、`rosxingma.def`、资源 | 待 P2/P3（原 W1/W2） |
+| `tools/table-io/`、`tools/table-config/`、`tools/table-convert/` | 格式读写库、配置工具 GUI/CLI、PC 端转换脚本 | 待 P2–P5（原 W1–W4） |
+| `tests/` | 形码引擎、切换、格式一致性、数据包测试 | 待 P2–P4（原 W1–W3） |
+| `CMakeLists.txt` | 形码全部构建目标 | 待 P2（原 W1） |
 
 ## 边界规则
 
@@ -28,7 +29,8 @@
 
 ```
 ros-pinyin/
-  framework/   ← 共用核心框架（include/imfw、src、host、ui）    ← ros-pinyin 维护，形码只读
+  framework/   ← 共用核心框架（include/imfw、src）              ← ros-pinyin 维护，形码只读
+                 host/ui 已于 X1 归位到 platform/win32/{imm32,ui}/
   pinyin/      ← 拼音产品（include/rospinyin、src）             ← ros-pinyin 维护
   xingma/      ← 本产品线，全部形码文件在此                       ← 本计划维护
 ```
@@ -37,8 +39,10 @@ ros-pinyin/
 
 框架已交付 `imfw::Scheme` 插件契约，形码通过 `xingma/host/scheme_reg_shape.cpp` 挂一个实现进去，
 宿主与界面源码直接按相对路径链接、不复制。G1–G4 已由框架侧解决（2026-11-16，见 `XINGMA-PLAN.md` 3.4）；
-**2026-11-17 框架审计**发现 G1 多消息上屏存在 TRANSMSGLIST ABI 缺陷（W2 装配前置门禁）与 G2 重载顺序文档矛盾（P2），
-证据与行动项见 `docs/FRAMEWORK-AUDIT-2026-11-17.md`。本目录对框架只读不改，缺陷由框架侧修复。
+**2026-11-17 框架审计**发现 G1 多消息上屏存在 TRANSMSGLIST ABI 缺陷与 G2 重载顺序文档矛盾，证据见 `docs/FRAMEWORK-AUDIT-2026-11-17.md`；
+**2026-11-18 现状**：G1 ABI 缺陷已修 & M2 VM 验收 15/15 通过，M0 红线 #2 降级为部署偏好（登录路径零失败初始化），
+X1 目录归位已提交（2026-11-18）、X2-a0 注入缝待落地——形码开工前须逐条过 P0 门禁，见 `docs/phase0/PHASE0-PLAN.md`。
+本目录对框架只读不改，缺陷与缺口由框架侧修复。
 
 ## 为什么不直接改 ros-pinyin
 
