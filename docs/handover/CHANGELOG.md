@@ -11,7 +11,7 @@
 
 - **`imfw::SchemeRegistry`**（`framework/include/imfw/scheme_registry.hpp`）：把 `scheme_instance()`
   拆成"创建"（装配件提供 `scheme_factory()`）与"查询"（框架 `get()`，结果缓存一次）两半；
-  `install(Scheme*)` 是测试/宿主的注入点。`scheme_instance()` 保留为别名，**6 处调用点零改动**。
+  `install(Scheme*)` 是测试/宿主的注入点。`scheme_instance()` 保留为别名，**10 处调用点零改动**。
   解决审计 A-P0-2：此前换一个方案只能换掉框架所依赖的那个符号再重编。
 - **toy scheme**（`samples/toy-scheme/`）：字母表 `a-z`、每键两个候选、零数据纯 ASCII，
   作注入缝首个消费者；`-DROSPINYIN_SCHEME=toy` 编出玩具版 `rospinyin.ime`（870,475 B，

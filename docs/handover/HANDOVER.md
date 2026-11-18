@@ -1491,7 +1491,7 @@ X2-b 要假 scheme，按这条路径走下去每一次都得改框架，而 X3 �
 | 查询 `SchemeRegistry::get()` | 框架（`imfw-engine`） | 先看 `install()` 过的，再问工厂并缓存 |
 | 注入 `install(Scheme*)` | 测试 / 宿主 | 想什么时候换就什么时候换 |
 
-`scheme_instance()` 保留为 `get()` 的别名，所以**6 处调用点一字未改**
+`scheme_instance()` 保留为 `get()` 的别名，所以**10 处调用点一字未改**
 （`session_store.cpp:34,55`、`ui_server.cpp:26,35`、`imm_entry.cpp:299,414,519,547`、
 `ime_ui.cpp:176,211`）。这是有意的：这次只证明"工厂可换"，把调用点改成语义更直白的名字
 属于 X2-d 拆 TU 时顺手做的事，混在一起会让回归面变大。
@@ -1543,6 +1543,11 @@ guarded static 从 `ime/scheme_reg.cpp` 搬到了 `get()` 内部，**触发点�
 变异验证三次，全部变红：忽略 `install()`（注入断言红）、不缓存工厂结果（缓存断言红）、
 玩具方案不做小写归一（字母表断言红）。
 
+**CI `44329215082`（`40d22ea`）全绿，三个 job 的每一步都真执行**，其中
+`Configure (toy scheme)` / `Build (toy scheme)` / 导入表校验里的"两个 `.ime` 不得字节相同"
+是新加的步骤——它们第一次跑就通过了，说明玩具分支在 MSYS2 的 MinGW 上与本地交叉工具链
+行为一致。
+
 **没验证的：真机。** 本机不能代用户敲键（红线），所以"可跑"目前只到可加载级证据
 （导出/导入/资源齐备、两版二进制不同）。真机冒烟的最小步骤写在
 `PLAN-MODULARIZATION` X2-a0 的执行记录里，等用户有手时补一次。
@@ -1556,7 +1561,12 @@ guarded static 从 `ime/scheme_reg.cpp` 搬到了 `get()` 内部，**触发点�
    这个仓库为此已经改过一次方向（审计前 `check_m1` 是"黑名单扫词"，改注释即误判，
    后来换成了调用点白名单）；这次是同一个病在另一处的发作。
 3. **注入缝的价值不是"能换"，是"换的时候不用碰调用方"。** 所以别名
-   （`scheme_instance` → `get()`）比"顺手把 6 处调用点改成新名字"更值钱。
+   （`scheme_instance` → `get()`）比"顺手把 10 处调用点改成新名字"更值钱。
+
+> **勘误（同一次提交内发现）**：本节的"10 处"是对的，`feat(framework)` 那条提交信息与
+> `CHANGELOG` 的初稿都写成了 6 处——6 是计划 §2 接缝表里"引擎调用点"的数字，
+> 被顺手抄了过来。真实数字以 `grep -rn 'scheme_instance()' framework/platform | wc -l`
+> 为准（imm_entry 4、session_store 2、ui_server 2、ime_ui 2）。
 
 ### 11.2 其他待办
 
