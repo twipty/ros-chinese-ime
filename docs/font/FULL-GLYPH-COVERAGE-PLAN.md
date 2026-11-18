@@ -128,7 +128,7 @@
 
 ### 5.2 逐字符双字体自绘（核心改动）
 
-现有 `framework/ui/candidate_window.cpp:133-149` 的 `on_paint()` 用一次 `TextOutW` 画整行、一个 HDC 只有一个 `font_`。叠加字体必须在这里分段：
+现有 `framework/platform/win32/ui/candidate_window.cpp:133-149` 的 `on_paint()` 用一次 `TextOutW` 画整行、一个 HDC 只有一个 `font_`。叠加字体必须在这里分段：
 
 1. 候选行的每个字符（先 UTF-32 解码，非 BMP 走代理对）逐个问"哪个字体有字形"；
 2. 连续落在同一字体的字符合并成一段，对每段 `SelectObject(该字体)` + `TextOutW`；
@@ -137,7 +137,7 @@
 
 ### 5.3 字形探针改造（与自绘共用同一判定）
 
-`framework/ui/ime_ui.cpp:237-298` 的 `GlyphProbe` 从"单字体"改成"字体链"：
+`framework/platform/win32/ui/ime_ui.cpp:237-298` 的 `GlyphProbe` 从"单字体"改成"字体链"：
 
 - `has(codepoint)` 按 `Noto → Plangothic` 顺序问，任一命中即 `true`；
 - **修掉非 BMP fail-open**（`:260`）：用 UTF-16 代理对 `wchar_t[2]` 调 `GetGlyphIndicesW(dc, pair, 2, indices, GGI_MARK_NONEXISTING_GLYPHS)`，判定 `result == 2 && indices[0] != 0xFFFF && indices[1] != 0xFFFF`；
@@ -212,12 +212,12 @@
 - `NOTICE.txt` §6 改写；新增 `OFL.txt`；`README.md` §5 字体表。
 
 **UI 与引擎**
-- `framework/ui/ui_window.cpp`：`kFontFaces` 置顶 `Noto Sans CJK SC`；新增字体链配置常量供探针与自绘共用。
-- `framework/ui/candidate_window.cpp`：`on_paint()` 逐字符分段双字体绘制；度量按段累加。
-- `framework/ui/composition_window.cpp`：同上（若显示汉字）。
-- `framework/ui/ime_ui.cpp`：`GlyphProbe` 改多字体链 + 修非 BMP 代理对探测。
+- `framework/platform/win32/ui/ui_window.cpp`：`kFontFaces` 置顶 `Noto Sans CJK SC`；新增字体链配置常量供探针与自绘共用。
+- `framework/platform/win32/ui/candidate_window.cpp`：`on_paint()` 逐字符分段双字体绘制；度量按段累加。
+- `framework/platform/win32/ui/composition_window.cpp`：同上（若显示汉字）。
+- `framework/platform/win32/ui/ime_ui.cpp`：`GlyphProbe` 改多字体链 + 修非 BMP 代理对探测。
 - `framework/include/imfw/engine.hpp`：`Candidate` 加 `rare` 标志。
-- `framework/host/imm_entry.cpp`：`renderable_candidates()` 护栏按 common 统计。
+- `framework/platform/win32/imm32/imm_entry.cpp`：`renderable_candidates()` 护栏按 common 统计。
 - `pinyin/src/pinyin_session.cpp`：`RarePolicy` 分级 + rare 标志传播。
 
 **测试与验收**

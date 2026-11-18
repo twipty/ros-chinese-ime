@@ -101,7 +101,7 @@
 在代码里定义单一字体链常量，供探针与绘制共用：
 
 ```cpp
-// framework/ui/ui_window.cpp（示意）
+// framework/platform/win32/ui/ui_window.cpp（示意）
 static const wchar_t* const kGlyphFontFiles[] = {
     L"WenJinMinchoP0-Regular.ttf",  // BMP/SMP：基本区+扩展A
     L"WenJinMinchoP2-Regular.ttf",  // SIP：扩展B-F、I

@@ -3,7 +3,7 @@
 // See LICENSE and NOTICE.txt at the repository root.
 //
 // Branding constants for the assembled rospinyin.ime (installer, resources,
-// registry). The IMM32 host layer is framework-owned (framework/host); the
+// registry). The IMM32 host layer is framework-owned (framework/platform/win32/imm32); the
 // UI server class name now comes from PinyinScheme (pinyin/).
 
 #pragma once

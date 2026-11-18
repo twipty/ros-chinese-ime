@@ -89,7 +89,7 @@ if (candidates_.empty()) candidates_ = std::move(rare);
 
 ### 1.4 探针与过滤层：两处缺陷叠加
 
-`framework/ui/ime_ui.cpp:257-281`（`GlyphProbe::has()`）：
+`framework/platform/win32/ui/ime_ui.cpp:257-281`（`GlyphProbe::has()`）：
 
 ```cpp
 bool has(char32_t codepoint) {
@@ -108,7 +108,7 @@ bool has(char32_t codepoint) {
 - **附带实现问题**：即便去掉 fail-open，`const wchar_t wide = static_cast<wchar_t>(codepoint)` 对非 BMP 是**截断**而非代理对；Windows `wchar_t` 为 16 位，必须传 2 码元。这条路径从未被正确实现过。
 - 探针复用 `ui::CreateUiFont(16)`（`:242`），与候选窗实际绘制字体同源——这是**正确的设计**，必须保留。
 
-`framework/host/imm_entry.cpp:353-382`（`renderable_candidates()`）：
+`framework/platform/win32/imm32/imm_entry.cpp:353-382`（`renderable_candidates()`）：
 
 ```cpp
 const std::size_t dropped = input.size() - kept.size();
@@ -140,7 +140,7 @@ return kept;
 
 ### 第 1 层（P0，必做，零字体成本）：修复非 BMP 探针
 
-文件：`framework/ui/ime_ui.cpp`
+文件：`framework/platform/win32/ui/ime_ui.cpp`
 
 - 删除 `codepoint > 0xFFFF` 的 fail-open 分支；
 - 对非 BMP 用 UTF-16 代理对构造 `wchar_t[2]`，调用 `GetGlyphIndicesW(dc, pair, 2, indices, GGI_MARK_NONEXISTING_GLYPHS)`；
@@ -153,7 +153,7 @@ return kept;
 
 ### 第 2 层（P0，与第 1 层同批）：护栏按"有字频候选"统计
 
-文件：`framework/include/imfw/engine.hpp`、`pinyin/src/pinyin_session.cpp`、`framework/host/imm_entry.cpp`
+文件：`framework/include/imfw/engine.hpp`、`pinyin/src/pinyin_session.cpp`、`framework/platform/win32/imm32/imm_entry.cpp`
 
 - 给 `Candidate` 增加一个标志位，例如 `bool rare = false`（或 `flags` 位域，为将来更多状态留位）；
 - `PinyinSession::recompute()` 按 `entry.rank == kUnknownRank` 设置该标志；
@@ -166,7 +166,7 @@ return kept;
 
 ### 第 3 层（P1，体验）：rare 字分级准入 + 可见性标识
 
-文件：`pinyin/include/rospinyin/pinyin_session.hpp`、`pinyin/src/pinyin_session.cpp`、`framework/ui/candidate_window.cpp`
+文件：`pinyin/include/rospinyin/pinyin_session.hpp`、`pinyin/src/pinyin_session.cpp`、`framework/platform/win32/ui/candidate_window.cpp`
 
 把布尔 `show_rare_` 升级为分级策略（保持旧 API 兼容）：
 
@@ -210,16 +210,16 @@ return kept;
 ## 4. 改动文件清单（按层）
 
 **第 1 层**
-- `framework/ui/ime_ui.cpp` — 非 BMP 代理对探测；拆出可测的纯函数。
+- `framework/platform/win32/ui/ime_ui.cpp` — 非 BMP 代理对探测；拆出可测的纯函数。
 
 **第 2 层**
 - `framework/include/imfw/engine.hpp` — `Candidate` 加 `rare` 标志。
 - `pinyin/src/pinyin_session.cpp` — `recompute()` 设置 `rare` 标志。
-- `framework/host/imm_entry.cpp` — `renderable_candidates()` 分组护栏。
+- `framework/platform/win32/imm32/imm_entry.cpp` — `renderable_candidates()` 分组护栏。
 
 **第 3 层**
 - `pinyin/include/rospinyin/pinyin_session.hpp` / `pinyin/src/pinyin_session.cpp` — `RarePolicy` 分级与尾部限量。
-- `framework/ui/candidate_window.cpp` — rare 标识渲染。
+- `framework/platform/win32/ui/candidate_window.cpp` — rare 标识渲染。
 - `ime/` 或语言栏菜单装配处 — 策略切换入口（兑现 M3 待办）。
 
 **第 4 层（可选）**
@@ -243,6 +243,6 @@ return kept;
 
 ## 6. 证据来源
 
-**本仓库**：`pinyin/include/rospinyin/pinyin_session.hpp:56-73`、`pinyin/src/pinyin_session.cpp:114-144`、`framework/src/code_table.cpp:191-200`、`framework/include/imfw/dat_format.hpp`（`kUnknownRank`）、`framework/include/imfw/engine.hpp:25-28`、`framework/src/candidate_pager.cpp:8-47`、`framework/ui/ime_ui.cpp:231-298`、`framework/host/imm_entry.cpp:344-382,402,451,491`、`framework/ui/candidate_window.cpp:33-47,65-149`、`tests/emit_text_test.cpp:73-82`、`tests/pinyin_session_test.cpp:257-260`、`tests/candidate_pager_test.cpp`、`HANDOVER.md:404,805,813,974`、`CHANGELOG.md:48`、`docs/milestones/m2/M2-REPORT.md:84`、`docs/milestones/m2/M2-REMAINING.md:76`、`docs/milestones/m2/M2-ACCEPTANCE.md:12,83-86`、`FONT-BUNDLING-ASSESSMENT.md:46-52,139,164-167`。
+**本仓库**：`pinyin/include/rospinyin/pinyin_session.hpp:56-73`、`pinyin/src/pinyin_session.cpp:114-144`、`framework/src/code_table.cpp:191-200`、`framework/include/imfw/dat_format.hpp`（`kUnknownRank`）、`framework/include/imfw/engine.hpp:25-28`、`framework/src/candidate_pager.cpp:8-47`、`framework/platform/win32/ui/ime_ui.cpp:231-298`、`framework/platform/win32/imm32/imm_entry.cpp:344-382,402,451,491`、`framework/platform/win32/ui/candidate_window.cpp:33-47,65-149`、`tests/emit_text_test.cpp:73-82`、`tests/pinyin_session_test.cpp:257-260`、`tests/candidate_pager_test.cpp`、`HANDOVER.md:404,805,813,974`、`CHANGELOG.md:48`、`docs/milestones/m2/M2-REPORT.md:84`、`docs/milestones/m2/M2-REMAINING.md:76`、`docs/milestones/m2/M2-ACCEPTANCE.md:12,83-86`、`FONT-BUNDLING-ASSESSMENT.md:46-52,139,164-167`。
 
 > 所有结论均为静态代码 + 项目文档证据；探针的实际 GDI 行为、字体度量、候选窗观感必须由 ReactOS VM 实机验证收口。`.dat` 未入库，码点分布引用自 `HANDOVER.md:805` 的项目记录，未逐字节复算。

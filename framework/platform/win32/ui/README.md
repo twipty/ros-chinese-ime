@@ -1,14 +1,14 @@
-# framework/ui/ — 输入法窗口层（可复用）
+# framework/platform/win32/ui/ — 输入法窗口层（可复用）
 
 框架的窗口层，任何装配出的 IME 共用（窗口类名由各 IME 的 Scheme 提供）。M2 已落地组合串窗口与候选窗；工具条为 2026-11-16 变更新增的可复用模块：
 
 | 层 | 位置 | 状态 | 内容 |
 |---|---|---|---|
-| UI server 窗口类 | `framework/host/ui_server.cpp` | **M1 已实现** | 注册 ImeInquire 返回的类名（来自 Scheme）并转发 `DefWindowProcW`；不绘制、不访问输入上下文（M0 的 0xF4 红线） |
-| 窗口基类 / 字体 | `framework/ui/ui_window.*` | **M2 已实现** | 按类名惰性注册（两个 IME DLL 可同进程共存）、无激活置顶弹窗、`Droid Sans Fallback → Noto Sans SC → Microsoft YaHei → SimSun → Arial Unicode MS` 字体兜底链（`GetTextFaceW` 验证 GDI 实际解析结果） |
-| 组合串窗口 | `framework/ui/composition_window.*` | **M2 已实现** | 显示原始输入串，按 `Result.segments` 画切分下划线（拼音 `[zhong][guo]`，形码同理） |
-| 候选窗 | `framework/ui/candidate_window.*` | **M2 已实现** | 9 候选编号、`-`/`+` 翻页提示、按字体实际度量动态改宽、UTF-32 → UTF-16 转换 |
-| **输入法工具条** | `framework/ui/toolbar.*` | **2026-11-16 新增** | 右下角浮动、置顶不抢焦点、显示 Scheme 标签（RosPinyin 为 `拼`）；`ImeSelect(TRUE/FALSE)` 控制显示/隐藏；后续 M3 可扩展中/英与全/半角指示 |
+| UI server 窗口类 | `framework/platform/win32/imm32/ui_server.cpp` | **M1 已实现** | 注册 ImeInquire 返回的类名（来自 Scheme）并转发 `DefWindowProcW`；不绘制、不访问输入上下文（M0 的 0xF4 红线） |
+| 窗口基类 / 字体 | `framework/platform/win32/ui/ui_window.*` | **M2 已实现** | 按类名惰性注册（两个 IME DLL 可同进程共存）、无激活置顶弹窗、`Droid Sans Fallback → Noto Sans SC → Microsoft YaHei → SimSun → Arial Unicode MS` 字体兜底链（`GetTextFaceW` 验证 GDI 实际解析结果） |
+| 组合串窗口 | `framework/platform/win32/ui/composition_window.*` | **M2 已实现** | 显示原始输入串，按 `Result.segments` 画切分下划线（拼音 `[zhong][guo]`，形码同理） |
+| 候选窗 | `framework/platform/win32/ui/candidate_window.*` | **M2 已实现** | 9 候选编号、`-`/`+` 翻页提示、按字体实际度量动态改宽、UTF-32 → UTF-16 转换 |
+| **输入法工具条** | `framework/platform/win32/ui/toolbar.*` | **2026-11-16 新增** | 右下角浮动、置顶不抢焦点、显示 Scheme 标签（RosPinyin 为 `拼`）；`ImeSelect(TRUE/FALSE)` 控制显示/隐藏；后续 M3 可扩展中/英与全/半角指示 |
 | 状态窗与菜单 | 预留 | M3 | 工具条点击菜单、状态指示扩展（WBS 4.5） |
 
 ## 生命周期约束

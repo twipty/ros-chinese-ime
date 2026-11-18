@@ -1,7 +1,7 @@
 // imfw — reusable IMM32 input-method framework for ReactOS
 // SPDX-License-Identifier: MIT
 //
-// Bridge between the IMM32 layer (host) and the UI windows (framework/ui).
+// Bridge between the IMM32 layer (host) and the UI windows (framework/platform/win32/ui).
 // All window classes come from the Scheme, so every assembled IME renders
 // its own set of windows.
 
@@ -39,7 +39,7 @@ void UiToolbarShow(rpimm::InputContext hIMC);
 void UiToolbarHide(rpimm::InputContext hIMC);
 
 // Window-operation counters for the diagnostic trace. Kept here (instead of
-// exposing framework/ui/ui_window.h) so the IMM32 layer never depends on UI
+// exposing framework/platform/win32/ui/ui_window.h) so the IMM32 layer never depends on UI
 // headers. Absolute values, monotonically increasing over the process.
 struct UiCounters {
     unsigned place_calls;    // geometry attempts

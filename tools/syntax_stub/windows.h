@@ -78,6 +78,13 @@ using LPCSTR = const char*;
 #define ERROR_SUCCESS  0
 #define INVALID_FILE_ATTRIBUTES 0xFFFFFFFFu
 
+// Rename-in-place and its error codes (install.cpp:move_aside).
+// A mapped .ime cannot be overwritten, only renamed around.
+#define MOVEFILE_REPLACE_EXISTING 0x00000001u
+#define ERROR_ACCESS_DENIED       5u
+#define ERROR_SHARING_VIOLATION   32u
+#define GetFileExInfoStandard     0
+
 // File I/O (imedat_loader.cpp).
 #define GENERIC_READ          0x80000000u
 #define FILE_SHARE_READ       0x00000001u
@@ -90,6 +97,7 @@ using LPCSTR = const char*;
 #define VK_BACK        0x08
 #define VK_ESCAPE      0x1B
 #define VK_SPACE       0x20
+#define VK_SHIFT       0x10
 #define VK_ADD         0x6B
 #define VK_SUBTRACT    0x6D
 #define VK_OEM_7       0xDE
@@ -98,8 +106,17 @@ using LPCSTR = const char*;
 #define VK_OEM_MINUS   0xBD
 #define VK_OEM_PERIOD  0xBE
 
+// Stock brushes handed to GetStockObject() (ui/*.cpp).
+#define WHITE_BRUSH   0
+#define LTGRAY_BRUSH  1
+#define GRAY_BRUSH    2
+#define DKGRAY_BRUSH  3
+#define BLACK_BRUSH   4
+#define NULL_BRUSH    5
+
 #define SM_CXSCREEN 0
 #define SM_CYSCREEN 1
+#define SPI_GETWORKAREA 0x0030
 #define HWND_TOPMOST reinterpret_cast<HWND>(static_cast<std::intptr_t>(-1))
 #define RGB(r, g, b) (static_cast<COLORREF>((r) | ((g) << 8) | ((b) << 16)))
 
@@ -109,6 +126,18 @@ using LPCSTR = const char*;
 struct POINT { LONG x; LONG y; };
 struct SIZE  { LONG cx; LONG cy; };
 struct RECT  { LONG left; LONG top; LONG right; LONG bottom; };
+
+struct FILETIME { DWORD dwLowDateTime; DWORD dwHighDateTime; };
+
+// GetFileAttributesExW payload (tools/install-rospinyin/install.cpp:file_size).
+struct WIN32_FILE_ATTRIBUTE_DATA {
+    DWORD    dwFileAttributes;
+    FILETIME ftCreationTime;
+    FILETIME ftLastAccessTime;
+    FILETIME ftLastWriteTime;
+    DWORD    nFileSizeHigh;
+    DWORD    nFileSizeLow;
+};
 
 struct PAINTSTRUCT {
     HDC   hdc;
@@ -154,7 +183,9 @@ UINT   WINAPI GetSystemDirectoryW(LPWSTR, UINT);
 DWORD  WINAPI GetModuleFileNameW(HINSTANCE, LPWSTR, DWORD);
 BOOL   WINAPI CopyFileW(LPCWSTR, LPCWSTR, BOOL);
 BOOL   WINAPI DeleteFileW(LPCWSTR);
+BOOL   WINAPI MoveFileExW(LPCWSTR, LPCWSTR, DWORD);
 DWORD  WINAPI GetFileAttributesW(LPCWSTR);
+BOOL   WINAPI GetFileAttributesExW(LPCWSTR, int, LPVOID);
 DWORD  WINAPI GetLastError(void);
 
 // File I/O (ime/dat_loader.cpp).
@@ -202,6 +233,17 @@ COLORREF WINAPI SetTextColor(HDC, COLORREF);
 BOOL     WINAPI TextOutW(HDC, int, int, LPCWSTR, int);
 BOOL     WINAPI GetTextExtentPoint32W(HDC, LPCWSTR, int, SIZE*);
 BOOL     WINAPI InvalidateRect(HWND, const RECT*, BOOL);
+
+// Glyph-presence probe (ui/ime_ui.cpp GlyphProbe): a private memory DC plus
+// the font currently selected, asked which code points it actually has.
+HDC      WINAPI CreateCompatibleDC(HDC);
+BOOL     WINAPI DeleteDC(HDC);
+DWORD    WINAPI GetGlyphIndicesW(HDC, LPCWSTR, int, WORD*, DWORD);
+#define GGI_MARK_NONEXISTING_GLYPHS 0x0001
+#define GDI_ERROR 0xFFFFFFFFu
+
+// Work area for the floating toolbar (ui/toolbar.cpp).
+BOOL     WINAPI SystemParametersInfoW(UINT, UINT, LPVOID, UINT);
 
 LSTATUS WINAPI RegCreateKeyExW(HKEY, LPCWSTR, DWORD, LPWSTR, DWORD, REGSAM,
                                LPVOID, HKEY*, DWORD*);

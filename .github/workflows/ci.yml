@@ -20,19 +20,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: IME source syntax check (host Win32 ABI stub)
-        # Verifies framework/host + framework/ui + the assembly glue and the
+        # Verifies the Win32 host + UI layers, the assembly glue and the
         # installer compile syntactically without needing MinGW: no linking,
         # no Windows SDK, no binary output.
         run: >-
           g++ -std=c++17 -fsyntax-only
-          -Itools/syntax_stub -Iframework/include -Iframework/host
-          -Iframework/ui -Ipinyin/include -Iime
-          framework/host/dllmain.cpp framework/host/imm_entry.cpp
-          framework/host/ui_server.cpp framework/host/session_store.cpp
+          -Itools/syntax_stub -Iframework/include -Iframework/platform/win32/imm32
+          -Iframework/platform/win32/ui -Ipinyin/include -Iime
+          framework/platform/win32/imm32/dllmain.cpp framework/platform/win32/imm32/imm_entry.cpp
+          framework/platform/win32/imm32/ui_server.cpp framework/platform/win32/imm32/session_store.cpp
           pinyin/host/dat_source_win.cpp
-          framework/ui/ime_ui.cpp framework/ui/ui_window.cpp
-          framework/ui/composition_window.cpp framework/ui/candidate_window.cpp
-          framework/ui/toolbar.cpp ime/scheme_reg.cpp
+          framework/platform/win32/ui/ime_ui.cpp framework/platform/win32/ui/ui_window.cpp
+          framework/platform/win32/ui/composition_window.cpp framework/platform/win32/ui/candidate_window.cpp
+          framework/platform/win32/ui/toolbar.cpp ime/scheme_reg.cpp
           tools/install-rospinyin/install.cpp
       - name: Configure
         run: cmake -S . -B build -DROSPINYIN_BUILD_TESTS=ON

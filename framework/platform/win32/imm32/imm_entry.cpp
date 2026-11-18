@@ -14,7 +14,7 @@
 //   * ImeProcessKey only decides ownership; ImeToAsciiEx does the work.
 //   * Modifiers (Ctrl/Alt) are never consumed, so application shortcuts work.
 //   * Committed text is emitted as WM_IME_CHAR TRANSMESSAGEs. Candidate and
-//     composition display is handled by our own UI windows (framework/ui),
+//     composition display is handled by our own UI windows (framework/platform/win32/ui),
 //     which avoids depending on IMM32's DDK-only candidate list structures.
 //   * Nothing here runs in DllMain; the shared table and per-HIMC state are
 //     created lazily on the first key (see session_store.cpp).

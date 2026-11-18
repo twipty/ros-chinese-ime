@@ -33,7 +33,7 @@ ROOT_ALLOWED_MD = {"README.md"}
 # Docs that live next to the code they describe on purpose (see docs/README.md §3).
 SUBSYSTEM_MD_GLOBS = (
     "framework/README.md",
-    "framework/ui/README.md",
+    "framework/platform/win32/ui/README.md",
     "pinyin/README.md",
     "libernt/PORTABILITY-ASSESSMENT.md",
     "m0/vm/*.md",

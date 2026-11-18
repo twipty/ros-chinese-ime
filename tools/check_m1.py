@@ -217,8 +217,8 @@ def run(root: Path) -> int:
             f"missing={sorted(REQUIRED_EXPORTS - exports)} "
             f"extra={sorted(exports - REQUIRED_EXPORTS)}")
 
-    abi = read(root, "framework/host/imm32_abi.h")
-    entry = read(root, "framework/host/imm_entry.cpp")
+    abi = read(root, "framework/platform/win32/imm32/imm32_abi.h")
+    entry = read(root, "framework/platform/win32/imm32/imm_entry.cpp")
     abi_missing = [n for n in REQUIRED_EXPORTS
                    if not re.search(r"\b" + n + r"\s*\(", abi)]
     impl_missing = [n for n in REQUIRED_EXPORTS
@@ -262,7 +262,7 @@ def run(root: Path) -> int:
     # uMsgCount header is pre-filled with the capacity; messages live at
     # ->TransMsg[0]. Writing at offset 0 clobbers the header and shifts
     # every message, which is exactly what broke composition on the VM.
-    abi = read(root, "framework/host/imm32_abi.h")
+    abi = read(root, "framework/platform/win32/imm32/imm32_abi.h")
     c.check("G1 ABI: ImeToAsciiEx takes TRANSMSGLIST, not a bare TRANSMSG array",
             "struct TransMsgList" in abi and
             "rpimm::TransMsgList* lpTransMsgList" in entry and
@@ -292,7 +292,7 @@ def run(root: Path) -> int:
             "scheme.is_selection_key(ch)" in entry and
             "scheme.page_key(ch)" in entry and
             "bool is_page_key" not in entry)
-    store_hpp = read(root, "framework/host/session_store.hpp")
+    store_hpp = read(root, "framework/platform/win32/imm32/session_store.hpp")
     c.check("G2: sessions reload at runtime via reload_sessions",
             "void reload_sessions()" in store_hpp)
     scheme_hpp = read(root, "framework/include/imfw/scheme.hpp")
@@ -303,16 +303,16 @@ def run(root: Path) -> int:
     c.check("G2: the framework host holds no shared code table",
             "shared_table" not in store_hpp and
             "CodeTable" not in store_hpp and
-            not (root / "framework/host/dat_loader.hpp").is_file() and
-            not (root / "framework/host/dat_loader.cpp").is_file())
+            not (root / "framework/platform/win32/imm32/dat_loader.hpp").is_file() and
+            not (root / "framework/platform/win32/imm32/dat_loader.cpp").is_file())
     c.check("G2: reload lets the scheme refresh its data (reload_data hook)",
             "scheme_instance().reload_data()" in
-            read(root, "framework/host/session_store.cpp"))
+            read(root, "framework/platform/win32/imm32/session_store.cpp"))
     # Audit 2026-11-17 §2.2: reload must refresh data BEFORE dropping
     # sessions (data-first), so a throwing reload_data leaves the old
     # sessions consistent with the old data.
     reload_body = function_body(
-        read(root, "framework/host/session_store.cpp"),
+        read(root, "framework/platform/win32/imm32/session_store.cpp"),
         r"void\s+reload\s*\(\s*\)")
     c.check("G2: reload refreshes data before dropping sessions (data-first)",
             reload_body is not None and
@@ -323,7 +323,7 @@ def run(root: Path) -> int:
             (root / "pinyin/host/dat_source_win.cpp").is_file() and
             "load_pinyin_table" in read(root, "pinyin/src/scheme.cpp") and
             "dat_filename" not in read(root, "pinyin/src/scheme.cpp"))
-    composition_ui = read(root, "framework/ui/composition_window.cpp")
+    composition_ui = read(root, "framework/platform/win32/ui/composition_window.cpp")
     c.check("G4: compositions decode as UTF-8 (CJK allowed)",
             "utf8_to_wide" in entry and "utf8_to_wide" in composition_ui)
     # Regression guard: PinyinSession::feed() is a no-op until on_select(true),
@@ -355,7 +355,7 @@ def run(root: Path) -> int:
     #    now "what may the attach path call", which also covers calls added
     #    later under a different spelling.
     dllmain = strip_cpp_comments(
-        strip_trace_blocks(read(root, "framework/host/dllmain.cpp")))
+        strip_trace_blocks(read(root, "framework/platform/win32/imm32/dllmain.cpp")))
     attach = dllmain.split("DLL_PROCESS_ATTACH", 1)[-1].split("break;", 1)[0]
     attach_calls = calls_in(attach)
     allowed_attach = {"DisableThreadLibraryCalls", "RegisterUIServerClass"}
@@ -363,7 +363,7 @@ def run(root: Path) -> int:
             attach_calls <= allowed_attach,
             f"unexpected: {sorted(attach_calls - allowed_attach)}")
 
-    ui_server = strip_cpp_comments(read(root, "framework/host/ui_server.cpp"))
+    ui_server = strip_cpp_comments(read(root, "framework/platform/win32/imm32/ui_server.cpp"))
     reg_body = function_body(ui_server, r"ATOM RegisterUIServerClass\([^)]*\)")
     reg_calls = calls_in(reg_body or "")
     c.check("UI class registration only calls RegisterClassExW "
@@ -376,7 +376,7 @@ def run(root: Path) -> int:
     # imm32 must be able to trust; if it cannot fill the structure it has to
     # say so instead of letting the loader use garbage -- that silent-success
     # pattern is exactly what the reference IME did before the 0xF4.
-    imm_src = strip_cpp_comments(read(root, "framework/host/imm_entry.cpp"))
+    imm_src = strip_cpp_comments(read(root, "framework/platform/win32/imm32/imm_entry.cpp"))
     inquire_body = function_body(imm_src, r"BOOL WINAPI ImeInquire\([^)]*\)")
     dangerous_inquire = {"ImmInstallIME", "ImmInstallIMEW", "CreateFileA",
                          "CreateFileW", "CreateThread", "LoadLibraryA",
@@ -454,9 +454,9 @@ def run(root: Path) -> int:
                 "framework/include/imfw/scheme.hpp",
                 "framework/include/imfw/session.hpp",
                 "framework/src/engine.cpp",
-                "framework/host/dllmain.cpp",
-                "framework/host/imm_entry.cpp",
-                "framework/ui/README.md",
+                "framework/platform/win32/imm32/dllmain.cpp",
+                "framework/platform/win32/imm32/imm_entry.cpp",
+                "framework/platform/win32/ui/README.md",
                 "pinyin/include/rospinyin/scheme.hpp",
                 "pinyin/src/scheme.cpp",
                 "ime/scheme_reg.cpp",
@@ -467,7 +467,7 @@ def run(root: Path) -> int:
     # The reusable framework must stay free of pinyin knowledge: the plugin
     # seam is imfw::Scheme (see framework/README.md).
     scheme_cpp = read(root, "pinyin/src/scheme.cpp")
-    ui_server = read(root, "framework/host/ui_server.cpp")
+    ui_server = read(root, "framework/platform/win32/imm32/ui_server.cpp")
     c.check("UI server class name comes from the Scheme",
             "ui_server_class" in ui_server and
             "L\"RosPinyinUISrv\"" in scheme_cpp)
@@ -494,8 +494,8 @@ def run(root: Path) -> int:
             "ROSPINYIN_IME_LANG_EN" in res_rc and
             "ROSPINYIN_TRANSLATION_LANGID 0x804" in res_rc)
     framework_pinyin_refs = []
-    for rel in ["framework/src/code_table.cpp", "framework/host/imm_entry.cpp",
-                "framework/src/engine.cpp", "framework/host/session_store.cpp"]:
+    for rel in ["framework/src/code_table.cpp", "framework/platform/win32/imm32/imm_entry.cpp",
+                "framework/src/engine.cpp", "framework/platform/win32/imm32/session_store.cpp"]:
         # The diagnostic channel is compiled in under ROSPINYIN_TRACE (the
         # product name, not the language); matching that against "pinyin"
         # would make this gate fire on the trace build alone, which is noise.
@@ -514,8 +514,8 @@ def run(root: Path) -> int:
     # width of "zhong". Geometry (position AND size) must have exactly one
     # owner: ime_ui's place_windows(), which knows the caret anchor and the
     # screen edges.
-    comp_cpp = strip_cpp_comments(read(root, "framework/ui/composition_window.cpp"))
-    ime_ui_cpp = strip_cpp_comments(read(root, "framework/ui/ime_ui.cpp"))
+    comp_cpp = strip_cpp_comments(read(root, "framework/platform/win32/ui/composition_window.cpp"))
+    ime_ui_cpp = strip_cpp_comments(read(root, "framework/platform/win32/ui/ime_ui.cpp"))
     c.check("composition window geometry owned by place_windows (no SetWindowPos)",
             "SetWindowPos" not in comp_cpp and
             "apply_geometry" in ime_ui_cpp)
@@ -568,7 +568,7 @@ def run(root: Path) -> int:
     # SM_CYSCREEN puts the toolbar under the taskbar, and on ReactOS
     # HWND_TOPMOST does not win against it (the taskbar is topmost too and
     # keeps the higher z-order), so the label was clipped to a few pixels.
-    toolbar_cpp = strip_cpp_comments(read(root, "framework/ui/toolbar.cpp"))
+    toolbar_cpp = strip_cpp_comments(read(root, "framework/platform/win32/ui/toolbar.cpp"))
     c.check("toolbar docks to the work area, not the raw screen",
             "SPI_GETWORKAREA" in toolbar_cpp and
             "screen_h - kToolbarHeight" not in toolbar_cpp)

@@ -80,13 +80,13 @@ python3 tools/check_m1.py | tail -1                               # 63 项 契�
 
 ## 3. 四个阶段
 
-### X1 目录归位（0.5–1 天，纯 `git mv`）
+### X1 目录归位（0.5–1 天，纯 `git mv`）— ✅ 2026-11-18 完成
 
 ```
 framework/host/{dllmain,imm_entry,ui_server,session_store,imm32_abi,trace_stamp}
-        →  framework/platform/win32/imm32/
+        →  framework/platform/win32/imm32/        （已执行，9 个文件）
 framework/ui/{ime_ui,ui_window,composition_window,candidate_window,toolbar}
-        →  framework/platform/win32/ui/
+        →  framework/platform/win32/ui/           （已执行，10 个文件，含 README）
 framework/src/、framework/include/imfw/、pinyin/                         不动
 ```
 
@@ -105,10 +105,34 @@ framework/src/、framework/include/imfw/、pinyin/                         不�
 | 文档 | 若干 | 只改路径，不改论述（`tools/check_docs.py` 会盯着链接） |
 
 **验收（硬）**：功能等价不看测试，看**字节**——用同一工具链重建，`.ime` 与 X1 前逐字节比对，
-只允许 4 处差异（PE 时间戳 `0x88`、校验和 `0xD8–0xD9`、调试字段 `0x60A04`）。
+只允许 3 个区域差异：
+- `0x88` PE TimeDateStamp（链接器时钟）
+- `0xD8` CheckSum（由全镜像派生）
+- `0x60A04` **导出表** `IMAGE_EXPORT_DIRECTORY.TimeDateStamp`（也是时钟的副本）
+
+> 原稿写的是"4 处差异，调试字段 `0x60A04`"，**执行时发现是错的**：该镜像的数据目录 #6
+> （Debug）全为 0，根本没有调试目录；`0x60A00` 是 `.edata` 节起点，`0x60A04` 是导出目录里的
+> 时间戳字段。这不影响结论（判据仍然是"只允许链接器戳不同"），但工具必须按 PE 结构定位这些字段，
+> 不能硬编码偏移——`tools/compare_ime.py` 就是这么写的。
+
 这比任何单测都硬：路径改名若漏了某个源文件，链接产物一定变。
 
 **回滚**：`git revert` 单个提交即可，无逻辑变更。
+
+**✅ 执行记录（2026-11-18 22:0x）**
+
+| 项 | 计划预估 | 实际 |
+|---|---|---|
+| 改名文件 | `host/` 9 个 + `ui/` 10 个 | 一致（19 个，`git mv` 全为 rename） |
+| `ime/CMakeLists.txt` | 9 源 + 3 include | 一致 |
+| `tools/check_m1.py` | 15 处 | **16 处**（多一条 `dat_loader.hpp/.cpp` 的存在性断言，它也是带目录的路径） |
+| 未预料到的第 6 处 | — | `.github/workflows/ci.yml` 的 `-fsyntax-only` 步骤直接列了 9 条路径 |
+| 字节比对 | 4 处差异 | **3 个区域**（见上），940,888 B 完全一致，`VERDICT: equivalent` |
+
+**顺带修掉的门禁失效**：执行时发现 `IME source syntax check` 这条 CI 步骤**一直是红的**
+（`HIMC` 未声明，HEAD 上也一样），它挡住了 engine-smoke 后面所有步骤，连带 `rospinyin-m2-data`
+artifact 从未上传，使 `publish-artifacts-branch` 永久失败。补全 `tools/syntax_stub/{imm,windows}.h`
+后恢复，并做了 3 次变异验证。详见 `docs/handover/HANDOVER.md` §11.23。
 
 ---
 
@@ -277,8 +301,8 @@ Ctrl+Space 与备用热键——**全部改在 `process_key` 里**。先有冒�
 
 **X1 — 目录归位**
 
-- [ ] X1-a `git mv` + `ime/CMakeLists.txt` 路径 + `check_m1` 15 处 + 文档路径（审计 A-P1-4 的目录部分）
-- [ ] X1-b 字节比对报告（4 处允许差异）写入 `docs/handover/HANDOVER.md`
+- [x] X1-a `git mv` + `ime/CMakeLists.txt` 路径 + `check_m1` 15 处 + 文档路径（审计 A-P1-4 的目录部分）
+- [x] X1-b 字节比对报告（3 个链接器戳区域，`tools/compare_ime.py`）写入 `docs/handover/HANDOVER.md` §11.23
 
 **X2 — 安全网 + 构建收敛**
 

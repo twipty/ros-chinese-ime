@@ -22,6 +22,22 @@
   判据当场失效**，无法区分"拆库导致的差异"和"拆错了导致的差异"。所以构建收敛必须在 `host_smoke`
   之后，用行为判据验收。
 
+### 结构调整（X1 目录归位）
+
+- **`framework/host/` → `framework/platform/win32/imm32/`（9 个文件）、`framework/ui/` →
+  `framework/platform/win32/ui/`（10 个文件）**，全部 `git mv`，零逻辑变更。
+  目录名陈述事实（这段代码就是 Win32 + IMM32），不用 `frontend/` 那种预设抽象的名字。
+- **验收看字节而非测试**：同工具链干净构建前后各一次，`.ime` 940,888 B 完全一致，
+  仅 3 个区域不同（`0x88` 时间戳、`0xD8` 校验和、`0x60A04` 导出表时间戳），全部是链接器戳。
+- **新增 `tools/compare_ime.py`**：按 PE 结构（数据目录 #0 / #6）定位链接器戳字段，
+  不硬编码偏移；判据本身做过 4 次变异验证（翻转代码字节、截断、交换源文件顺序、不动）。
+- **修正计划中的技术错误**：`0x60A04` 不是"调试字段"——该镜像没有调试目录，
+  它是 `IMAGE_EXPORT_DIRECTORY.TimeDateStamp`。
+- **修复一处长期失效的 CI 门禁**：`IME source syntax check` 因 `tools/syntax_stub/imm.h`
+  缺 `HIMC`/`ImmGetOpenStatus`/`ImmSetOpenStatus` 一直失败，挡住 engine-smoke 后续全部步骤，
+  并使 `rospinyin-m2-data` artifact 从未上传、`publish-artifacts-branch` 永久连带失败。
+  补全 stub 后恢复（`windows.h` 补 15 个符号），并做了 3 次变异验证。
+
 ### 仓库结构
 
 - **文档全部收进 `docs/`，根目录只留 `README.md`（+ `LICENSE`、`NOTICE.txt`、`CMakeLists.txt`）**。

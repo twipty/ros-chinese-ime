@@ -26,7 +26,7 @@
 
 ### 1.1 UI 字体链：已包含 Noto，但不是 CJK OTF 的内部名
 
-`framework/ui/ui_window.cpp:104-113`：
+`framework/platform/win32/ui/ui_window.cpp:104-113`：
 
 ```cpp
 // ReactOS ships DroidSansFallback.ttf (covers ~16.5k Hanzi) but only mounts
@@ -53,11 +53,11 @@ const wchar_t* const kFontFaces[] = {
 
 ### 1.2 字形探针与"豆腐块"过滤：与字体链强耦合
 
-`framework/ui/ime_ui.cpp:231-298`：
+`framework/platform/win32/ui/ime_ui.cpp:231-298`：
 
 - `GlyphProbe` 构造时直接调用 `ui::CreateUiFont(16)`（`:242`），用 `GetGlyphIndicesW(..., GGI_MARK_NONEXISTING_GLYPHS)` 逐码点探测（`:274`），按码点缓存（`:263-279`）。
 - `UiCanRender()`（`:298`）是唯一查询入口；探针创建失败或码点 > BMP 时**fail-open**返回 true（`:260`），不隐藏文本。
-- `framework/host/imm_entry.cpp:344-365` 的 `renderable_candidates()` 用它剔除显示不出的候选；并有"全部被剔或过半被剔则整体放行"的护栏（`:349-352` 注释）。
+- `framework/platform/win32/imm32/imm_entry.cpp:344-365` 的 `renderable_candidates()` 用它剔除显示不出的候选；并有"全部被剔或过半被剔则整体放行"的护栏（`:349-352` 注释）。
 
 **含义**：换字体 = 换探针字体 = **自动改变候选集**。M2 阶段之所以加过滤，就是因为 `rospinyin.dat` 44,355 字中 34,457 条是 Unihan 生僻字、68% 在扩展 A/B 区（`HANDOVER.md:805`），而本地测试用的 `NotoSansSC-subset.ttf` 只覆盖 U+4E00–U+9FA5。捆绑全量 Noto Sans CJK SC 后扩展区覆盖会改善，但 16 MB 的代价换来的只是少数生僻字可见——**性价比低**。
 
@@ -183,10 +183,10 @@ const wchar_t* const kFontFaces[] = {
 按层分组，供实施时逐项核对（行号为评估时状态）：
 
 **UI 层**
-- `framework/ui/ui_window.cpp` — 必改：`kFontFaces` 置顶 `L"Noto Sans CJK SC"`，保留 `L"Noto Sans SC"` 与 `Droid Sans Fallback` 回退；更新 `:104-106` 注释。
-- `framework/ui/ui_window.h` — 更新 `:20-23` 的字体选择注释。
-- `framework/ui/ime_ui.cpp` — 通常无需改（探针复用 `CreateUiFont`）；若走运行时注册，须保证 `GlyphProbe` 构造（`:239-246`）前字体已注册。
-- `framework/ui/README.md` — 更新字体链描述与已知限制。
+- `framework/platform/win32/ui/ui_window.cpp` — 必改：`kFontFaces` 置顶 `L"Noto Sans CJK SC"`，保留 `L"Noto Sans SC"` 与 `Droid Sans Fallback` 回退；更新 `:104-106` 注释。
+- `framework/platform/win32/ui/ui_window.h` — 更新 `:20-23` 的字体选择注释。
+- `framework/platform/win32/ui/ime_ui.cpp` — 通常无需改（探针复用 `CreateUiFont`）；若走运行时注册，须保证 `GlyphProbe` 构造（`:239-246`）前字体已注册。
+- `framework/platform/win32/ui/README.md` — 更新字体链描述与已知限制。
 - `HANDOVER.md` — 纠正 `:376` 的字体链顺序，澄清 `:805` 的"随包字体"措辞。
 
 **打包安装层**
@@ -212,7 +212,7 @@ const wchar_t* const kFontFaces[] = {
 
 ## 8. 证据来源
 
-**本仓库**：`framework/ui/ui_window.cpp:104-113,115-126,173-196,231`、`framework/ui/ui_window.h:20-23`、`framework/ui/candidate_window.cpp:109-113`、`framework/ui/composition_window.cpp:55-57,65`、`framework/ui/toolbar.cpp:84-90`、`pinyin/src/scheme.cpp:179`、`framework/ui/ime_ui.cpp:231-298`、`framework/host/imm_entry.cpp:344-382,402`、`tools/install-rospinyin/install.cpp:27,43-44,70-81,117-124,176-203,326-350,371-385`、`tools/check_m1.py:36-46,371-385`、`tests/CMakeLists.txt:5-71`、`.github/workflows/ci.yml:39-49,123-145,172-188,194-196,205-211`、`NOTICE.txt:43-53`、`HANDOVER.md:376-377,805,825`、`docs/milestones/m2/M2-ACCEPTANCE.md:83-86`、`.gitignore:31`、`ime/rospinyin_res.rc`、`ime/rospinyin.h`、GitHub Release `alpha0.0.1` 资产清单。
+**本仓库**：`framework/platform/win32/ui/ui_window.cpp:104-113,115-126,173-196,231`、`framework/platform/win32/ui/ui_window.h:20-23`、`framework/platform/win32/ui/candidate_window.cpp:109-113`、`framework/platform/win32/ui/composition_window.cpp:55-57,65`、`framework/platform/win32/ui/toolbar.cpp:84-90`、`pinyin/src/scheme.cpp:179`、`framework/platform/win32/ui/ime_ui.cpp:231-298`、`framework/platform/win32/imm32/imm_entry.cpp:344-382,402`、`tools/install-rospinyin/install.cpp:27,43-44,70-81,117-124,176-203,326-350,371-385`、`tools/check_m1.py:36-46,371-385`、`tests/CMakeLists.txt:5-71`、`.github/workflows/ci.yml:39-49,123-145,172-188,194-196,205-211`、`NOTICE.txt:43-53`、`HANDOVER.md:376-377,805,825`、`docs/milestones/m2/M2-ACCEPTANCE.md:83-86`、`.gitignore:31`、`ime/rospinyin_res.rc`、`ime/rospinyin.h`、GitHub Release `alpha0.0.1` 资产清单。
 
 **字体上游**：[Google Fonts — Noto Sans SC 许可页](https://fonts.google.com/specimen/Noto+Sans+SC/license)（SIL OFL 1.1 全文、版权行、RFN 'Source'）；[notofonts/noto-cjk](https://github.com/notofonts/noto-cjk)；[CTAN notocjksc 文件清单](https://ctan.org/tex-archive/fonts/notocjksc)（字体 16–17 MB、TTC 109 MB）；[SIL OFL 官网](https://openfontlicense.org/)。
 

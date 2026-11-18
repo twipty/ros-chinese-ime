@@ -119,7 +119,7 @@ option(IMM_WIN3_SUPPORT "IMM Win 3.x support" ON)
 ### 3.1 有利条件（解耦干净）
 
 - **零 ReactOS 私有头**：全库无 `#include <reactos/>`、`<ndk/>`、`<win32k/>`；唯一系统头是 `<windows.h>`、`<imm.h>`（仅安装器）、`<winsock2.h>`（仅 httpdl）。
-- **手写 IME ABI**：`framework/host/imm32_abi.h` 自行声明 16 导出与结构，`IME_PROP_UNICODE=0x00080000` 等用公开常量值，不依赖 `<immdev.h>`。
+- **手写 IME ABI**：`framework/platform/win32/imm32/imm32_abi.h` 自行声明 16 导出与结构，`IME_PROP_UNICODE=0x00080000` 等用公开常量值，不依赖 `<immdev.h>`。
 - **零硬编码 DLL 名 / 零随仓二进制库**：链接只写 target 名（`user32 gdi32 imm32` 等），由 MinGW sysroot 解析。
 - **零内联汇编 / 零 `#pragma pack` / 零 PE 头操作 / 零硬编码地址**。
 - **静态数据格式架构无关**：`rospinyin.dat` v1 全 uint32 小端定长头（Header 52 / CharEntry 20 / SylEntry 16），`code_table.cpp` 用 `memcpy` 逐字段读，不做结构体整体映射。
@@ -238,6 +238,6 @@ option(IMM_WIN3_SUPPORT "IMM Win 3.x support" ON)
   - `subsystems/win/win32k/user/imm32/install.c`（`Imm32LoadImeFixedInfo` / `Imm32LoadImeLangAndDesc` / `Imm32AssignNewLayout` / `Imm32WriteImeLayout` / `ImmInstallIMEW`）
   - `subsystems/win/win32k/user/ntuser/ime.c`、`base/ctf/`（目录清单）
 - **一手用户报告**：`https://blog.cloudflare88.eu.org/posts/libre-nt-introduction`（2026-10-18，中文输入法/Rime 体验）。
-- **本仓库**：`README.md`、`M0-REPORT.md`（0xF4 实测与红线）、`M1-REPORT.md`、`tools/check_m1.py`、`.github/workflows/ci.yml`、`CMakeLists.txt`、`ime/CMakeLists.txt`、`framework/host/imm32_abi.h`、`framework/host/imm_entry.cpp`、`framework/include/imfw/emit_text.hpp`、`framework/src/utf8.cpp`、`framework/ui/ui_window.cpp`、`tools/install-rospinyin/install.cpp`、`pinyin/host/dat_source_win.cpp`、`framework/src/code_table.cpp`。
+- **本仓库**：`README.md`、`M0-REPORT.md`（0xF4 实测与红线）、`M1-REPORT.md`、`tools/check_m1.py`、`.github/workflows/ci.yml`、`CMakeLists.txt`、`ime/CMakeLists.txt`、`framework/platform/win32/imm32/imm32_abi.h`、`framework/platform/win32/imm32/imm_entry.cpp`、`framework/include/imfw/emit_text.hpp`、`framework/src/utf8.cpp`、`framework/platform/win32/ui/ui_window.cpp`、`tools/install-rospinyin/install.cpp`、`pinyin/host/dat_source_win.cpp`、`framework/src/code_table.cpp`。
 
 > 本文证据均为静态核查；任何「吻合」结论都需在 libernt VM 上以实机注册/加载/切换测试收口。

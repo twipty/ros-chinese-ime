@@ -89,7 +89,7 @@
   - 3.6.2 Scheme 插件接口（`imfw/scheme.hpp`）：字母表/码表名/窗口类名/工具条标签/引擎工厂/兜底表；`scheme_instance()` 由装配模块定义
   - 3.6.3 `Result.segments` 通用切分视图：组合串下划线对拼音/形码通用
   - 3.6.4 通用 `CodeTable`：键名改由 dat 自带 SylEntry 名提供，框架不含拼音知识（check_m1 新增防污染断言 + `pinyin-scheme` 契约测试）
-  - 3.6.5 **输入法工具条**（`framework/ui/toolbar.*`）：右下角浮动、Scheme 标签（RosPinyin 显示「拼」）、`ImeSelect` 驱动显隐；M3 再扩展中/英与全/半角
+  - 3.6.5 **输入法工具条**（`framework/platform/win32/ui/toolbar.*`）：右下角浮动、Scheme 标签（RosPinyin 显示「拼」）、`ImeSelect` 驱动显隐；M3 再扩展中/英与全/半角
   - 3.6.6 验证：宿主 ctest 8/8；ziglang(x86-windows-gnu) 真实 MinGW 头交叉语法检查 12/12；真实 dat 链路复验（zhongguo→国、nv/lv/lve/nve）通过
 
 ## 4. M3 中文体验补齐（估 10-14 人日）

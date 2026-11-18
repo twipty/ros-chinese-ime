@@ -7,7 +7,7 @@
 # same framework/ and pinyin/ directories with a different scheme_reg.cpp.
 
 # Diagnostic channel: when ON, every IMM32 entry-point call appends a line to
-# C:\rospinyin-trace.log (see framework/host/imm_entry.cpp). Off by default so
+# C:\rospinyin-trace.log (see framework/platform/win32/imm32/imm_entry.cpp). Off by default so
 # a shipped .ime carries no trace code at all.
 option(ROSPINYIN_TRACE "Trace IMM32 entry points to C:\\rospinyin-trace.log" OFF)
 
@@ -23,24 +23,24 @@ set(ROSPINYIN_IME_LANGID "0804" CACHE STRING
 
 add_library(rospinyin-ime SHARED
     scheme_reg.cpp
-    ../framework/host/dllmain.cpp
-    ../framework/host/imm_entry.cpp
-    ../framework/host/ui_server.cpp
-    ../framework/host/session_store.cpp
-    ../framework/ui/ime_ui.cpp
-    ../framework/ui/ui_window.cpp
-    ../framework/ui/composition_window.cpp
-    ../framework/ui/candidate_window.cpp
-    ../framework/ui/toolbar.cpp
+    ../framework/platform/win32/imm32/dllmain.cpp
+    ../framework/platform/win32/imm32/imm_entry.cpp
+    ../framework/platform/win32/imm32/ui_server.cpp
+    ../framework/platform/win32/imm32/session_store.cpp
+    ../framework/platform/win32/ui/ime_ui.cpp
+    ../framework/platform/win32/ui/ui_window.cpp
+    ../framework/platform/win32/ui/composition_window.cpp
+    ../framework/platform/win32/ui/candidate_window.cpp
+    ../framework/platform/win32/ui/toolbar.cpp
     ../pinyin/host/dat_source_win.cpp
     rospinyin.def
     rospinyin_res.rc)
 
 target_include_directories(rospinyin-ime PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
-    "${PROJECT_SOURCE_DIR}/framework/host"
+    "${PROJECT_SOURCE_DIR}/framework/platform/win32/imm32"
     "${PROJECT_SOURCE_DIR}/framework/include"
-    "${PROJECT_SOURCE_DIR}/framework/ui"
+    "${PROJECT_SOURCE_DIR}/framework/platform/win32/ui"
     "${PROJECT_SOURCE_DIR}/pinyin/include")
 
 # rospinyin-engine brings imfw-engine transitively (PUBLIC link).

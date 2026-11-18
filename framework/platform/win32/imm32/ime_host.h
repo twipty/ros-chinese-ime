@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 // See LICENSE and NOTICE.txt at the repository root.
 //
-// Shared declarations for the IMM32 host layer (framework/host). The
+// Shared declarations for the IMM32 host layer (framework/platform/win32/imm32). The
 // assembling IME module provides branding (ime/rospinyin.h) separately.
 
 #pragma once

@@ -46,6 +46,11 @@
 
 ### milestones/ — 阶段报告
 
+> **路径按当时的结构记，不回填。** 2026-11-18 的 X1 目录归位把 `framework/host/` 与
+> `framework/ui/` 移到了 `framework/platform/win32/{imm32,ui}/`；本目录与 `reviews/` 里的
+> 旧路径**故意保留原样**，因为它们记录的是"当时代码长什么样"。要看当前路径，查
+> `framework/README.md` 或直接用 `git ls-files`。
+
 | 文件 | 内容 |
 | --- | --- |
 | [M0-REPORT.md](milestones/M0-REPORT.md) | M0 实测报告：蓝本崩溃根因、BSOD 0xF4、上游许可证变更、四条红线的由来 |
@@ -85,7 +90,7 @@
 
 这些是代码说明书，跟着代码走比跟着文档库走更合理：
 
-- `framework/README.md`、`framework/ui/README.md` — 框架层复用指南
+- `framework/README.md`、`framework/platform/win32/ui/README.md` — 框架层复用指南
 - `pinyin/README.md` — 引擎层说明
 - `libernt/PORTABILITY-ASSESSMENT.md` — libernt 自研分支的可移植性评估
 - `m0/vm/NOVNC-GUIDE.md`、`m0/vm/PRELOAD-PROBE.md`、`m0/vm/evidence/m2-acceptance/result.md` — 虚拟机操作与实测证据

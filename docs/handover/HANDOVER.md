@@ -63,35 +63,35 @@ TSF/Cicero 支持、云候选/账号/皮肤、繁体与其他方言、真实 Win
 ### 2.1 分层
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│  应用（记事本 / EDIT 控件）                                    │
-└───────────────▲──────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────┐
+│  应用（记事本 / EDIT 控件）                                        │
+└───────────────▲────────────────────────────────────────────────────┘
                 │ WM_IME_CHAR（每个 UTF-16 码单元一条）
-┌───────────────┴──────────────────────────────────────────────┐
-│  ReactOS IMM32（win32ss/user/imm32）                          │
-│    ImmProcessKey → ImeProcessKey                              │
-│    ImmTranslateMessage → ImeToAsciiEx(TRANSMSGLIST*)          │
-└───────────────▲──────────────────────────────────────────────┘
+┌───────────────┴────────────────────────────────────────────────────┐
+│  ReactOS IMM32（win32ss/user/imm32）                               │
+│    ImmProcessKey → ImeProcessKey                                   │
+│    ImmTranslateMessage → ImeToAsciiEx(TRANSMSGLIST*)               │
+└───────────────▲────────────────────────────────────────────────────┘
                 │ 16 个导出（ime/rospinyin.def）
-┌───────────────┴──────────────────────────────────────────────┐
-│  framework/host —— 可复用宿主层（imfw）                        │
-│    imm_entry.cpp   通用键处理：退格/Esc/选字/翻页/上屏          │
-│    imm32_abi.h     IME 侧 ABI（含 TRANSMSGLIST）              │
-│    session_store   每 HIMC 一个会话 + reload_sessions()        │
-│    ui_server/dllmain  UI server 窗口类注册（DllMain 只做这个）  │
-├──────────────────────────────────────────────────────────────┤
-│  framework/ui —— 组合串窗 / 候选窗 / 工具条（自绘，不依赖 DDK）  │
-├──────────────────────────────────────────────────────────────┤
-│  framework/include/imfw + src —— 纯 C++ 引擎契约与工具          │
-│    engine.hpp   Action/Candidate/Result/Engine                 │
-│    scheme.hpp   Scheme 插件接口（复用缝）                       │
-│    emit_text    多码点上屏 → WM_IME_CHAR 序列                   │
-│    candidate_pager / utf8 / code_table / dat_format            │
-├──────────────────────────────────────────────────────────────┤
-│  Scheme 插件（每个输入法一个）                                  │
-│    pinyin/  —— PinyinScheme + PinyinSession + 自有数据源        │
-│    xingma/   —— ShapeScheme（待实现）                          │
-└──────────────────────────────────────────────────────────────┘
+┌───────────────┴────────────────────────────────────────────────────┐
+│  platform/win32/imm32 —— 可复用宿主层（imfw）                      │
+│    imm_entry.cpp   通用键处理：退格/Esc/选字/翻页/上屏             │
+│    imm32_abi.h     IME 侧 ABI（含 TRANSMSGLIST）                   │
+│    session_store   每 HIMC 一个会话 + reload_sessions()            │
+│    ui_server/dllmain  UI server 窗口类注册（DllMain 只做这个）     │
+├────────────────────────────────────────────────────────────────────┤
+│  platform/win32/ui —— 组合串窗 / 候选窗 / 工具条（自绘，无需 DDK） │
+├────────────────────────────────────────────────────────────────────┤
+│  framework/include/imfw + src —— 纯 C++ 引擎契约与工具             │
+│    engine.hpp   Action/Candidate/Result/Engine                     │
+│    scheme.hpp   Scheme 插件接口（复用缝）                          │
+│    emit_text    多码点上屏 → WM_IME_CHAR 序列                      │
+│    candidate_pager / utf8 / code_table / dat_format                │
+├────────────────────────────────────────────────────────────────────┤
+│  Scheme 插件（每个输入法一个）                                     │
+│    pinyin/  —— PinyinScheme + PinyinSession + 自有数据源           │
+│    xingma/   —— ShapeScheme（待实现）                              │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
 **关键设计**：框架拥有所有 IME 的公共行为；Scheme 只回答三件事——"这个键是不是我的输入"、"我的引擎是谁"、"我的数据在哪"。
@@ -112,7 +112,7 @@ ImmTranslateMessage → ImeToAsciiEx(vk, sc, keyState, TRANSMSGLIST*, fuState, h
   ↓
 Engine::feed(cp) → Result{action, composition, segments, candidates, commit_text}
   ↓
-Absorb：刷新组合串窗/候选窗（framework/ui）
+Absorb：刷新组合串窗/候选窗（framework/platform/win32/ui）
 Commit：emit_text() 逐 UTF-16 码单元生成 TRANSMSG，写入 list->TransMsg
   ↓
 返回写入条数 N，IMM32 从 list->TransMsg[0..N) 逐条投递 WM_IME_CHAR 给应用
@@ -210,12 +210,12 @@ ros-pinyin/
 
 | 模块 | 关键文件 | 职责 | 平台 |
 |---|---|---|---|
-| ABI 声明 | `framework/host/imm32_abi.h` | 16 导出原型、`TransMsg`/`TransMsgList`、IMEINFO、属性位 | Win |
-| 导出实现 | `framework/host/imm_entry.cpp` | 键路由、选字/翻页、上屏（`emit_text`）、`ImeConfigure`/`ImeSelect`/`ImeSetActiveContext` | Win |
-| 会话存储 | `framework/host/session_store.cpp` | 每 HIMC 一个 `ImeSessionState`；`reload_sessions()` data-first | Win |
-| DllMain | `framework/host/dllmain.cpp` | **只注册 UI server 窗口类**（M0 红线 #1） | Win |
-| UI server | `framework/host/ui_server.cpp` | 接收 IMM32 的 UI 消息并转发窗口层 | Win |
-| 窗口层 | `framework/ui/*` | 组合串（UTF-8 下划线切分）、候选窗（9 条/页）、工具条 | Win |
+| ABI 声明 | `framework/platform/win32/imm32/imm32_abi.h` | 16 导出原型、`TransMsg`/`TransMsgList`、IMEINFO、属性位 | Win |
+| 导出实现 | `framework/platform/win32/imm32/imm_entry.cpp` | 键路由、选字/翻页、上屏（`emit_text`）、`ImeConfigure`/`ImeSelect`/`ImeSetActiveContext` | Win |
+| 会话存储 | `framework/platform/win32/imm32/session_store.cpp` | 每 HIMC 一个 `ImeSessionState`；`reload_sessions()` data-first | Win |
+| DllMain | `framework/platform/win32/imm32/dllmain.cpp` | **只注册 UI server 窗口类**（M0 红线 #1） | Win |
+| UI server | `framework/platform/win32/imm32/ui_server.cpp` | 接收 IMM32 的 UI 消息并转发窗口层 | Win |
+| 窗口层 | `framework/platform/win32/ui/*` | 组合串（UTF-8 下划线切分）、候选窗（9 条/页）、工具条 | Win |
 | 引擎契约 | `framework/include/imfw/engine.hpp` | `Action/Candidate/Result/Engine`，composition 为 UTF-8 | 纯 C++ |
 | 上屏发射 | `framework/src/emit_text.cpp` | UTF-32 → UTF-16 码单元 → TRANSMSG 数组（非 BMP 代理对、容量截断不留半对） | 纯 C++ |
 | 候选分页 | `framework/src/candidate_pager.cpp` | 页内选字、翻页、页码 | 纯 C++ |
@@ -246,7 +246,7 @@ ctest --test-dir build --output-on-failure        # 11 个测试，应 100% 通�
 python3 tools/check_m1.py                          # 63 项契约检查，应 63/63
 ```
 
-- 宿主构建**不编译** Windows 专有部分（`ime/`、安装器、`httpdl`、`framework/host`、`framework/ui`），只测纯 C++ 层。
+- 宿主构建**不编译** Windows 专有部分（`ime/`、安装器、`httpdl`、`framework/platform/win32/imm32`、`framework/platform/win32/ui`），只测纯 C++ 层。
 - 产物：`build/tests/rospinyin-*`、`build/tools/mkdat/mkdat`。
 
 ### 6.2 数据构建（`rospinyin.dat`）
@@ -333,7 +333,7 @@ make -C build-win-trace rospinyin-ime -j4
 - 行前缀形如 `[19:23:01.123 +123456ms] p=1234 t=1234 正文`，两个时钟各有分工：
   - **墙钟 `HH:MM:SS.mmm`**：跨重启唯一能区分轮次的字段。日志是追加写、永不截断，只有 tick 的话两次开机的行无法分辨，"修前/修后"也就无从对比；
   - **`+Nms`**：`GetTickCount`（开机毫秒），任意两行的时间差就是一次减法；它同时是 `imhost.exe` 自己日志用的时钟，两个文件的先后关系因此可对齐。
-- 格式实现与 `kTracePath` 都在 `framework/host/trace_stamp.h`（header-only、无 CRT、不分配内存，`DllMain` 里也能用）；路径只定义一次，避免 `dllmain.cpp` / `imm_entry.cpp` 各写一份而漂移。
+- 格式实现与 `kTracePath` 都在 `framework/platform/win32/imm32/trace_stamp.h`（header-only、无 CRT、不分配内存，`DllMain` 里也能用）；路径只定义一次，避免 `dllmain.cpp` / `imm_entry.cpp` 各写一份而漂移。
 - 排查前先 `del C:\rospinyin-trace.log`：旧行只有 `[tick]`，混在一起会让"这次到底有没有新行"变成误判。
 - `tools/check_m1.py` 里"框架不得含拼音知识"这一条会先剔除 `ROSPINYIN` 产品名再匹配 —— 否则仅打开 trace 通道就会误报（`ROSPINYIN_TRACE` 不是拼音知识）。
 
@@ -372,7 +372,7 @@ make -C build-win-trace rospinyin-ime -j4
 
 ### 7.4 字体
 
-UI 窗口有一条 CJK 字体兜底链（见 `framework/ui/ui_window.cpp`）：`Microsoft YaHei → SimSun → Noto Sans SC → 系统默认`。
+UI 窗口有一条 CJK 字体兜底链（见 `framework/platform/win32/ui/ui_window.cpp`）：`Microsoft YaHei → SimSun → Noto Sans SC → 系统默认`。
 VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
 
 ---
@@ -437,7 +437,7 @@ VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
 | 真机验收 | `docs/milestones/m2/M2-ACCEPTANCE.md` | 15 项全绿 |
 
 > 本地若装了 `ziglang`，可用真实 MinGW 头做交叉验证（比语法桩更可信）：
-> `zig c++ -target x86-windows-gnu -c -o /tmp/x.o -I framework/host -I framework/include ...`
+> `zig c++ -target x86-windows-gnu -c -o /tmp/x.o -I framework/platform/win32/imm32 -I framework/include ...`
 > 注意：`-fsyntax-only` 在 zig 驱动下会因中间文件重命名失败，**必须用 `-c`**。
 
 ---
@@ -654,7 +654,7 @@ if ((static_cast<unsigned long>(lParam) & kKeyUpBit) != 0) return FALSE;
 
 - `WM_IME_CHAR` 紧跟 `WM_CHAR` 是正常成对：前者由 imm32 投递 TRANSMESSAGE，后者是 `TranslateMessage` 转换的结果。
 - `zhongguo` + 空格只上屏 `国`（丢 `zhong`）是 **M2 验收单 3.3 的既定口径**（单字引擎，词组属 M4）。
-- 我们**没有** `WM_IME_STARTCOMPOSITION` / `WM_IME_COMPOSITION`：ReactOS 的 imm32 **根本没有实现 `ImmSetCompositionString`**（全树无此符号、无 .spec 条目），所以组合串只能自绘（`framework/ui`）。这与记事本里能看到组合串的 mzimeja 不同，但属于平台限制，不是缺陷。
+- 我们**没有** `WM_IME_STARTCOMPOSITION` / `WM_IME_COMPOSITION`：ReactOS 的 imm32 **根本没有实现 `ImmSetCompositionString`**（全树无此符号、无 .spec 条目），所以组合串只能自绘（`framework/platform/win32/ui`）。这与记事本里能看到组合串的 mzimeja 不同，但属于平台限制，不是缺陷。
 
 **待确认**：`ImmGetOpenStatus` 的真实返回值。`ImmCreateContext` 会把 `pIC->fOpen` 初始化为 FALSE（`imm32_imm.c:793`），若它一直不翻真，则"IME 关闭时仍吞字母"就无从拦截（用户切英文后打字会整体消失）。trace 构建里已打印 `open=`，但**刻意没有用它做门禁** —— 在拿到真实值之前用它拦截会直接把 IME 打死。
 
@@ -907,7 +907,7 @@ ReactOS 侧的三条事实（0.4.16 源码）：
 以及 M3 的 Shift 临时英文没有确定的基线。
 
 **修法**：`ImeSetActiveContext(fFlag=TRUE)` 里把 OS 侧状态对齐一次（`AlignOpenStatus()`，
-`framework/host/imm_entry.cpp`）：读 `before`，为 0 则 `ImmSetOpenStatus(TRUE)` 再读 `after`，
+`framework/platform/win32/imm32/imm_entry.cpp`）：读 `before`，为 0 则 `ImmSetOpenStatus(TRUE)` 再读 `after`，
 trace 打 `openalign before=0 after=1`。键路由仍不依赖它（`check_m1.py` 已加门禁：
 `should_consume_key` 体内不得出现 `OpenStatus`）。
 
@@ -1331,7 +1331,7 @@ docs/
    实际是**不一致**——而今天 U1 那个"首次激活 IME 是关的"bug 正是这类分散路径的产物。
    抽 `activate_session()` 时顺手统一，成本近乎为零。
 2. **计划自己的基线数字也失真了**：`PLAN-MODULARIZATION §2` 写 `ime/*.cpp = 57`，实测 19；
-   `framework/host+ui` 记 2584，实测 2697（+113，一天之内）。审计批评"快照两天就失真"，
+   `framework/platform/win32/imm32+ui` 记 2584，实测 2697（+113，一天之内）。审计批评"快照两天就失真"，
    而它没注意到被批评的对象是同一份计划。已把 §2 改成"每项都附生成命令，别引用数字"。
 3. **`ime/version.h` 不是"版本收敛"，是第四处并行真值**：审计把它算作已修复项，
    实际现在有 4 处（`CMakeLists 0.0.1` / `pinyin 0.0.2-m2-dev` / `imfw 0.1.0-imfw` / `ime/version.h alpha0.0.2`）。
@@ -1357,6 +1357,109 @@ X2 的 3-5 天工期是假的。
 **没纳入的两条**（理由写在计划 §1 非目标）：`.dat` 全量加载（性能，归 M4/M5）、
 `kBuiltin` 109 条双真值（M4 扩码表必然重做数据管线，现在改是重复劳动）。
 
+### 11.23 X1 目录归位：19 个文件改名，产物字节不变（2026-11-18 22:1x）
+
+`framework/host/` → `framework/platform/win32/imm32/`（9 个文件），
+`framework/ui/` → `framework/platform/win32/ui/`（10 个，含 README）。全部 `git mv`，
+历史保留。纯结构改动，零逻辑变更。
+
+**判据不是测试，是字节。** 用同一交叉工具链（`toolchain-i686.cmake`、Unix Makefiles、
+Release、`-O3 -DNDEBUG`）在改动前后各做一次**干净构建**，比对 `.ime`：
+
+| | 改动前 | 改动后 |
+|---|---|---|
+| 大小 | 940,888 B | 940,888 B |
+| sha256 | `4345c97f…` | `945d1b3e…` |
+| 差异区域 | 3 个，全部是链接器戳 | |
+
+```
+0x000088  TimeDateStamp (linker clock)
+0x0000D8  CheckSum (derived from image)
+0x060A04  export dir TimeDateStamp (copy of the clock)
+VERDICT: equivalent
+```
+
+三个差异是**任何两次构建之间都会有的**：先用 `build-win`（另一个目录、另一时刻构建）
+与基线比对，得到的也是同样三个区域、同样的字段。判据因此是"除链接器戳外逐字节相同"。
+
+**判据必须先被验证，否则"通过"可能只是它不会报警。** 四次变异：
+
+| 变异 | 预期 | 结果 |
+|---|---|---|
+| 翻转 `.text` 里一个字节 | FAIL | ✅ `0x010000 **payload**` |
+| 截断 1 字节 | FAIL | ✅ `SIZE MISMATCH` |
+| 交换 `CMakeLists.txt` 里两个源文件顺序 | FAIL | ✅ `.eh_frame` 重排，多处 payload |
+| 不动 | PASS | ✅ `equivalent` |
+
+第三条是这次的关键：源文件**顺序**变化会让异常处理表重排，产物字节改变——
+所以"漏了一个源文件"与"顺序变了"都能被抓住，判据不松。
+
+**计划里有个技术描述是错的。** 原稿写"只允许 4 处差异（…调试字段 `0x60A04`）"。
+实测该镜像**没有调试目录**（数据目录 #6 全为 0）；`0x60A00` 是 `.edata` 节起点，
+`0x60A04` 是 `IMAGE_EXPORT_DIRECTORY.TimeDateStamp`，链接器把同一个时钟值也写在那里。
+结论不变（仍然是"只允许链接器戳不同"），但工具必须按 PE 结构定位，
+于是 `tools/compare_ime.py` 走数据目录 #0 与 #6 找字段，不硬编码偏移。
+
+**改动面比计划预估多两处**：
+
+| 位置 | 计划 | 实际 |
+|---|---|---|
+| `ime/CMakeLists.txt` | 9 源 + 3 include | 一致 |
+| `tools/check_m1.py` | 15 处 | 16 处（多一条 `dat_loader.hpp/.cpp` 存在性断言） |
+| `pinyin/host/dat_source_win.cpp` | 1 条 include | 0 处需要改——它引的是裸文件名 `trace_stamp.h`，靠 include 目录解析 |
+| `.github/workflows/ci.yml` | 未列 | **9 处**：`-fsyntax-only` 步骤直接列了全部源文件路径 |
+| 文档 | "若干" | 活文档 38 处路径；计划与历史报告 30 处**保留原样**（见下） |
+
+**文档不是全改。** 判断依据是"读者会不会拿它去找文件"：
+
+- 改：`HANDOVER`、`PLAN`、`ROADMAP` 的任务行、`framework/README`、`ui/README`、
+  `libernt/PORTABILITY-ASSESSMENT`、`docs/font/*`（F 里程碑待执行，路径必须准）
+- 不改：里程碑报告（`M0-REPORT`/`M1-REPORT`/`m2/*`）与评审（`reviews/*`）——
+  它们是**当时的快照**，回填路径会让"当时代码长什么样"失去证据价值
+- 保留自定义：`PLAN-MODULARIZATION` §3 的映射图就是 X1 的任务定义，
+  只在旁边标注"已执行"，不改写
+
+`HANDOVER` 里那张 ASCII 架构图因为路径变长要重新排。第一次写的重排脚本把边框行
+和内容行一视同仁，给纯边框行也加了缩进空格，整张图当场散架——回滚后改成区分
+"只含 `─▲┴┬┼` 的线行"与"内容行"，宽度统一 70（CJK 按 2 计）才对齐。
+
+#### 顺带发现：一条 CI 门禁长期失效，并掩盖了另一条
+
+改完路径跑 CI 同款语法检查（`g++ -fsyntax-only` + `tools/syntax_stub`），报
+`HIMC 未声明`。**先确认这是不是我改坏的**：用 `git worktree` 在 `f3f270a` 上跑同一命令，
+同样失败——**改动前就是红的**。
+
+查远端 Actions：**最近 8 次运行全部 failure**（历史共 107 次）。失败链是：
+
+```
+engine-smoke 第 3 步「IME source syntax check」失败（HIMC 未声明）
+  → 该 job 后续 Configure/Build/Test/Upload 全部跳过
+  → artifact rospinyin-m2-data 从未上传
+  → publish-artifacts-branch 第 4 步 download-artifact 报 "Artifact not found"
+```
+
+也就是说：`windows-build` 一直是成功的，**坏掉的只有 Linux 那条线**，
+而它的第一步就断了，后面的 ctest、覆盖率门禁、文档门禁在 CI 上从未真正跑过。
+我们这一路说的"门禁全绿"一直只是本机成立。
+
+根因：`AlignOpenStatus()`（U1 修复）让 `imm_entry.cpp` 开始调用 `ImmGetOpenStatus`/
+`ImmSetOpenStatus`，但 `tools/syntax_stub/imm.h` 是当初为 `install-rospinyin.exe`
+写的，只声明了 `ImmInstallIMEW`。它的注释还写着"不会有分歧"——这个假设被后来的改动打破了。
+
+补齐 stub（`imm.h` 加 `HIMC` + 2 个函数；`windows.h` 加 GDI 字形探针、文件属性、
+`SystemParametersInfoW`、`VK_SHIFT`、stock brush 等 15 个符号）后通过，并做了三次变异验证：
+拼错符号 FAIL、少传参数 FAIL、`const wchar_t*` 传给 `HIMC` FAIL。
+
+顺带一个一致性问题：`LTGRAY_BRUSH` 在 `candidate_window.cpp` / `toolbar.cpp` /
+`ui_window.cpp` 里都有 `#ifndef` 兜底，只有 `composition_window.cpp` 漏了。
+四处各自打补丁这件事本身就是"stub 不完整"没人发现的证据——
+stub 补全后这些兜底都成了死代码，但保留它们无害（真实 Windows 构建里 `#ifndef` 不生效）。
+
+**教训**：门禁红着比没有门禁更糟——它会让人以为"CI 在管这件事"，
+而实际上第一步就断了，后面每一条都只是在列表里排队。
+排查时应先区分"真红"与"连带红"：`publish-artifacts-branch` 的失败本身不是 bug，
+它只是 engine-smoke 失败的后果。
+
 ### 11.2 其他待办
 
 - ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。
@@ -1375,8 +1478,8 @@ X2 的 3-5 天工期是假的。
 
 1. `cmake --build build --parallel && ctest --test-dir build` → 11/11；
 2. `python3 tools/check_m1.py` → 63/63（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
-3. 动了 `framework/host` 或 `framework/ui`：跑 CI 那步宿主语法检查（§6.3），确认 `-Wchanges-meaning` / ABI 断言不炸；
-4. 动了 ABI：本地用 zig 真实 MinGW 头编译一次 `framework/host/imm_entry.cpp`（`-target x86-windows-gnu -c`）。
+3. 动了 `framework/platform/win32/imm32` 或 `framework/platform/win32/ui`：跑 CI 那步宿主语法检查（§6.3），确认 `-Wchanges-meaning` / ABI 断言不炸；
+4. 动了 ABI：本地用 zig 真实 MinGW 头编译一次 `framework/platform/win32/imm32/imm_entry.cpp`（`-target x86-windows-gnu -c`）。
 
 **加一个输入法（如形码）**
 
