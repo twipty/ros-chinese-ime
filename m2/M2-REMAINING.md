@@ -106,6 +106,95 @@ VM 资产暂存），可加一个 tag 触发的 release job，保证"发布的�
 
 ---
 
+## U：真机新发现（2026-11-18，N 组期间，用户现场报告）
+
+三条都出现在 `alpha0.0.2` 发版二进制的正常使用中，与 Preload / 蓝屏无关。
+按"能不能改、该谁改"分成三类，不要混在 M2 观察项里。
+
+### 验证记录（2026-11-18 19:11，`m0/vm/evidence/preload-probe/N/u1u3-verified.png`）
+
+U1 + U3 已改并真机验证，构建 **940,888 B**（`ed661fbe…29651e`）：
+
+- **U1 ✅**：重启后**第一次** `Alt+Shift` 切到 RosPinyin，未按 Shift，直接敲 `nihao`
+  → 候选窗立刻展开（`1/4`，9 项）。用户原话"首次切换后即可输入中文，无需再人工启动"。
+- **U3 ✅**：【拼】完整出现在任务栏**上方**。像素校验：截图里工具条顶边 y≈542，
+  即 `work.bottom(572) - 22 - 8`，说明 `SPI_GETWORKAREA` 在 ReactOS 上返回了正确的工作区，
+  走的是主路径而非全屏兜底。
+
+一个附带的强证据：**U1 修好之后托盘仍显示 `EN`**，而实际已在中文态。
+`fOpen` 已被 `AlignOpenStatus` 设成 `TRUE`，指示器却没跟上——这进一步坐实 U2 是平台侧
+（指示器不读 `fOpen`，或刷新滞后），不是我们 OpenStatus 管理的延伸问题。
+
+### ✅ U1 开机首次切到本 IME 时是「关闭」状态，要人工开一次（已改 2026-11-18，真机已验证）
+
+**现象**：开机后第一次 `Alt+Shift` 切到 RosPinyin，托盘仍是 `EN`，直接敲键不出候选；
+按一下 Shift（或点工具条）之后才进入中文态，此后正常。
+
+**根因**：`ImmGetOpenStatus` 的 `fOpen` 只在 `ImeSetActiveContext(TRUE)` 里被对齐
+（`framework/host/imm_entry.cpp` L625–645 → `AlignOpenStatus` L600），
+而 `ImeSelect(TRUE)`（L564–583）只调 `on_select(true)` + `UiToolbarShow`，**不碰 open 状态**。
+ReactOS 在"首次切到一个布局"时只保证走 `ImeSelect`，`ImeSetActiveContext` 不保证先到；
+于是首次激活落在没有对齐的那条路径上，`fOpen` 保持 `IntCreateInputContext` 时的 `FALSE`。
+
+这与 P0-2 修的是同一个错位，只是 P0-2 的补丁挂在了**两条路径里的一条**上。
+"once per session" 的语义没错（不能在每次激活时覆盖用户按过的 Shift），错在首次可能不走那条路。
+
+**修法**：把 `AlignOpenStatus` 提到 `ImeSelect(TRUE)` 也调用的位置，仍由
+`state.open_initialized` 保证整会话只对齐一次。改动约 3 行，不动状态机语义。
+
+**判据**：开机 → `Alt+Shift` 切到本 IME → 直接敲 `nihao` 出候选，中途不按 Shift。
+`/status` 或 trace 里首帧应见 `openalign before=0 after=1`。
+
+### U2 语言指示器显示上一个 IME 的状态（跨 IME，判断为平台侧）
+
+**现象**（用户原话整理）：`[EN]` 下能输入中文 → 再 `Alt+Shift` 切到日文，状态栏显示 `[中]`，
+日文 IME 本身也是关闭态 → 再切回 `[EN]`，之后就正常了，切到谁就是谁的开/关状态。
+
+**判读**：**两个不同 IME 表现一致**（我们的显示成 mzimeja 的状态、mzimeja 显示成我们的），
+这不是单个 IME 的缺陷。指向 ReactOS 的指示器刷新链：
+`GetKeyboardLayout(0)` 在切换瞬间仍返回旧 HKL，或 `NtUserNotifyIMEStatus` 的到达晚于指示器重绘。
+"切回 EN 一次就恢复正常"符合这个解释——经过一个**没有 IME 的布局**，指示器的缓存被清掉了。
+
+**处置：先不改我们的代码。** 我们没有权限替 mzimeja 发通知，也不该为了迁就指示器而在
+失活时乱发 `ImmSetOpenStatus`（那会制造新的错位，正是 P0-2 注释里警告过的事）。
+
+**要坐实归因，需要一次 N″ 对照**：把我们的布局从 Preload 里摘掉，只留
+`00000409` + `e0200409`(mzimeja)，重启后在同一路径上复现。
+若只剩两个布局仍然错位 → 平台 bug，写进 `PORTABILITY-UPSTREAM-64BIT-ARM64.md` 的上游观察；
+若不错位 → 说明三个以上布局参与时才触发，仍属平台，但要在 liberNT 移植时列为已知差异。
+成本约 20 分钟，可在 N′ 之后顺手做。
+
+### ✅ U3 工具条【拼】被任务栏挡住（已改 2026-11-18，真机已验证）
+
+**现象**：右下角的【拼】只露出顶部一条，其余被系统任务栏盖住。
+
+**根因**（已定位到行）：`framework/ui/toolbar.cpp` L59–72 `dock_bottom_right()` 用的是
+**全屏**尺寸而不是**工作区**：
+
+```cpp
+const int screen_h = GetSystemMetrics(SM_CYSCREEN);
+if (screen_h > 0) y = screen_h - kToolbarHeight - kScreenMargin;   // 600-22-8 = 570
+```
+
+600 高的屏上任务栏顶边约 572，于是 22px 高的工具条有 20px 落在任务栏之下。
+`HWND_TOPMOST` 没能救回来——ReactOS 的任务栏同样是 topmost 且 z 序在我们之上，
+**"设了 TOPMOST 就一定压在任务栏上面"在 ReactOS 上不成立**，这条要记住。
+
+**修法**：改用工作区矩形，一处替换即可：
+
+```cpp
+RECT work{};
+if (SystemParametersInfoW(SPI_GETWORKAREA, 0, &work, 0))
+    y = work.bottom - kToolbarHeight - kScreenMargin;
+```
+
+副产品：任务栏在左侧/右侧、或自动隐藏时也自动正确（x 同理改用 `work.right`）。
+改动约 6 行，属纯定位修正，不影响任何状态逻辑，可以独立提交、独立回归。
+
+**判据**：`N-boot4` 截图里【拼】完整可见，且与任务栏之间留 `kScreenMargin` 的缝。
+
+---
+
 ## 观察项（不阻塞，但需记录）
 
 | 项 | 说明 |
@@ -122,7 +211,11 @@ VM 资产暂存），可加一个 tag 触发的 release job，保证"发布的�
 P0-1 已全绿（15/15），`alpha0.0.2` 已于 2026-11-18 发布（`ROSPINYIN_TRACE=OFF` 构建，
 资产指纹见 `HANDOVER.md` §11.17）。剩下的顺序：
 
-1. **P2-1**（CI 产出 release 资产）—— 本次发版仍是"本地构建 + 脚本上传"，
+1. **U1 + U3**（共约 9 行，两个独立小改）—— 都是真机每天会撞到的观感问题，且都不碰状态机语义；
+   U1 改完正好被 N′ 顺带验证（N′ 本来就是"登录期被激活"，能直接看出首次是否已开）；
+2. **P2-1**（CI 产出 release 资产）—— 本次发版仍是"本地构建 + 脚本上传"，
    靠人记住"发布的二进制 = 该 tag 源码构建"；让 tag 触发 CI 构建才能真正保证；
-2. 归档截图进 `m0/vm/evidence/m2-acceptance/`（日志已齐，缺图）；
-3. 进 M3：语言栏菜单、生僻字开关入口、冷僻字支持（见 `RARE-CHAR-AND-GLYPH-SOLUTION.md`）。
+3. 归档截图进 `m0/vm/evidence/m2-acceptance/`（日志已齐，缺图）；
+4. 进 M3：语言栏菜单、生僻字开关入口、冷僻字支持（见 `RARE-CHAR-AND-GLYPH-SOLUTION.md`）。
+
+U2 不进这个序列：它是平台侧，需要 N″ 对照才能坐实归因，做不做都不改我们的代码。

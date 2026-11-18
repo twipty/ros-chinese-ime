@@ -5,6 +5,48 @@
 
 ---
 
+## 未发布
+
+### 前提变更（文档层面，不改运行时代码）
+
+- **M0 那次 `0xF4` 的归因被推翻，红线 #2 降级为部署偏好**。立项时把崩溃归因为
+  「`Preload` 预载第三方 IME ⇒ 确定性蓝屏」，并据此立下「绝不写 `Preload` / 绝不注册为默认 IME」。
+  2026-11-18 的取证否掉了这个归因：
+  - 写 `Preload` 的是平台 `ImmInstallIMEW` 内部的 `Imm32WriteImeLayout()`（ReactOS 0.4.16
+    `win32ss/user/imm32/install.c`），**没有 opt-out**，我们写不写不由自己决定；
+  - 登录路径的加载者是 `userinit.exe`（`SetUserSettings → UpdatePerUserSystemParameters →
+    IntLoadPreloadKeyboardLayouts → LoadKeyboardLayoutW`），不是 csrss；
+  - 两组对照（各 3 次启动，均用本版发布的 940,601 二进制）：**N 组**（在 `Preload` 里但非首项）3/3 活、
+    **N′ 组**（首项 = 默认输入语言，走 `KLF_ACTIVATE → ImeSelect`）3/3 活。
+  → 风险在「登录路径上执行可能失败的初始化」，不在「被 `Preload` 载入」。`DllMain` 零工作与
+  `ImeInquire` 可拒绝两条**保留**，理由改为健壮性（对 liberNT / x64 / 别的 imm32 实现仍必要）。
+- 受影响文档：`README.md`、`M0-REPORT.md`、`M1-REPORT.md`、`HANDOVER.md`（新增 §11.18）、
+  `ROADMAP.md`、`PLAN.md`、`libernt/PORTABILITY-ASSESSMENT.md`、
+  `PORTABILITY-UPSTREAM-64BIT-ARM64.md`（P1-D → P2-D）、`m0/vm/PRELOAD-PROBE.md`。
+  全部为**事实与理由的修订**，不涉及二进制行为；`alpha0.0.2` 发布物不受影响。
+
+### 修复
+
+- **首次切到本 IME 是「关闭」态**（真机反馈 U1）：`AlignOpenStatus` 原先只挂在
+  `ImeSetActiveContext` 上，而 ReactOS 首次切到一个布局时可能只调 `ImeSelect`，
+  于是 `ImmGetOpenStatus()` 停在 `IntCreateInputContext` 设的 `FALSE`——托盘显示 `EN`，
+  用户按第一下 Shift 是「打开输入法」而不是「切中英」。现在两个入口都对齐，
+  仍由 `open_initialized` 保证整会话只对齐一次（否则会覆盖用户自己按过的 Shift）。
+- **工具条被任务栏挡住**（真机反馈 U3）：`dock_bottom_right()` 用 `SM_CYSCREEN` 全屏高定位，
+  600 高的屏上算出 `y=570`，而任务栏顶边约 572，22px 的工具条有 20px 落在任务栏之下。
+  改用 `SPI_GETWORKAREA` 的工作区矩形；任务栏在侧边或自动隐藏时也随之正确。
+  附带一条实测结论：**ReactOS 上 `HWND_TOPMOST` 不保证压过任务栏**（任务栏同为 topmost
+  且 z 序更高），所以只能靠避让，不能靠层级。
+
+### 工程
+
+- `tools/check_m1.py` 新增 2 条契约断言（57 → 59）：`AlignOpenStatus` 必须同时挂在
+  `ImeSelect` 与 `ImeSetActiveContext`；工具条必须用 `SPI_GETWORKAREA` 而非 `SM_CYSCREEN` 定位。
+- `m0/vm/probe-n.sh` 补上文档承诺却一直没实现的 `stop` 子命令（走 HMP `quit` 优雅退出，
+  不 `kill`，保证覆盖层 flush），并把 `clean` 作为 `rollback` 的别名。
+
+---
+
 ## alpha0.0.2 — 2026-11-18
 
 第二个公开版本。M2 验收单 **15/15 通过**；真机三轮反馈（多音节只转首字、Shift 不切中英、

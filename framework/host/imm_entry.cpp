@@ -561,6 +561,16 @@ LRESULT WINAPI ImeEscape(rpimm::InputContext hIMC, UINT uSubFunc, LPVOID lpData)
     return 0;
 }
 
+namespace {
+
+// Defined further down together with its P0-2 rationale. Declared here because
+// ImeSelect's first-activation path has to align the open flag too: ReactOS can
+// deliver ImeSelect without a preceding ImeSetActiveContext, and that is
+// exactly how the very first switch to this layout ended up "closed".
+void AlignOpenStatus(rpimm::InputContext hIMC, ImeSessionState& state);
+
+}  // namespace
+
 BOOL WINAPI ImeSelect(rpimm::InputContext hIMC, BOOL fSelect) {
     IMFW_TRACE("select imc=").h(static_cast<unsigned long>(
         reinterpret_cast<std::uintptr_t>(hIMC)))
@@ -574,6 +584,13 @@ BOOL WINAPI ImeSelect(rpimm::InputContext hIMC, BOOL fSelect) {
         if (state != nullptr && state->engine != nullptr) {
             state->engine->on_select(true);
         }
+        // U1 (2026-11-18 真机): align here as well, still once per session.
+        // Without this, a first activation that skips ImeSetActiveContext
+        // leaves ImmGetOpenStatus() at the FALSE that IntCreateInputContext
+        // set: the tray shows EN and the user's first Shift *opens* the IME
+        // instead of switching language. The once-per-session guard inside
+        // AlignOpenStatus keeps this from undoing a user toggle later on.
+        if (state != nullptr) AlignOpenStatus(hIMC, *state);
         imfw::UiToolbarShow(hIMC);
     } else if (hIMC != nullptr) {
         imfw::UiToolbarHide(hIMC);

@@ -5,8 +5,9 @@
 #   ./probe-n.sh prep     暂存被测文件 + 建覆盖层（可在旧 VM 运行时执行）
 #   ./probe-n.sh start    在覆盖层上启动 VM（要求 5901 空闲、基础盘未被占用）
 #   ./probe-n.sh shot NAME 截屏到 m0/vm/evidence/preload-probe/N/NAME.png（HMP screendump）
-#   ./probe-n.sh state    打印覆盖层大小 / VM 是否在跑 / 串口日志尾部
-#   ./probe-n.sh rollback 删除覆盖层（VM 必须先关掉）
+#   ./probe-n.sh state     打印覆盖层大小 / VM 是否在跑 / 串口日志尾部
+#   ./probe-n.sh stop      通过 HMP quit 让 QEMU 优雅退出（不 kill，保证 flush）
+#   ./probe-n.sh rollback  删除覆盖层（VM 必须先关掉）；clean 是它的别名
 #
 # 为什么是这三条硬守卫:
 #   1) 5901 已被占用 -> 说明另有一个 VM 在跑，它可能正握着基础盘；
@@ -104,6 +105,24 @@ cmd_state() {
     fi
 }
 
+cmd_stop() {
+    if ! port_busy 5901; then
+        say "没有 VM 在跑（5901 空闲）"
+        return 0
+    fi
+    say "通过 HMP quit 让 QEMU 退出（正常 flush 覆盖层，不是 kill）..."
+    hmp "quit" >/dev/null 2>&1 || true
+    local i
+    for i in $(seq 1 15); do
+        if ! port_busy 5901; then
+            say "VM 已退出"
+            return 0
+        fi
+        sleep 1
+    done
+    die "15 秒内未退出；不要 kill -9（会丢未 flush 的写），先看 monitor.sock 是否还在"
+}
+
 cmd_rollback() {
     port_busy 5901 && die "VM 还在跑，先关机再 rollback"
     if [ -f "$OVL" ]; then
@@ -119,6 +138,7 @@ case "${1:-state}" in
     start)    cmd_start ;;
     shot)     cmd_shot "${2:-shot}" ;;
     state)    cmd_state ;;
-    rollback) cmd_rollback ;;
-    *)        die "未知子命令: ${1:-}（prep|start|shot|state|rollback）" ;;
+    stop)     cmd_stop ;;
+    rollback|clean) cmd_rollback ;;
+    *)        die "未知子命令: ${1:-}（prep|start|shot|state|stop|rollback）" ;;
 esac

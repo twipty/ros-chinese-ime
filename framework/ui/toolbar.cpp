@@ -31,6 +31,9 @@
 #ifndef SM_CYSCREEN
 #define SM_CYSCREEN 1
 #endif
+#ifndef SPI_GETWORKAREA
+#define SPI_GETWORKAREA 0x0030
+#endif
 
 namespace imfw {
 namespace ui {
@@ -59,14 +62,25 @@ void Toolbar::update(HINSTANCE inst, const wchar_t* class_name,
 void Toolbar::dock_bottom_right() {
     if (hwnd_ == nullptr) return;
 
-    const int screen_w = GetSystemMetrics(SM_CXSCREEN);
-    const int screen_h = GetSystemMetrics(SM_CYSCREEN);
-    int x = 0;
-    int y = 0;
-    if (screen_w > 0) x = screen_w - kToolbarWidth - kScreenMargin;
-    if (screen_h > 0) y = screen_h - kToolbarHeight - kScreenMargin;
-    if (x < 0) x = 0;
-    if (y < 0) y = 0;
+    // U3 (2026-11-18 真机): dock inside the *work area*, not the screen rect.
+    // The taskbar lies inside the screen but outside the work area, and on
+    // ReactOS HWND_TOPMOST does not win against it -- the taskbar is topmost
+    // too and keeps the higher z-order, so the toolbar sat under the tray and
+    // only its top few pixels were visible.
+    RECT work{};
+    if (!SystemParametersInfoW(SPI_GETWORKAREA, 0, &work, 0) ||
+        work.right <= work.left || work.bottom <= work.top) {
+        // Fall back to the full screen, which is what this always used to do.
+        work.left = 0;
+        work.top = 0;
+        work.right = GetSystemMetrics(SM_CXSCREEN);
+        work.bottom = GetSystemMetrics(SM_CYSCREEN);
+    }
+
+    int x = work.right - kToolbarWidth - kScreenMargin;
+    int y = work.bottom - kToolbarHeight - kScreenMargin;
+    if (x < work.left) x = work.left;
+    if (y < work.top) y = work.top;
 
     SetWindowPos(hwnd_, HWND_TOPMOST, x, y, 0, 0,
                  SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);

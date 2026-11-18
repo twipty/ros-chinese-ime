@@ -402,6 +402,29 @@ def run(root: Path) -> int:
             "should_consume_key/set_ime_open not found"
             if gate is None or toggle is None else "")
 
+    # U1 (2026-11-18 真机): the alignment must hang off BOTH entry points.
+    # ReactOS can deliver ImeSelect without a preceding ImeSetActiveContext;
+    # when only the latter aligned, the very first switch to this layout stayed
+    # "closed" -- the tray showed EN and the user's first Shift *opened* the
+    # IME instead of switching language.
+    select_body = function_body(entry_code, r"BOOL WINAPI ImeSelect\([^)]*\)")
+    active_body = function_body(entry_code,
+                                r"BOOL WINAPI ImeSetActiveContext\([^)]*\)")
+    c.check("open status aligned on both activation entry points "
+            "(ImeSelect and ImeSetActiveContext)",
+            select_body is not None and "AlignOpenStatus(" in select_body and
+            active_body is not None and "AlignOpenStatus(" in active_body,
+            "AlignOpenStatus missing from one of the two entry points")
+
+    # U3 (2026-11-18 真机): dock to the work area, never to the raw screen.
+    # SM_CYSCREEN puts the toolbar under the taskbar, and on ReactOS
+    # HWND_TOPMOST does not win against it (the taskbar is topmost too and
+    # keeps the higher z-order), so the label was clipped to a few pixels.
+    toolbar_cpp = strip_cpp_comments(read(root, "framework/ui/toolbar.cpp"))
+    c.check("toolbar docks to the work area, not the raw screen",
+            "SPI_GETWORKAREA" in toolbar_cpp and
+            "screen_h - kToolbarHeight" not in toolbar_cpp)
+
     return c.summary()
 
 
