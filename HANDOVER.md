@@ -1177,6 +1177,30 @@ GIT_CONFIG_SYSTEM=/dev/null GIT_CONFIG_GLOBAL=/dev/null \
 诊断手段：`GIT_CURL_VERBOSE=1` 看响应头里的 `web-server:` —— 出现 `gh-proxy.com`
 说明改写没被屏蔽掉。
 
+#### 推送通道变更（2026-11-18 12:5x，直连不通了）
+
+上面那条"屏蔽全局配置 + 直连"的路子**当天已失效**：沙箱的 HTTPS 代理对 `github.com`
+返回 `CONNECT tunnel failed, response 502`，而 `api.github.com` 与 `gh-proxy.com` 都通。
+gh-proxy 的 `info/refs?service=git-receive-pack` 返回 `401`（说明它认 push），
+但带 `http.extraheader` 认证头推过去仍然**静默失败**（5 分钟无输出、remote ref 不变），
+和 §12 记录的老坑同形。
+
+可用通道是 **GitHub Git Data API**（`api.github.com` 可达）：逐个提交上传 blob → 建 tree
+→ 建 commit → `PATCH refs/heads/main`。脚本在 `tools/push_via_api.py`，关键是它自带安全阀：
+
+- 要求远端 HEAD 等于预期的起点 SHA，否则中止；
+- 每个提交建完 tree 后**必须与本地 `git rev-parse <sha>^{tree}` 完全相等**才往下走，
+  不等就 `sys.exit`，ref 一动不动（最多留下几个孤立 blob，无害）。
+
+代价：重建出来的 commit SHA 与本地不同（tree 相同、内容一致），本地 `HEAD` 与
+`origin/main` 会"看似分叉"。等直连恢复后跑一次 `git push --force origin main` 即可对齐，
+历史内容不受影响。
+
+```bash
+python3 tools/push_via_api.py <repo> main <expected_remote_sha> <sha1> <sha2> ...
+```
+
+
 #### 远程历史与本地不相关（已知）
 
 2026-11-17 之前远程 `main` 是用 API 逐文件提交堆出来的 93 个提交，与本地 31 个提交
