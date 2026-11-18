@@ -10,45 +10,83 @@
 
 | 组 | 用什么 `.ime` | 预期 | 目的 |
 |---|---|---|---|
-| **N** 负对照 | 当前 build（`DllMain` 里仍 `RegisterClassEx`） | 崩 | 用本项目自己的代码复现根因 |
+| **N** 负对照 | `alpha0.0.2` 发版二进制（`DllMain` 里仍 `RegisterClassEx`，TRACE=OFF，940,601 B） | 崩 | 用本项目自己的代码复现根因，且结论直接适用于发布物 |
 | **R** 拒绝路径 | 探针 `.ime`（`ImeInquire` 直接 `return FALSE`） | 活 | 验证 imm32 能接受 IME 主动拒绝 |
 | **T** 处理组 | A1 build（`DllMain` 清空、注册移到 `ImeInquire`） | 活 | 验证修复 |
 
 **N 先跑**：它不需要改任何代码，信息量最大。若 N 不崩，说明缺陷不在"加载期注册类"，而要往 §9.5 的另两个候选查——**这个结果本身就能省掉一轮改代码**。
 
-## 1. 安全前提：覆盖层，基础盘零改动
+## 1. 环境：`probe-n.sh`（已备好，可直接跑）
+
+宿主机侧全部操作收敛到一个脚本，守卫写死，避免人手漏步：
 
 ```bash
 VM=/home/twipty/WorkBuddy/2026-11-12-20-02-47/ros-pinyin/m0/vm
-source "$VM/common.sh"          # 设好 QEMU_HOME 与 LD_LIBRARY_PATH（qemu-img 缺 libaio.so.1 就是漏了这步）
-OVL=/home/twipty/.workbuddy/tmp/reactos.probe-N.qcow2   # 每组换一个名字
-
-"$QEMU_HOME/usr/bin/qemu-img" create -f qcow2 -b "$VM/reactos.qcow2" -F qcow2 "$OVL"
+"$VM/probe-n.sh" state     # 覆盖层 / 5901 / 基础盘锁 / 串口日志
+"$VM/probe-n.sh" prep      # 暂存被测文件 + 建覆盖层（旧 VM 在跑也能执行）
+"$VM/probe-n.sh" start     # 起 VM（5901 空闲才允许）
+"$VM/probe-n.sh" shot n-01 # 截屏 → evidence/preload-probe/N/n-01.png
+"$VM/probe-n.sh" rollback  # 删覆盖层，基础盘零改动
 ```
 
-启动：
+已就位的现场：
 
-```bash
-ROSPINYIN_HDD="$OVL" "$VM/run-reactos.sh"
-```
+| 项 | 值 |
+|---|---|
+| 覆盖层 | `/home/twipty/.workbuddy/tmp/reactos.probe-N.qcow2`（196,736 B，backing=`m0/vm/reactos.qcow2`） |
+| 被测二进制 | `/home/twipty/.workbuddy/tmp/build-win-rel/ime/rospinyin.ime` = **940,601 B** `c9dc17c0…3e25feaa` |
+| guest 下载路径 | `http://10.0.2.2:8000/probe-N/`（`rospinyin.ime` / `rospinyin.dat` / `install-rospinyin.exe`） |
 
-**回滚 = 删掉 `$OVL`**。基础盘 `reactos.qcow2` 不会被写一个字节，所以蓝屏再多次也不影响已验收的环境。
+**`start` 的三条守卫**（缺一条就会写坏已验收的环境）：
 
-## 2. N 组步骤（人手，约 10 分钟）
+1. `5901` 被占用 → 说明另有一个 VM 在跑，先正常关掉它（noVNC 窗口会断开，地址不变）；
+2. 基础盘被锁 → 覆盖层的 backing 正在被写，快照没有意义；
+3. 覆盖层不存在 → 直接起 VM 会写基础盘。
 
-1. 等进桌面。先确认布局已注册且 HKL：
+**为什么必须换掉 guest 里那个 `.ime`**：`ROSPINYIN_TRACE=ON` 的构建会在 `DllMain` 里
+`CreateFileA("C:\rospinyin-trace.log")` 并写一行 —— 那是**加载期的额外副作用**，
+带着它跑 Preload 等于验另一个二进制（见 `M0-REDLINE-REVIEW.md` §11 A4）。
+N 组的被测对象与 `alpha0.0.2` 发版资产**同一个文件**，这样结论直接适用于发布物。
+
+## 2. N 组步骤（人手，约 10 分钟 + 最多 2 次重启）
+
+### 2.1 先把被测二进制装进去
+
+0. 进桌面后开 **Command Prompt**，进一个干净目录（例：`md C:\probe` / `cd C:\probe`）。
+1. 下载（guest 里已有 `wget.exe` 就够；没有就先用浏览器从 `http://10.0.2.2:8000/wget.exe` 取）：
    ```
-   C:\> install-rospinyin.exe /status
+   wget http://10.0.2.2:8000/probe-N/install-rospinyin.exe
+   wget http://10.0.2.2:8000/probe-N/rospinyin.ime
+   wget http://10.0.2.2:8000/probe-N/rospinyin.dat
+   dir
    ```
-   记下 HKL（本项目实测为 `e0210804`，动态分配，**以 `/status` 输出为准**，不要照抄）。
-2. 打开 `regedit`，定位 `HKEY_CURRENT_USER\Keyboard Layout\Preload`。
-   截图存证：现有值长什么样（通常是 `1 = 00000409` 之类）。
-3. 新建**字符串值**：名称 `2`，数据为第 1 步的 HKL（如 `e0210804`）。
-   **只追加，不插首位、不改动原有项** —— 这是最小崩溃面。
-4. 截图存证：写完后的 Preload 全部键值。
-5. **正常关机**（不要直接断电；hive 需要落地）。
-6. 启动 #1 → 能进桌面？能输入？（开记事本敲几个字即可）
-7. 启动 #2、#3 重复。**登录路径的问题常常第一次不出现**，三次都要。
+   `dir` 要看到 `940601 rospinyin.ime` / `902776 rospinyin.dat` / `89394 install-rospinyin.exe`。
+   **字节数不对就别往下走**（下载截断比失败更危险）。
+2. 拷贝并校验：
+   ```
+   install-rospinyin.exe /step1
+   ```
+   正常输出 `[step1] rospinyin.ime verified (940601 bytes)`。
+   若提示 `stale payload ... .old exists` 或 `reboot, then rerun /step1`：
+   **重启一次，再跑一遍 `/step1`** —— 说明旧文件还被运行中的 IME 映射着，属预期。
+3. 确认落位与注册信息：
+   ```
+   install-rospinyin.exe /status
+   ```
+   必须看到 `rospinyin.ime : present (940601 bytes)` 和 `recorded HKL : XXXXXXXX`。
+   **以 `/status` 输出为准**，不要照抄 `e0210804`（动态分配）。
+   若 `recorded HKL : (none)` 或 `layout key : missing`，说明这套盘上还没注册过，
+   补 `/step2` `/step3` `/step4` 各一次，再回来。
+
+### 2.2 写 Preload，然后三次启动
+
+4. 打开 `regedit`，定位 `HKEY_CURRENT_USER\Keyboard Layout\Preload`，**截图存证**现有键值。
+5. 新建**字符串值**：名称 `2`，数据为第 3 步拿到的 HKL（8 位十六进制，如 `e0210804`）。
+   **只追加到末尾**：不插首位、不改 `1` 号项 —— 这是最小崩溃面。
+6. **截图存证**写完后的整份 Preload。
+7. **正常关机**（开始菜单 → 关机；不要直接断电，hive 需要落地）。
+8. 启动 #1 → 能进桌面？能输入？（开记事本敲 `nihao` 出候选即可）
+9. 启动 #2、#3 重复。**登录路径的问题常常第一次不出现**，三次都要。
 
 ### 记录表（复制到 issue 或直接填这里）
 
@@ -58,17 +96,27 @@ ROSPINYIN_HDD="$OVL" "$VM/run-reactos.sh"
 | N | #2 | | | |
 | N | #3 | | | |
 
-**判据（写死，不许事后放宽）**：连续 3 次进桌面且能输入 = 活；**任何一次蓝屏 = 崩**，立刻停，删覆盖层，记录第几次。
+**判据（写死，不许事后放宽）**：连续 3 次进桌面且能输入 = 活；**任何一次蓝屏 = 崩**，
+立刻停手，把蓝屏参数抄进备注（`0xF4(` 后四个十六进制数），然后 `probe-n.sh rollback`。
+
+蓝屏时用手机拍屏或宿主机 `probe-n.sh shot n-bsod` 留一张（`screendump` 在 bugcheck 画面上仍然有效，
+但若 VM 已 `-no-shutdown` 之外的方式退出就来不及了，所以**先拍照、再操作**）。
+
+**N 组跑完不删覆盖层**：它保留了"装好发版二进制 + Preload 已写"的现场，
+T 组可以直接在它上面换 `.ime` 复跑，省一次下载与注册。
 
 ## 3. 若崩了，怎么把故事讲完
 
 release 构建默认不往串口打 KDBG（`m0/vm/logs/rosdbg.log` 现在是 **0 字节**就是证据）。要拿栈：
 
-1. 在 `common.sh` 的 `COMMON_ARGS` 里已有 `-serial file`（见该文件注释），额外给 guest 加 `/DEBUG` 启动项；
-2. 重跑同一组，`logs/rosdbg.log` 会留下 KDBG 输出；
-3. 有栈之后再回 §9.5 的三候选做定位。
+1. 在 `common.sh` 的 `COMMON_ARGS` 里已有 `-serial file`（见该文件注释），另加
+   `-no-shutdown -no-reboot`（让 QEMU 停在 bugcheck 画面而不是关机）；
+2. guest 的 `C:\boot.ini`（或 FreeLoader 的 `freeldr.ini`）加 `/DEBUG /DEBUGPORT=COM1 /BAUDRATE=115200`；
+3. 重跑同一组，`logs/rosdbg.log` 会留下 KDBG 输出（含 bugcheck 与调用栈）；
+4. 有栈之后再回 §9.5 的三候选做定位。
 
 **这一步只影响"故事是否完整"，不影响"要不要改"**——三候选被同一组修复覆盖。
+代价是每轮多一次引导，所以只在 N 组崩了之后做，不要提前做。
 
 ## 4. R 组（需要先做一个空壳 .ime）
 
@@ -82,6 +130,7 @@ A1 尚未实现。完成后用同法跑 3 次。若 T 崩，说明"清空 DllMai
 
 ## 6. 产物放哪
 
-- 每组 3 张桌面截图 + Preload 截图 → `m0/vm/evidence/preload-probe/<组>/`
+- `probe-n.sh shot <名字>` 直接写到 `m0/vm/evidence/preload-probe/N/<名字>.png`（PPM 自动转 PNG 后删除）；
+  建议命名 `n-boot1` / `n-boot2` / `n-boot3` / `n-preload` / `n-bsod`。
 - 串口日志（若开了 `/DEBUG`）→ 同目录 `rosdbg.log`
 - 结论一行写进 `M0-REDLINE-REVIEW.md` §11 的表格，并把组标记为 崩/活
