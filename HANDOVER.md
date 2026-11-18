@@ -1003,6 +1003,14 @@ M2 没有 UI 入口，需要时改 `pinyin/src/pinyin_session.cpp` 的默认值�
 不说**哪个窗、从哪到哪**；`caret=0` 还能量化"锚点退化成鼠标位置"这条路径
 （`caret_anchor()` 里 `GetFocus()`/`GetCaretPos()` 失败时的兜底）。
 
+**顺带修掉位移的两个来源**（`ime_ui.cpp`）：①锚点每次 `UiShow` 都重取 caret，
+而每上屏一个字 caret 就右移一格——弹窗于是跟着爬；改成**一次组合只取一次锚点**，
+`UiHide` 才清。②`x = anchor.x + 12` 原来按**实测宽度**做右边界收口
+（`screen_w - composition.width() - 8`），于是每多打一个字母 x 就左跳一次；
+改成按固定预留（`kPopupRightMargin=300`）收口，公式里**不含任何窗口宽度**——
+打字和翻页都不会再改 x。贴底时（`anchor.y + 260 > screen_h`）整组翻到光标上方，
+这个判断也在取锚点时定一次。
+
 ### 11.2 其他待办
 
 - ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。

@@ -38,6 +38,12 @@ struct UiContext {
     ui::CompositionWindow composition;
     ui::CandidateWindow candidates;
     ui::Toolbar toolbar;
+    // Anchor captured once when a composition starts. Moving the popups on
+    // every keystroke (caret + measured width) is what made them crawl across
+    // the screen while typing and jump while paging.
+    POINT anchor = {0, 0};
+    bool anchored = false;
+    bool flip = false;  // caret too close to the bottom: draw above it
 };
 
 // Same locking rationale as host/session_store.cpp: CRITICAL_SECTION keeps
@@ -107,38 +113,51 @@ POINT caret_anchor() {
     return pt;
 }
 
+// How much room the popup group needs at most. Used to clamp the anchor so it
+// never has to be recomputed later: a clamp that reads the window's *measured*
+// width moves the box every time the text grows a letter.
+constexpr int kPopupRightMargin = 300;
+constexpr int kPopupBottomMargin = 260;
+
 // Every window is placed AND sized here, in one SetWindowPos per window per
 // call, and only when the geometry actually changed (see
 // UiWindow::apply_geometry). The composition window measures its own text in
 // update() but no longer calls SetWindowPos itself: two owners of the same
 // window geometry is how "zhongguo" ended up clipped to the width of "zhong".
+//
+// The anchor comes from the context, not from the live caret, and x is
+// computed from the anchor alone -- deliberately no measured width in the
+// formula. Typing another letter or flipping a page must not move a window the
+// user is currently reading.
 void place_windows(UiContext& ctx, const POINT& anchor) {
     const int screen_w = GetSystemMetrics(SM_CXSCREEN);
     const int screen_h = GetSystemMetrics(SM_CYSCREEN);
 
     int x = anchor.x + 12;
-    int y = anchor.y + 20;
-    if (x + ctx.composition.width() > screen_w && screen_w > 0) {
-        x = screen_w - ctx.composition.width() - 8;
+    if (screen_w > 0 && x > screen_w - kPopupRightMargin) {
+        x = screen_w - kPopupRightMargin;
     }
     if (x < 0) x = 0;
-    ctx.composition.apply_geometry(x, y, ctx.composition.width(),
-                                   ctx.composition.height());
 
-    y += ctx.composition.height();
-    if (y + ctx.candidates.height() > screen_h && screen_h > 0) {
-        y = anchor.y - ctx.candidates.height() - 4;
-        if (y < 0) y = 0;
+    int comp_y = anchor.y + 20;
+    int cand_y = comp_y + ctx.composition.height();
+    if (ctx.flip) {
+        const int bottom = anchor.y - 4;
+        cand_y = bottom - ctx.candidates.height();
+        comp_y = cand_y - ctx.composition.height();
+        if (comp_y < 0) comp_y = 0;
     }
-    ctx.candidates.apply_geometry(x, y, ctx.candidates.width(),
+    ctx.composition.apply_geometry(x, comp_y, ctx.composition.width(),
+                                   ctx.composition.height());
+    ctx.candidates.apply_geometry(x, cand_y, ctx.candidates.width(),
                                   ctx.candidates.height());
 
     g_last_geometry.comp_x = x;
-    g_last_geometry.comp_y = anchor.y + 20;
+    g_last_geometry.comp_y = comp_y;
     g_last_geometry.comp_w = ctx.composition.width();
     g_last_geometry.comp_h = ctx.composition.height();
     g_last_geometry.cand_x = x;
-    g_last_geometry.cand_y = y;
+    g_last_geometry.cand_y = cand_y;
     g_last_geometry.cand_w = ctx.candidates.width();
     g_last_geometry.cand_h = ctx.candidates.height();
     g_last_geometry.anchor_x = anchor.x;
@@ -160,7 +179,17 @@ void UiShow(rpimm::InputContext hIMC, const wchar_t* composition_text,
     ctx->candidates.update(g_hInst, scheme.candidate_class(), pager);
 
     if (!ctx->composition.visible() && !ctx->candidates.visible()) return;
-    place_windows(*ctx, caret_anchor());
+    // Anchor once per composition. Re-reading the caret on every key was the
+    // other half of "the box drifts while I type": the caret moves with every
+    // committed character, and the IME's own popup followed it.
+    if (!ctx->anchored) {
+        const POINT anchor = caret_anchor();
+        const int screen_h = GetSystemMetrics(SM_CYSCREEN);
+        ctx->anchor = anchor;
+        ctx->flip = screen_h > 0 && anchor.y + kPopupBottomMargin > screen_h;
+        ctx->anchored = true;
+    }
+    place_windows(*ctx, ctx->anchor);
 }
 
 void UiHide(rpimm::InputContext hIMC) {
@@ -168,6 +197,8 @@ void UiHide(rpimm::InputContext hIMC) {
     if (ctx == nullptr) return;
     ctx->composition.hide();
     ctx->candidates.hide();
+    // Next composition starts wherever the caret is *then*.
+    ctx->anchored = false;
 }
 
 void UiDestroy(rpimm::InputContext hIMC) {
