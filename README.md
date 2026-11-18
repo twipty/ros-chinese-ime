@@ -2,7 +2,7 @@
 
 **项目章程 / Project Charter**
 状态：已立项（2026-11-12）｜路线：B（以 mzimeja 为蓝本新写 IMM32 拼音 IME）｜目标平台：ReactOS 0.4.16+（IMM32 架构）
-当前阶段：**M2 单字拼音引擎已完成并发布**（ReactOS VM 真实手打端到端上屏，`M2-ACCEPTANCE.md` 15/15 通过；`ctest` 11/11、`check_m1` 63/63）｜最新版本：**alpha0.0.2**（2026-11-18，[Release 说明](CHANGELOG.md)）｜首个公开版本：**alpha0.0.1**（2026-11-17）
+当前阶段：**M2 单字拼音引擎已完成并发布**（ReactOS VM 真实手打端到端上屏，`M2-ACCEPTANCE.md` 15/15；前 500 高频字首页覆盖 **96.8%**；`ctest` 11/11、`check_m1` 63/63）｜最新版本：**alpha0.0.2**（2026-11-18，[Release 说明](CHANGELOG.md)）｜首个公开版本：**alpha0.0.1**（2026-11-17）
 仓库：https://github.com/twipty/ros-chinese-ime（public, main）｜代码许可证：**MIT**（D1 已定，2026-11-13）｜第三方与数据分层授权见 `NOTICE.txt`
 
 > **⚠️ 重大前提变更（2026-11-18 19:56，读下文前必看）**
@@ -148,7 +148,7 @@
 - 中文资源与版本信息落定：`FILETYPE=VFT_DRV` / `FILESUBTYPE=VFT2_DRV_INPUTMETHOD`、`Translation 0x0804/1200`、布局文本「中文(简体) - RosPinyin」。
 - `tools/install-rospinyin/install.cpp` 按 M0 红线重写注册链路：**动态 HKL**、**安装器自身不写 `Preload`**（注意：`ImmInstallIMEW` 内部会写，见 `M0-REDLINE-REVIEW.md` §12；我们不写 ≠ 注册表里没有）、**`/step1`…`/step4` 逐键分步注册**（ReactOS 每步重启验证）、自带 `/status` 与 `/u`。
 - 引擎契约 `engine/include/rospinyin/engine.hpp` 定型，M2 替换实现时 API 不变；`ui/` 给出窗口分层约定。
-- 质量闸门：`tools/check_m1.py`（长期契约闸门，当前 63 项：日语残留、导出表、版本字段、加载期调用白名单、命名一致性、M2 不变量）+ Linux 下用 `tools/syntax_stub` 对 Windows 源码做零链接语法编译；本机 `ctest` 11/11 通过。
+- 质量闸门：`tools/check_m1.py`（长期契约闸门，当前 63 项：日语残留、导出表、版本字段、加载期调用白名单、命名一致性、M2 不变量；另有 `tools/coverage_report.py`（前 500 高频字首页覆盖，准出判据）与 `tools/check_release_version.py`（发版：tag ↔ 版本头 ↔ 产物 FILEVERSION））+ Linux 下用 `tools/syntax_stub` 对 Windows 源码做零链接语法编译；本机 `ctest` 11/11 通过。
 
 **尚未完成（此为 2026-11-13 历史状态，后续已更新）**：真实 Windows/MinGW 构建产物、Windows 参照机裸加载验证、ReactOS VM 分步注册与 50 次切换压测。本机为 Linux 无 Windows 工具链，**当前仓库不含可运行的 `rospinyin.ime` 二进制**；Windows CI job 已接线，推送后应先确认其产物。→ 见 [M1-REPORT.md](M1-REPORT.md) 第二轮更新与下文第 11 节。
 

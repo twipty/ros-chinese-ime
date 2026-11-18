@@ -51,6 +51,16 @@ jobs:
           path: build/m2-data/rospinyin.dat
           if-no-files-found: error
           retention-days: 30
+      - name: First-page coverage of the top 500 characters (M2 exit criterion)
+        # ROADMAP's M2 exit criterion asks for >= 95% of the 500 most frequent
+        # characters to be reachable without paging. Nothing measured it until
+        # 2026-11-18 (measured: 96.8%, i.e. 1.8 points of margin). The step is a
+        # regression guard: dropping the frequency table or reordering the
+        # candidate list would show up here as a red build.
+        run: >-
+          python3 tools/coverage_report.py
+          --dat build/m2-data/rospinyin.dat
+          --top 500 --fail-under 95
 
   windows-build:
     # MinGW-w64 i686, NOT MSVC. MSVC's CRT statically imports
