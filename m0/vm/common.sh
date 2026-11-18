@@ -9,7 +9,7 @@ QEMU="$QEMU_HOME/usr/bin/qemu-system-i386"
 
 VM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ISO="$VM_DIR/../downloads/ReactOS-0.4.16-i386.iso"
-HDD="$VM_DIR/reactos.qcow2"
+HDD="${ROSPINYIN_HDD:-$VM_DIR/reactos.qcow2}"
 LOG_DIR="$VM_DIR/logs"
 mkdir -p "$LOG_DIR"
 

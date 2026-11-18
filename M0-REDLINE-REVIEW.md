@@ -5,6 +5,7 @@
 - **触发问题**：按当前项目现状重新评估这组红线；考虑后续上游演进，是否应当取消
 - **结论（先给）**：**不应整体取消，但其中一条的前提站不住、两条根本不是红线。** 建议把四条拆成三类：A 类（永不移除，且应加强）、B 类（从"禁止"降级为"默认关闭 + 可证伪的开关"）、C 类（移出红线清单）。
 - **追加（2026-11-18，移植视角）**：在「后续要移植到 liberNT」这一约束下，§4 对 B 类的处置**不够，需要改写**——不是"降级为默认关闭"，而是**把红线的作用对象从「部署过程」换成「二进制本身」**。理由与操作见 §8。这条红线的真正成本不在 ReactOS，而在移植：它能同时决定"能不能用平台标准安装 API"和"卸载会不会留下悬空引用"。
+- **重判（2026-11-18 16:20）**：读崩溃时被注册的那个二进制（`m0/extract/pe_0_*.bin`）与同源参考源码后，**根因从"Preload 预载"改为"在 csrss 里做加载期 UI 初始化、且失败被吞掉"**——Preload 只是投递手段。见 §9。据此：红线 #2 的错在**作用域**而非证据（§10.1），A 类要补 **A1b（失败必须可拒绝）**（§10.2），实验加**负对照**用本项目自己的代码复现根因（§11，取代 §5 判据）。
 
 ---
 
@@ -250,4 +251,100 @@
 
 ---
 
-*本复核的所有参数与文件事实来自 `m0/vm/logs/bsod-ocr.txt`、`README.md` §9、`M0-REPORT.md` §4.4、`M1-REPORT.md`、`tools/check_m1.py`（第 6/7 项）、`framework/host/dllmain.cpp`、`tools/install-rospinyin/install.cpp` 的当前内容。*
+## 9. 根因重判（2026-11-18 16:20，基于二进制与参考源码）
+
+§2 只做到"某个关键进程被杀"，因为当时只看了 OCR。这一节换了方法：直接读**崩溃时被注册的那个二进制**与**同源参考源码**，再回头看那条天然对照。
+
+### 9.1 结论
+
+> **致伤机制不是"Preload 预载"，而是"在 csrss 的预会话环境里执行 IME 的 UI 初始化，且初始化失败被静默吞掉"。Preload 只是把 DLL 送进 csrss 的投递手段。**
+
+### 9.2 证据表
+
+| # | 观察 | 取证方式 | 对候选假设的作用 |
+|---|---|---|---|
+| E1 | 被注册的 x86 IME（`m0/extract/pe_0_0x76ff5a.bin`，587,072 B，ImageBase `0x10000000`，导出 16 个 IMM32 接口）只导入 **9 个系统 DLL**：COMCTL32 / IMM32 / SHLWAPI / KERNEL32 / USER32 / GDI32 / SHELL32 / ole32 / ADVAPI32，**无 MSVC 运行时** | `objdump -p` | **排除 M1（依赖缺失/找不到入口点）**：它要的 DLL ReactOS 全都有 |
+| E2 | 崩溃后注册表回滚 → 布局仍在、Preload 丢失 → 同一 DLL 在应用进程内**可正常输入日文** | `README.md` §9 现场记录 | DLL 本身可加载、可工作；同时说明**当时唯一变化的变量是投递** |
+| E3 | `0xF4` 的 P1 = `0x3` = 进程被**终止** | `m0/vm/logs/bsod-ocr.txt` | **排除 DllMain 死锁**（死锁表现是挂起，不是终止） |
+| E4 | `DllMain` → `MzIme::Init`：`Config_GetSz` 读 HKCU/HKLM `SOFTWARE\Katayama Hirofumi MZ\mzimeja` ×2 → `LoadDict`（映射 ~7.7 MB 词典文件）×2 → `LoadAtoms`（`GlobalAddAtom` ×6）→ `RegisterClasses`（`RegisterClassEx` ×2，`CS_IME`） | `vendor/mzimeja-ref/ime/main.cpp:111-124`、`config.cpp:21-27` | 加载期做了**注册表 + 文件 + 原子表 + 窗口类**四件事，全都在 `DLL_PROCESS_ATTACH` 里 |
+| E5 | `DllMain` **忽略** `Init` 的返回值，无条件 `return TRUE`（`TheIME.Init(hInstDLL);` 后直接 `FOOTMARK_RETURN_INT(TRUE)`） | `main.cpp:569-589` | **失败被吞掉**：类注册失败也算加载成功，imm32 之后拿着从未注册的类名去用 → 半初始化状态进入下游 |
+| E6 | 我们的二进制只导入 **5 个**：GDI32 / IMM32 / KERNEL32 / msvcrt / USER32 | `objdump -p build-win-trace/ime/rospinyin.ime` | 同类风险显著更低：mzimeja 多出来的 ole32 / shell32 / comctl32 / shlwapi / advapi32 都会在 csrss 里做各自的初始化 |
+
+### 9.3 重排后的因果链
+
+```
+① Preload 里有一项 → csrss 在登录初始化时 LoadLibrary 本 .ime        ← 触发器
+② DLL_PROCESS_ATTACH 里做 UI 初始化（类注册/原子/注册表/文件）        ← 缺陷 A：位置错
+   此时无用户配置、无交互桌面，失败概率高
+③ 失败被吞掉（DllMain 仍返回 TRUE）                                   ← 缺陷 B：失败不可见
+④ imm32/win32k 使用半初始化状态 → 异常 → csrss 终止 → 0xF4           ← 后果
+```
+
+我们自己的 `DllMain` 在这一点上比 mzimeja **更糟还是更好**？现在是"更好但同源"：它在 `RegisterUIServerClass` 失败时 `return FALSE`（不吞失败），但**同样在 `DLL_PROCESS_ATTACH` 里做类注册**（位置错）。所以 §4 的 A1 不是"锦上添花的加固"，是**把缺陷 A 移出加载期**；而 A1b（见 §10）补的是缺陷 B 的另一半。
+
+### 9.4 为什么"回滚后就正常"不能证明 Preload 有罪
+
+那次对照改变的是**投递**，不是**缺陷**。缺陷只在投递发生时显形，所以"去掉投递 → 不崩"与"缺陷不存在"在观测上不可区分。要分离二者，必须做反向对照：**保持投递，把缺陷去掉**（§11 的处理组）。这正是 §5 那版实验设计缺的那一半。
+
+### 9.5 边界（还不知道什么）
+
+具体崩在哪一帧仍然未知：`m0/vm/logs/rosdbg.log` 是 **0 字节**，release 构建默认不往串口打 KDBG，`/DEBUG` 也没开。三个候选（`ImmInitialize` 阶段的 `LoadLibrary` 失败处理、`RegisterClassEx` 在无桌面时失败、`GlobalAddAtom` 在 winsta 未建好时崩）在现有证据下**无法区分**。
+
+但这不影响处置：三者被同一组修复覆盖（加载期零工作 + 失败可拒绝）。要拿到栈，唯一的办法是 `/DEBUG` + 串口 + 复现（§11 会给步骤），这属于"想把故事讲完"，不属于"决定要不要改"。
+
+---
+
+## 10. 以新结论重新评估
+
+### 10.1 红线 #2 的错不在证据，在作用域
+
+§2/§8 说它"归因未完成"，现在可以更准确：**它的证据链是成立的，但它把触发器当成了缺陷**。于是它守的是一条"只要不投递就不会有事"的路径——既不足（别的 IME 缺陷照样能杀 csrss），也不必要（DLL 惰性后投递无害）。
+
+### 10.2 A 类要补一条，而且比"零工作"更本质
+
+| 项 | 新要求 | 为什么 |
+|---|---|---|
+| **A1** `DllMain` 零工作 | 清空 `DllMain`，`RegisterUIServerClass` 移到 `ImeInquire` | 直接对应缺陷 A（位置错） |
+| **A1b（新增）** 失败必须可拒绝 | `ImeInquire` 里注册失败 → **返回 FALSE**，让 imm32 拒绝这个 IME | 直接对应缺陷 B（失败被吞）。mzimeja 的教训不是"它崩了"，而是"它崩之前没人知道它没初始化成功" |
+| **A2** 仅系统 DLL | 保持，并按架构给白名单 | E6：导入表宽度 = 登录路径风险宽度 |
+| **A3** 默认不写 Preload | 改为**运维默认**，不再是身份定义（见 §8.3 B′） | 触发器可在 liberNT 上由平台代劳 |
+
+A1 与 A1b 是**一对**：前者让失败不可能发生，后者让失败可控。只做 A1，等于赌 `ImeInquire` 之后不会再失败；只做 A1b，等于允许加载期就出错再报告。两条都要。
+
+### 10.3 对移植的影响：从"未知风险"变成"已知修复"
+
+`libernt/PORTABILITY-ASSESSMENT.md` 的 P0-A 原本是"可能会崩，崩了就绕开 `ImmInstallIMEW`"。现在它变成："**知道为什么会崩，也知道怎么让它不崩**"——因为 liberNT 与 ReactOS 共用同一套 csrss+imm32 血统（该文档 §2.1/§2.3 已核），致伤机制可迁移；而修复（A1/A1b）与平台无关。
+
+阶段 0 的性质因此改变：不再是"试探会不会崩"，而是"**验证一个已知修复在另一个平台上成立**"。
+
+### 10.4 风险重估
+
+| 状态 | Preload 的风险 |
+|---|---|
+| 现在（A1 未做） | 与 mzimeja 同源：加载期做类注册，且失败返回 FALSE（不吞，但会让加载失败）→ 未知 |
+| A1 完成后 | 加载期只剩 `DisableThreadLibraryCalls`；类注册与失败处理都在 `ImeInquire` → 失败可拒绝，不再是加载失败 |
+| A1 + A1b + 实验通过后 | 只剩"多一次加载"的开销，风险从"未知致命"降为"已知可控" |
+
+---
+
+## 11. 实验重设计（取代 §5 的判据）
+
+§5 那版只测了"投递会不会崩"，测不出"缺陷有多大"。新版加一组**负对照**，用本项目自己的代码复现根因。
+
+| 组 | 二进制 | 投递 | 预期 | 若不符合预期说明什么 |
+|---|---|---|---|---|
+| **N（负对照）** | 当前 build（`DllMain` 里仍 `RegisterClassEx`） | Preload 追加 | 崩 | 不崩 → 缺陷不在"加载期注册类"，而在 `Init` 的其余部分（词典映射/HKCU/原子），A1 仍正确但**不足**，必须补 A4 |
+| **T（处理组）** | A1 build（`DllMain` 清空、注册移到 `ImeInquire`） | Preload 追加 | 活 | 崩 → A1 不是充分修复，需回到 §9.5 的三个候选逐个排除 |
+| **R（拒绝路径）** | 探针 .ime：`ImeInquire` 直接返回 FALSE | Preload 追加 | 活 | 崩 → ReactOS 的 imm32 不处理 IME 主动拒绝，A1b 的前提不成立，需要另设兜底 |
+
+**顺序：N → R → T。** N 的信息量最大且今天就能跑（不需要改代码）；R 只需要一个空壳 DLL；T 要先完成 A1。
+
+三组都必须 **3 次启动**（登录路径的问题常常第一次不出现），每组的判据是"连续 3 次进桌面且能输入"。
+
+**安全**：用 qcow2 覆盖层，基础盘零改动；回滚 = 删掉覆盖层。操作步骤见 `m0/vm/PRELOAD-PROBE.md`。
+
+---
+
+*§1–§7 的事实来自 `m0/vm/logs/bsod-ocr.txt`、`README.md` §9、`M0-REPORT.md` §4.4、`M1-REPORT.md`、`tools/check_m1.py`（第 6/7 项）、`framework/host/dllmain.cpp`、`tools/install-rospinyin/install.cpp`。
+§8 的事实来自 `libernt/PORTABILITY-ASSESSMENT.md` §2.2 对 `imm32/install.c` 的逐行核对。
+§9–§11 的事实来自 `m0/extract/pe_0_0x76ff5a.bin`（`objdump -p`/`-h`）、`vendor/mzimeja-ref/ime/main.cpp` 与 `config.cpp`、`build-win-trace/ime/rospinyin.ime` 的导入表、`m0/vm/logs/rosdbg.log`（0 字节）。*
