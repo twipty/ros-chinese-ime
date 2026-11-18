@@ -192,7 +192,7 @@ ros-pinyin/
 ├── ime/                        装配层：rospinyin.def（16 导出）、rospinyin_res.rc、scheme_reg.cpp、图标
 ├── tests/                      11 个宿主测试（ctest）
 ├── tools/
-│   ├── check_m1.py             契约静态检查（59 项，无第三方依赖）
+│   ├── check_m1.py             契约静态检查（63 项，无第三方依赖）
 │   ├── mkdat/                  数据编译器 + fetch_data.py + fixtures
 │   ├── install-rospinyin/      安装器（分步注册；自身不写 Preload，属部署偏好）
 │   ├── httpdl/                 全静态 HTTP 下载器（guest 侧 wget/curl 替身）
@@ -227,7 +227,7 @@ ros-pinyin/
 | 装配 | `ime/scheme_reg.cpp` | 定义 `imfw::scheme_instance()`（唯一的 Scheme 注入点） | Win |
 | 数据编译 | `tools/mkdat/mkdat.cpp` | Unihan + hanziDB → `rospinyin.dat`（确定性输出） | 宿主 |
 | 安装器 | `tools/install-rospinyin/install.cpp` | `/step1..4` 分步注册、动态 HKL 记录、`/i` 串行（仅 Windows 参照机） | Win |
-| 契约检查 | `tools/check_m1.py` | 59 项静态断言（SPDX、16 导出、DllMain 无害、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、ABI、reload 顺序…） | 宿主 |
+| 契约检查 | `tools/check_m1.py` | 63 项静态断言（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、ABI、reload 顺序…） | 宿主 |
 
 ---
 
@@ -243,7 +243,7 @@ cd ros-pinyin
 cmake -S . -B build -DROSPINYIN_BUILD_TESTS=ON
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure        # 11 个测试，应 100% 通过
-python3 tools/check_m1.py                          # 59 项契约检查，应 59/59
+python3 tools/check_m1.py                          # 63 项契约检查，应 63/63
 ```
 
 - 宿主构建**不编译** Windows 专有部分（`ime/`、安装器、`httpdl`、`framework/host`、`framework/ui`），只测纯 C++ 层。
@@ -431,7 +431,7 @@ VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
 | 门禁 | 命令 | 通过标准 |
 |---|---|---|
 | 宿单单测 | `ctest --test-dir build` | 11/11（smoke、session、pinyin、pinyin-session、candidate-pager、pinyin-scheme、emit-text、utf8、code-table、m1-contract、mkdat-e2e） |
-| 契约静态检查 | `python3 tools/check_m1.py` | 59/59（SPDX、16 导出、DllMain 无害、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
+| 契约静态检查 | `python3 tools/check_m1.py` | 63/63（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
 | Win32 语法检查 | CI 的第一步，见 §6.3 | 0 error（用 `tools/syntax_stub` 提供的 Windows 头） |
 | PE 导入表 | CI `objdump -p` | 不得出现 Vista+ 导出或非系统 DLL |
 | 真机验收 | `m2/M2-ACCEPTANCE.md` | 15 项全绿 |
@@ -1198,6 +1198,45 @@ A1（`DllMain` 零工作）与 A1b（`ImeInquire` 失败必须 `return FALSE`）
 **覆盖面层**：两组实验全程在 qcow2 覆盖层上做，基础盘 `reactos.qcow2` 零改动；
 `/u` 与「整改」= 丢弃覆盖层。
 
+### 11.19 门禁从「黑名单扫词」改成「调用白名单」（2026-11-18 21:0x）
+
+**动机**：`check_m1.py` 里那条 `installer never writes Preload` 一直在扫源码里的
+`"Preload"` 这个词。前提变更之后它保护的是**平台自己会做的事**（`ImmInstallIME` 内部
+`Imm32WriteImeLayout` 写 Preload），而我们真正想守的只有「别让自己成为默认输入语言」。
+更糟的是黑名单天生可绕过：实测把写入写成 `L"Keyboard Layout\\Pre" L"load"` 之后，
+旧断言里 `"Preload" in code` 命中 **0 次**，闸门全绿——拼接字符串就能穿过去。
+
+**改法**（`tools/check_m1.py` §6、§7，1 条换 5 条，59 → 63）：
+
+| 断言 | 形状 | 守的是什么 |
+|---|---|---|
+| `DLL_PROCESS_ATTACH` 只调类注册白名单 | 调用名集合 ⊆ `{DisableThreadLibraryCalls, RegisterUIServerClass}` | A1：加载期不做别的事 |
+| `RegisterUIServerClass` 只调 `RegisterClassExW` | 调用名集合 ⊆ 单元素 | A1 的纵深：被调函数自己也得干净 |
+| `ImeInquire` 可拒绝且不碰加载/注册 API | 函数体含 `return FALSE` + 危险调用集合为空 | A1b：拒绝优于半初始化 |
+| 安装器注册表写入限于两键白名单 | 每个 `Reg*Key*` 的 (hive, subkey) ∈ 白名单 | 任何新写入，不论叫什么名字，都会失败 |
+| 布局子键只能由 `kKeyboardLayouts` 拼出 | 所有带反斜杠格式串的 `swprintf` 第 4 参必须等于它 | 手工拼路径也到不了 Preload |
+
+`#if defined(ROSPINYIN_TRACE)` 里的代码会在扫描前整段剥掉（`strip_trace_blocks`），
+因为那部分在发布构建里根本不存在，拿它判红是假的。
+
+**反向验证 6 次**（每条都故意改坏，确认 FAIL，改完还原）：
+
+```
+attach 加 LoadLibraryA                 → FAIL  unexpected: ['LoadLibraryA']
+类注册加 CreateWindowExW               → FAIL  unexpected: ['CreateWindowExW']
+ImeInquire 的 return FALSE 改成 TRUE   → FAIL  no rejection path
+拼接字符串写 Preload（旧断言 0 命中）  → FAIL  [('HKEY_CURRENT_USER', 'L"Keyboard Layout\\Pre" L"load"')]
+加 SystemParametersInfoW               → FAIL  SystemParametersInfo
+uninstall 里第二处 swprintf 换前缀     → FAIL  prefixes: ['L"Keyboard Layout"', 'kKeyboardLayouts']
+```
+
+最后一条是过程中自己抓到的漏洞：第一版只检查「存在一处 swprintf 用了
+`kKeyboardLayouts`」，于是把 **uninstall 里第二处**换掉仍然 PASS——`sub` 在两个函数里
+各建一次。改成「每一处都必须等于它」才闭合。
+
+**教训（通用）**：断言要用**白名单 + 调用点**，不要用关键词黑名单。黑名单只能证明
+「某个词没出现」，白名单能证明「只有这些事可能发生」。后者才是行为契约。
+
 ### 11.2 其他待办
 
 - ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。
@@ -1215,7 +1254,7 @@ A1（`DllMain` 零工作）与 A1b（`ImeInquire` 失败必须 `return FALSE`）
 **改代码**
 
 1. `cmake --build build --parallel && ctest --test-dir build` → 11/11；
-2. `python3 tools/check_m1.py` → 59/59（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
+2. `python3 tools/check_m1.py` → 63/63（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
 3. 动了 `framework/host` 或 `framework/ui`：跑 CI 那步宿主语法检查（§6.3），确认 `-Wchanges-meaning` / ABI 断言不炸；
 4. 动了 ABI：本地用 zig 真实 MinGW 头编译一次 `framework/host/imm_entry.cpp`（`-target x86-windows-gnu -c`）。
 

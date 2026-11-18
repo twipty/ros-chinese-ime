@@ -10,10 +10,22 @@ Verifies WBS 2.2 and the M0 red lines without needing a Windows toolchain:
   * no Japanese-specific logic, names or kana survived the skeleton rewrite
   * all 16 mandatory IMM32 exports are declared, exported and implemented
   * the version resource satisfies the ImmLoadLayout checks (WBS 2.2.3)
-  * DllMain stays harmless (M0 red line #1)
-  * the installer never writes a preload/default layout (M0 red line #2)
-    and exposes step-by-step registration (M0 red line #4)
+  * the loader path stays quiet: DLL_PROCESS_ATTACH may only call the class
+    registration allowlist, that registration may only call RegisterClassExW,
+    and ImeInquire must be able to refuse (A1 / A1b)
+  * the installer's registry writes stay inside a two-key allowlist and it
+    never sets the default input language (deployment preference)
+  * the installer exposes step-by-step registration (M0 red line #4)
   * the layout name is identical in the DLL, resources and installer
+
+Why allowlists instead of blocklists: until 2026-11-18 the contract read "the
+installer never writes Preload", implemented as a scan for the substring
+"Preload". That asserted a property nobody can honour (ReactOS writes the
+Preload entry itself inside ImmInstallIMEW) while a new spelling such as
+L"Keyboard Layout\\" L"Preload" would have slipped through. The N/N' probe
+runs showed delivery is harmless and loader-path behaviour is what matters,
+so the checks below assert what call sites are reachable, not what words
+appear in the file.
 
 Run directly or via ctest (target name: m1-contract).
 """
@@ -68,6 +80,77 @@ def def_symbols(text: str) -> set[str]:
 def function_body(src: str, signature_re: str) -> str | None:
     m = re.search(signature_re + r"\s*\{(.*?)\n\}", src, re.S)
     return m.group(1) if m else None
+
+
+TRACE_GUARD_RE = re.compile(
+    r"#\s*if\s+defined\s*\(\s*ROSPINYIN_TRACE\s*\)(.*?)#\s*endif", re.S)
+
+
+def strip_trace_blocks(text: str) -> str:
+    """Remove `#if defined(ROSPINYIN_TRACE) ... #endif` sections.
+
+    The diagnostic trace opens a file from DllMain, which is fine because it
+    only exists in the trace build. Shipping behaviour is what the loader-path
+    checks assert, so the guarded blocks must be removed before scanning --
+    otherwise the checker would fail on code that the release build never
+    compiles.
+    """
+    return TRACE_GUARD_RE.sub("", text)
+
+
+def calls_in(src: str) -> set[str]:
+    """Identifiers used as `Name(` -- a cheap call-site extractor.
+
+    Only capitalised names are collected, which is what Win32 APIs and our own
+    free functions look like; language keywords (`if`, `switch`, `break`) and
+    `return` are lowercase and therefore ignored.
+    """
+    return set(re.findall(r"\b([A-Z][A-Za-z0-9_]*)\s*\(", src))
+
+
+def call_arguments(src: str, open_paren: int) -> str:
+    """Text between the parenthesis at `open_paren` and its match."""
+    depth = 0
+    for i in range(open_paren, len(src)):
+        ch = src[i]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return src[open_paren + 1:i]
+    return ""
+
+
+def split_top_level(text: str) -> list[str]:
+    parts: list[str] = []
+    depth = 0
+    current: list[str] = []
+    for ch in text:
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        if ch == "," and depth == 0:
+            parts.append("".join(current).strip())
+            current = []
+        else:
+            current.append(ch)
+    parts.append("".join(current).strip())
+    return parts
+
+
+REG_KEY_CALL_RE = re.compile(r"\bReg(?:Open|Create|Delete)Key(?:Ex)?[AW]?\s*\(")
+
+
+def reg_key_writes(src: str) -> list[tuple[str, str]]:
+    """(hive, subkey-expression) for every Reg{Open,Create,Delete}Key call."""
+    out: list[tuple[str, str]] = []
+    for m in REG_KEY_CALL_RE.finditer(src):
+        args = split_top_level(call_arguments(src, m.end() - 1))
+        if len(args) >= 2:
+            out.append((args[0].strip(), args[1].strip()))
+    return out
 
 
 class Checker:
@@ -265,26 +348,91 @@ def run(root: Path) -> int:
     for label, ok in version_checks.items():
         c.check(f"version resource: {label}", ok)
 
-    # 6. DllMain harmlessness (M0 red line #1).
-    dll = strip_cpp_comments(read(root, "framework/host/dllmain.cpp"))
-    forbidden_dll = ["LoadLibrary", "RegOpenKey", "RegCreateKey", "RegQueryValue",
-                     "CreateThread", "CreateWindow", "fopen", "ImmInstallIME",
-                     "ImmGetContext", "LoadImage"]
-    dll_hits = [w for w in forbidden_dll if w in dll]
-    c.check("DllMain only registers the UI class (bare LoadLibrary is harmless)",
-            not dll_hits, ", ".join(dll_hits))
+    # 6. Loader-path behaviour (A1 / A1b, replacing the M0 #1 word blocklist).
+    #    The N/N' probe runs (6 boots, release binary) showed that being
+    #    delivered into the logon path is harmless; what hurts is doing
+    #    failable work there and swallowing the failure. So the assertion is
+    #    now "what may the attach path call", which also covers calls added
+    #    later under a different spelling.
+    dllmain = strip_cpp_comments(
+        strip_trace_blocks(read(root, "framework/host/dllmain.cpp")))
+    attach = dllmain.split("DLL_PROCESS_ATTACH", 1)[-1].split("break;", 1)[0]
+    attach_calls = calls_in(attach)
+    allowed_attach = {"DisableThreadLibraryCalls", "RegisterUIServerClass"}
+    c.check("DLL_PROCESS_ATTACH calls only the class-registration allowlist",
+            attach_calls <= allowed_attach,
+            f"unexpected: {sorted(attach_calls - allowed_attach)}")
 
-    # 7. Installer red lines (M0 #2, #4 and D3).
+    ui_server = strip_cpp_comments(read(root, "framework/host/ui_server.cpp"))
+    reg_body = function_body(ui_server, r"ATOM RegisterUIServerClass\([^)]*\)")
+    reg_calls = calls_in(reg_body or "")
+    c.check("UI class registration only calls RegisterClassExW "
+            "(no window, registry or file work at load)",
+            reg_body is not None and reg_calls <= {"RegisterClassExW"},
+            "body missing" if reg_body is None else
+            f"unexpected: {sorted(reg_calls - {'RegisterClassExW'})}")
+
+    # A1b: refusing beats half-initialising. ImeInquire is the one entry point
+    # imm32 must be able to trust; if it cannot fill the structure it has to
+    # say so instead of letting the loader use garbage -- that silent-success
+    # pattern is exactly what the reference IME did before the 0xF4.
+    imm_src = strip_cpp_comments(read(root, "framework/host/imm_entry.cpp"))
+    inquire_body = function_body(imm_src, r"BOOL WINAPI ImeInquire\([^)]*\)")
+    dangerous_inquire = {"ImmInstallIME", "ImmInstallIMEW", "CreateFileA",
+                         "CreateFileW", "CreateThread", "LoadLibraryA",
+                         "LoadLibraryW", "RegisterClassExW"}
+    inquire_calls = calls_in(inquire_body or "")
+    c.check("ImeInquire can refuse and touches no loader/registry API",
+            inquire_body is not None and "return FALSE" in inquire_body and
+            not (inquire_calls & dangerous_inquire),
+            "body missing" if inquire_body is None else
+            ("no rejection path" if "return FALSE" not in inquire_body else
+             f"unexpected: {sorted(inquire_calls & dangerous_inquire)}"))
+
+    # 7. Installer contract (M0 #4, D3) and the surviving deployment
+    #    preference: never make ourselves the default input language.
     installer = read(root, "tools/install-rospinyin/install.cpp")
     code = strip_cpp_comments(installer)
-    forbidden_installer = ["Preload", "ActivateKeyboardLayout",
-                           "SystemParametersInfo", "LoadKeyboardLayoutW",
-                           "E0100804"]
-    install_hits = [w for w in forbidden_installer if w in code]
-    c.check("installer never writes Preload / default layout / fixed HKL",
-            not install_hits, ", ".join(install_hits))
-    c.check("installer uses the HKL returned by ImmInstallIMEW",
-            "ImmInstallIMEW" in code and "save_hkl(hkl)" in code)
+
+    # Positive allowlist: every registry key the installer can reach is either
+    # our own HKCU bookkeeping key or the layout key it just created. A new
+    # write -- whatever it is called -- needs a new subkey expression and
+    # fails here, which is what a blocklist of words could not deliver.
+    allowed_subkeys = {"kRegInstall", "sub"}
+    allowed_hives = {"HKEY_CURRENT_USER", "HKEY_LOCAL_MACHINE"}
+    writes = reg_key_writes(code)
+    bad_writes = [(h, s) for h, s in writes
+                  if h not in allowed_hives or s not in allowed_subkeys]
+    c.check("installer registry writes stay in the two-key allowlist "
+            "(own HKCU key + the layout key)",
+            bool(writes) and not bad_writes,
+            "no Reg*Key call found" if not writes else str(bad_writes))
+    # Every place that formats a registry path must start from kKeyboardLayouts.
+    # `sub` appears in both the install and the uninstall path, so a rule that
+    # only looked at the first occurrence would let the second one drift.
+    path_builds = []
+    for m in re.finditer(r"\bswprintf\s*\(", code):
+        args = split_top_level(call_arguments(code, m.end() - 1))
+        if len(args) >= 4 and "\\\\" in args[2]:
+            path_builds.append(args[3])
+    c.check("every formatted layout subkey starts from kKeyboardLayouts",
+            bool(path_builds) and all(b == "kKeyboardLayouts" for b in path_builds),
+            f"prefixes: {sorted(set(path_builds))}")
+
+    # Negative: the API that would make us the default input language. This is
+    # a preference now, not a red line -- ReactOS writes the Preload entry
+    # itself inside ImmInstallIMEW -- but we still must not do it ourselves.
+    default_layout_apis = ["ActivateKeyboardLayout", "SystemParametersInfo",
+                           "ImmSetDefaultLayout", "LoadKeyboardLayoutW",
+                           "LoadKeyboardLayoutA"]
+    api_hits = [w for w in default_layout_apis if w in code]
+    c.check("installer never sets the default input language",
+            not api_hits, ", ".join(api_hits))
+
+    c.check("installer uses the HKL returned by ImmInstallIMEW "
+            "instead of a hard-coded id",
+            "ImmInstallIMEW" in code and "save_hkl(hkl)" in code and
+            "E0100804" not in code)
     steps = ["/step1", "/step2", "/step3", "/step4", "/status", "/u", "/i"]
     c.check("installer exposes step-by-step registration commands",
             all(s in code for s in steps),

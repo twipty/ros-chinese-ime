@@ -117,7 +117,7 @@ M2 的口径因此从"功能可用，验收未完"改为**"功能可用，验收
 ```bash
 # 主机侧
 cmake --build build --parallel && ctest --test-dir build      # 11/11
-python3 tools/check_m1.py                                     # 57/57（长期契约闸门）
+python3 tools/check_m1.py                                     # 63/63（长期契约闸门）
 # Windows 产物
 cmake --build build-win-trace --parallel                       # rospinyin.ime + rospinyin.dat
 # VM 内（guestOS 命令行，系统目录是 C:\ReactOS\system32）
