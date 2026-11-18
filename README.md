@@ -2,7 +2,7 @@
 
 **项目章程 / Project Charter**
 状态：已立项（2026-11-12）｜路线：B（以 mzimeja 为蓝本新写 IMM32 拼音 IME）｜目标平台：ReactOS 0.4.16+（IMM32 架构）
-当前阶段：**M2 单字拼音引擎已完成**（ReactOS VM 真实手打端到端上屏，`M2-ACCEPTANCE.md` 15/15 通过，2026-11-18；`ctest` 11/11、`check_m1` 57/57）｜首个公开版本：**alpha0.0.1**（2026-11-17，[Release 说明](CHANGELOG.md)），`alpha0.0.2` 候选已在 VM 验证
+当前阶段：**M2 单字拼音引擎已完成并发布**（ReactOS VM 真实手打端到端上屏，`M2-ACCEPTANCE.md` 15/15 通过；`ctest` 11/11、`check_m1` 57/57）｜最新版本：**alpha0.0.2**（2026-11-18，[Release 说明](CHANGELOG.md)）｜首个公开版本：**alpha0.0.1**（2026-11-17）
 仓库：https://github.com/twipty/ros-chinese-ime（public, main）｜代码许可证：**MIT**（D1 已定，2026-11-13）｜第三方与数据分层授权见 `NOTICE.txt`
 
 ## 1. 一句话使命

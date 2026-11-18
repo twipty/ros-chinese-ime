@@ -1116,6 +1116,39 @@ RENZHI [BACK] ICHU 1{人} 1{之} 4{初} XINGBENSHAN 2{性} 1{本} 2{善} [RETURN
 至此 M2 的 P0/P1 全部关闭，只剩 **P2-1（CI 产出 release 资产）** 属于发版工程化，
 不影响 M2 判定。
 
+### 11.17 alpha0.0.2 发版记录（2026-11-18 14:5x）
+
+发版口径与 `alpha0.0.1` 不同，记清楚免得下次踩：
+
+1. **发布物用 `ROSPINYIN_TRACE=OFF`**（`ime/CMakeLists.txt` 的 option，默认关）。
+   真机验收用的是 `TRACE=ON` 的构建（`build-win-trace/ime/rospinyin.ime`，967,775 B），
+   它多出来的 27 KB 全是写 `C:\rospinyin-trace.log` 的诊断代码。两者导出表（16 个 IMM32 接口）、
+   导入 DLL（GDI32/IMM32/KERNEL32/msvcrt/USER32）、功能路径都一致，因此可以发 `TRACE=OFF`：
+   长期使用不该带日志 I/O。**发布物与验收物不是同一个文件，这一点必须在 release notes 里写明。**
+2. **构建不完全可复现，但差异只有 4 个字节**。同选项连建两次：
+
+   | 产物 | 字节 | sha256 |
+   |---|---|---|
+   | 第一次 | 940,601 | `c9dc17c0…3e25feaa` |
+   | 第二次 | 940,601 | `ae7d1e57…08b1cda` |
+
+   逐字节比对只有 3 个区间、共 4 字节不同：`0x88`（PE `TimeDateStamp`）、`0xD8–0xD9`（`CheckSum`）、
+   以及 `0x60A04` 处一个调试相关字段。**代码段与数据段逐字节相同**。
+   所以"发布的二进制 = 该 tag 的源码构建"仍然成立，只是不能用 sha256 做复现校验；
+   真要比特级复现，链接时加 `-Wl,--no-insert-timestamp` 并关掉 checksum。
+3. 资产（已上传到 release `alpha0.0.2`）：
+
+   | 文件 | 字节 | sha256 |
+   |---|---|---|
+   | `rospinyin.ime` | 940,601 | `c9dc17c037be05e6c4af62eb8b37b6e4ae72dedbe6ced5f9e0f116c23e25feaa` |
+   | `rospinyin.dat` | 902,776 | `f28b2606338431d2e7a9adc089f8f053728c2be18061bc066d8fdaba23e9b921` |
+   | `SHA256SUMS.txt` | 160 | — |
+
+4. `.dat` 没变（`f28b2606…`），与验收、与 `alpha0.0.1` 都是同一份——数据层这一版没有改动。
+5. 发版脚本路径同样受限：`git push` 与 `git push --tags` 都走不通（见 §12），
+   tag 与 release 全部用 API 建（`POST /git/tags` + `POST /git/refs` + `POST /releases`，
+   资产走 `uploads.github.com`，这个域名是通的）。
+
 ### 11.2 其他待办
 
 - ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。

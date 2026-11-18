@@ -5,7 +5,22 @@
 
 ---
 
-## 未发布（alpha0.0.2 候选）
+## alpha0.0.2 — 2026-11-18
+
+第二个公开版本。M2 验收单 **15/15 通过**；真机三轮反馈（多音节只转首字、Shift 不切中英、
+候选窗跟着上屏的字往右爬、汉字字距重叠）全部修掉。
+
+### 下载
+
+| 文件 | 大小 | sha256 |
+|---|---|---|
+| `rospinyin.ime` | 940,601 B | `c9dc17c037be05e6c4af62eb8b37b6e4ae72dedbe6ced5f9e0f116c23e25feaa` |
+| `rospinyin.dat` | 902,776 B | `f28b2606338431d2e7a9adc089f8f053728c2be18061bc066d8fdaba23e9b921` |
+| `SHA256SUMS.txt` | 160 B | — |
+
+> `rospinyin.ime` 由本 tag 的源码以 `ROSPINYIN_TRACE=OFF` 构建（MinGW i686，Release）。
+> 真机验收用的是同源码的 `ROSPINYIN_TRACE=ON` 构建（967,775 B）——两者导出表（16 个 IMM32 接口）、
+> 导入 DLL、功能路径都相同，只差一份写到 `C:\rospinyin-trace.log` 的诊断日志。
 
 ### 新增
 

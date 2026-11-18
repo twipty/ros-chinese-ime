@@ -119,9 +119,10 @@ VM 资产暂存），可加一个 tag 触发的 release job，保证"发布的�
 
 ## 建议顺序
 
-P0-1 已全绿（15/15），原来的"先验收再发版"前置条件满足，剩下的顺序是：
+P0-1 已全绿（15/15），`alpha0.0.2` 已于 2026-11-18 发布（`ROSPINYIN_TRACE=OFF` 构建，
+资产指纹见 `HANDOVER.md` §11.17）。剩下的顺序：
 
-1. **P2-1**（CI 产出 release 资产）—— 与 `alpha0.0.2` 发版一起做，保证"发布的二进制 = 该 tag 的源码构建"；
-2. 发 `alpha0.0.2`：产物与 §11.16 的指纹表对齐（`.ime` `15e401cf…`、`.dat` `f28b2606…`）；
-3. 归档截图进 `m0/vm/evidence/m2-acceptance/`（日志已齐，缺图）；
-4. 进 M3：语言栏菜单、生僻字开关入口、冷僻字支持（见 `RARE-CHAR-AND-GLYPH-SOLUTION.md`）。
+1. **P2-1**（CI 产出 release 资产）—— 本次发版仍是"本地构建 + 脚本上传"，
+   靠人记住"发布的二进制 = 该 tag 源码构建"；让 tag 触发 CI 构建才能真正保证；
+2. 归档截图进 `m0/vm/evidence/m2-acceptance/`（日志已齐，缺图）；
+3. 进 M3：语言栏菜单、生僻字开关入口、冷僻字支持（见 `RARE-CHAR-AND-GLYPH-SOLUTION.md`）。
