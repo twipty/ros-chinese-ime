@@ -32,6 +32,13 @@ add_executable(rospinyin-scheme scheme_test.cpp)
 target_link_libraries(rospinyin-scheme PRIVATE rospinyin-engine)
 add_test(NAME pinyin-scheme COMMAND rospinyin-scheme)
 
+# X2-a0: the scheme *injection* seam. No pinyin, no Windows: a fake scheme goes
+# in through SchemeRegistry::install() and the framework is not edited to allow
+# it. This is the 30-line test that proves the plugin seam is a seam.
+add_executable(rospinyin-scheme-registry scheme_registry_test.cpp)
+target_link_libraries(rospinyin-scheme-registry PRIVATE imfw-engine)
+add_test(NAME scheme-registry COMMAND rospinyin-scheme-registry)
+
 # G1 regression: multi-codepoint commits (WM_IME_CHAR per UTF-16 unit).
 add_executable(rospinyin-emit-text emit_text_test.cpp)
 target_link_libraries(rospinyin-emit-text PRIVATE imfw-engine)

@@ -34,8 +34,17 @@ class imfw::Scheme {
     void reload_data() const;                    // 数据热重载钩子（默认空；ImeConfigure 成功/重载前调用）
     bool configure(void* parent) const;          // ImeConfigure 回调（G3，默认拒绝）
 };
-Scheme& imfw::scheme_instance();                // 由装配模块定义（ime/scheme_reg.cpp）
+Scheme& imfw::scheme_instance();                // 框架定义：经 SchemeRegistry 查询（X2-a0）
+Scheme* imfw::scheme_factory();                  // 由装配模块定义（ime/scheme_reg*.cpp）
 ```
+
+**注入缝（X2-a0，审计 A-P0-2）**：`scheme_instance()` 不再是"由装配件定义的符号"，而是框架对 `imfw::SchemeRegistry` 的查询：
+
+- **创建侧** `scheme_factory()` 由装配件提供，决定"这个二进制是哪个输入法"（`ime/scheme_reg.cpp` = 拼音，`ime/scheme_reg_toy.cpp` = 玩具方案）；
+- **查询侧** `SchemeRegistry::get()` 先看有没有 `install()` 过的方案，没有再问工厂，工厂结果缓存一次；
+- `install(Scheme*)` 是给测试/宿主用的注入点——塞假 scheme 不必改框架、也不必链接一个懂拼音的装配件。
+
+改造前"换个方案"只有两条路：换一个 `scheme_reg.cpp` 重编，或者改框架。现在换成 `-DROSPINYIN_SCHEME=toy`，`samples/toy-scheme/` 就是那个只加了一个文件夹的第二个方案（判据 G4）。
 
 框架拥有所有 IME 的公共行为：选字/翻页（键位策略由 Scheme 定义，默认数字/空格选字、`-`/`=`/`,`/`.` 翻页；仅在「组合中且有候选」时拦截，其余场合这些键直达应用）、退格、Esc 取消、`WM_IME_CHAR` 上屏（多码点、非 BMP 代理对）、组合串/候选窗渲染与插入符跟随、工具条生命周期。Scheme 回答「这个键是不是我的输入」「我的引擎是谁」，并**完全拥有自己的数据**——框架里没有码表对象。
 
@@ -54,11 +63,11 @@ Scheme& imfw::scheme_instance();                // 由装配模块定义（ime/s
 2. **实现 Engine**：`imfw::Engine` 的 `feed/backspace/cancel/on_select`，`Result.segments` 填入已敲的形码（组合串窗口会自动画下划线）；候选按 `Result.candidates` 输出即可复用整套翻页/选字。
 3. **词组/多码点上屏已支持**：`emit_text()` 按码点逐条生成 `WM_IME_CHAR`（UTF-16 码单元，非 BMP 走代理对；上限 32 条/调用），候选文本不再截断首字（xingma 缺口 G1 已补齐）。
 4. **按需覆盖键策略与配置**：`is_selection_key()`/`page_key()` 默认即经典行为，形码如需自定翻页键直接覆盖；`configure()` 返回 `true` 即接管输入法面板的「属性」入口（G3），随后框架自动调 `reload_data()` + 重建会话。
-5. **装配 .ime**：仿照 `ime/`：`scheme_reg.cpp`（定义 `scheme_instance()`）+ 品牌资源（def/rc/图标）+ CMake 链接 `framework` 的 host/ui 源码。窗口类名互不相同，两个 IME 可在同一进程共存。
+5. **装配 .ime**：仿照 `ime/`：`scheme_reg.cpp`（定义 `scheme_factory()`，返回本方案的静态实例）+ 品牌资源（def/rc/图标）+ CMake 链接 `framework` 的 host/ui 源码。窗口类名互不相同，两个 IME 可在同一进程共存。
 
 ## 生命周期与红线（对所有复用者生效）
 
-- `DllMain` 只注册 UI server 窗口类（M0 红线 #1）；`scheme_instance()` 在此只构造平凡静态对象。
+- `DllMain` 只注册 UI server 窗口类（M0 红线 #1）；`scheme_instance()` 在此只构造平凡静态对象——经注册表工厂构造，构造点仍是同一个函数内静态，装载期不做别的。
 - 引擎构造、窗口创建全部发生在第一次按键（`session_store`/`ime_ui` 的函数内静态）；数据加载是 Scheme 自己的事（拼音在其构造与 `reload_data()` 里，同样不在 DllMain）。
 - 锁一律用 Win32 `CRITICAL_SECTION`，禁止 `std::mutex`（MinGW POSIX 线程模型会把 `libwinpthread` 带进 PE，CI 导入表断言会拒绝）。
 - `tools/check_m1.py` 静态检查框架核心不含拼音知识，防止复用缝被悄悄污染。

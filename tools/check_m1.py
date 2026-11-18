@@ -479,9 +479,20 @@ def run(root: Path) -> int:
     c.check("ImeInquire UI class name fits IMEINFOEX.wszUIClass[16]",
             uiclass is not None and len(uiclass.group(1)) <= 15,
             f"len={len(uiclass.group(1))}" if uiclass else "kUiServerClass not found")
-    c.check("scheme_reg hands the framework its Scheme",
-            "scheme_instance" in read(root, "ime/scheme_reg.cpp") and
-            "PinyinScheme" in read(root, "ime/scheme_reg.cpp"))
+    # X2-a0 (audit A-P0-2): the assembly supplies the *factory*; the framework
+    # owns scheme_instance(). Assert the definition form rather than the bare
+    # word, because the word legitimately appears in the file's comments ("it
+    # does not define scheme_instance()") — the first version of this check
+    # passed on that comment alone, which is exactly the kind of false green
+    # this gate exists to prevent.
+    scheme_reg = strip_cpp_comments(read(root, "ime/scheme_reg.cpp"))
+    c.check("scheme_reg hands the framework its Scheme (X2-a0: factory, not the entry point)",
+            "Scheme* scheme_factory()" in scheme_reg and
+            "PinyinScheme" in scheme_reg and
+            "Scheme& scheme_instance" not in scheme_reg)
+    c.check("X2-a0: the injection seam lives in the reusable core (imfw-engine)",
+            (root / "framework/include/imfw/scheme_registry.hpp").is_file() and
+            "src/scheme_registry.cpp" in read(root, "framework/CMakeLists.txt"))
     # The layout's language (which "keyboard" ImmInstallIMEW files it under)
     # comes solely from the first VarFileInfo\Translation entry, so it is a
     # build-time fact, not a runtime one. A Simplified Chinese IME must ship as

@@ -15,9 +15,11 @@
 // virtual-key number, so pinyin/scheme code builds and is unit-tested on
 // Linux exactly like the rest of the engine.
 //
-// Wiring: the assembling module (e.g. ime/scheme_reg.cpp) defines
-// scheme_instance(); the framework calls it lazily — never from DllMain
-// beyond constructing a trivial static object.
+// Wiring: scheme_instance() (bottom of this file) is the framework's query
+// entry point; the assembling module (e.g. ime/scheme_reg.cpp) supplies
+// imfw::scheme_factory(), which the registry calls lazily on first use — never
+// from DllMain beyond constructing a trivial static object. See
+// imfw/scheme_registry.hpp for the seam and how a test injects a fake.
 
 #pragma once
 
@@ -125,7 +127,10 @@ public:
     virtual void reload_data() const {}
 };
 
-// Defined by the assembling IME module (see ime/scheme_reg.cpp).
+// The scheme this binary was assembled with, or the one a test installed
+// (imfw::SchemeRegistry::install). Defined by the framework over the assembly's
+// scheme_factory(), so swapping or faking a scheme no longer means touching
+// this layer or redefining this symbol.
 Scheme& scheme_instance();
 
 }  // namespace imfw
