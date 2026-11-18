@@ -178,6 +178,14 @@ option(IMM_WIN3_SUPPORT "IMM Win 3.x support" ON)
 
 ---
 
+> **评审补注（2026-11-18，见 `M0-REDLINE-REVIEW.md` §8）**：P0-A 的缓解方向需要调整顺序。
+> 由于 `ImmInstallIMEW` 内部就写 Preload（§2.2），"不写 Preload"在 libernt 上**不是我们可控制的动作**，
+> 绕开平台 API 会把成本转到"长期维护手工注册分支 + 卸载留下悬空 Preload 条目"（`install.cpp:400`
+> 现有注释"we never wrote one"在 libernt 上会变成错的）。
+> 正确顺序是**先把 `DllMain` 清空、`RegisterUIServerClass` 移到 `ImeInquire` 惰性注册**，把"登录路径加载无害"
+> 变成二进制的结构属性，再跑探针；探针从"验证 Preload 是否致命"变成"验证我们的 DLL 是否经得起被登录加载"。
+> 绕开 `ImmInstallIMEW` 保留为兜底，不作为首选分支。阶段 2 的相应分支在阶段 0 通过后可直接删除。
+
 ## 6. 建议移植路径（分阶段 + 门禁）
 
 | 阶段 | 目标 | 关键动作 | 完成门禁 |
