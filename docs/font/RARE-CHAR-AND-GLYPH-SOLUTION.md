@@ -84,8 +84,8 @@ if (candidates_.empty()) candidates_ = std::move(rare);
 
 - `show_rare_ = false`（`pinyin_session.hpp:73`）是默认值，只能通过 `set_show_rare(true)`（`:61`）打开。
 - 语义：**"有常用字就完全不显示生僻字；一个都没有才整体回退到生僻字"**，不是"生僻字排末尾"。
-- 文档一致记载这一设计：`HANDOVER.md:813`、`CHANGELOG.md:48`、`m2/M2-REPORT.md:84`（"**`set_show_rare()` 无 UI 入口**，生僻字默认不可见"）。
-- `m2/M2-REPORT.md:84` 已把"无 UI 入口"列为待办，计划 M3 语言栏菜单项——**开关本身存在，缺的是用户可达入口与更细的策略**。
+- 文档一致记载这一设计：`HANDOVER.md:813`、`CHANGELOG.md:48`、`docs/milestones/m2/M2-REPORT.md:84`（"**`set_show_rare()` 无 UI 入口**，生僻字默认不可见"）。
+- `docs/milestones/m2/M2-REPORT.md:84` 已把"无 UI 入口"列为待办，计划 M3 语言栏菜单项——**开关本身存在，缺的是用户可达入口与更细的策略**。
 
 ### 1.4 探针与过滤层：两处缺陷叠加
 
@@ -178,7 +178,7 @@ return kept;
 
 配套：
 - 候选窗对 `rare` 候选加**视觉标识**（如前置 `·` 或不同颜色），让用户知道"这是罕见字、可能显示不全"——对应 `FONT-BUNDLING-ASSESSMENT.md` 方案 C 的思路，零成本消除困惑；
-- 语言栏菜单暴露策略切换入口（兑现 `m2/M2-REPORT.md:84` 的 M3 待办）；
+- 语言栏菜单暴露策略切换入口（兑现 `docs/milestones/m2/M2-REPORT.md:84` 的 M3 待办）；
 - `TailLimited` 的 N 必须**小**：`shi` 一类音节 rare 字可达数百，全放进去会淹没常用字并让翻页失效。
 
 **注意**：`TailLimited` 依赖第 2 层的 rare 标志；三、四层不可拆开单独上。
@@ -227,7 +227,7 @@ return kept;
 
 **测试**
 - `tests/` 新增：rank 排序不变式、rare 标志传播、尾部限量、代理对构造；
-- `m2/M2-ACCEPTANCE.md` 增补：扩展 B 音节（`biǎo` 类）候选窗无方框、上屏码点正确、`TailLimited` 翻页仍可用。
+- `docs/milestones/m2/M2-ACCEPTANCE.md` 增补：扩展 B 音节（`biǎo` 类）候选窗无方框、上屏码点正确、`TailLimited` 翻页仍可用。
 
 ---
 
@@ -243,6 +243,6 @@ return kept;
 
 ## 6. 证据来源
 
-**本仓库**：`pinyin/include/rospinyin/pinyin_session.hpp:56-73`、`pinyin/src/pinyin_session.cpp:114-144`、`framework/src/code_table.cpp:191-200`、`framework/include/imfw/dat_format.hpp`（`kUnknownRank`）、`framework/include/imfw/engine.hpp:25-28`、`framework/src/candidate_pager.cpp:8-47`、`framework/ui/ime_ui.cpp:231-298`、`framework/host/imm_entry.cpp:344-382,402,451,491`、`framework/ui/candidate_window.cpp:33-47,65-149`、`tests/emit_text_test.cpp:73-82`、`tests/pinyin_session_test.cpp:257-260`、`tests/candidate_pager_test.cpp`、`HANDOVER.md:404,805,813,974`、`CHANGELOG.md:48`、`m2/M2-REPORT.md:84`、`m2/M2-REMAINING.md:76`、`m2/M2-ACCEPTANCE.md:12,83-86`、`FONT-BUNDLING-ASSESSMENT.md:46-52,139,164-167`。
+**本仓库**：`pinyin/include/rospinyin/pinyin_session.hpp:56-73`、`pinyin/src/pinyin_session.cpp:114-144`、`framework/src/code_table.cpp:191-200`、`framework/include/imfw/dat_format.hpp`（`kUnknownRank`）、`framework/include/imfw/engine.hpp:25-28`、`framework/src/candidate_pager.cpp:8-47`、`framework/ui/ime_ui.cpp:231-298`、`framework/host/imm_entry.cpp:344-382,402,451,491`、`framework/ui/candidate_window.cpp:33-47,65-149`、`tests/emit_text_test.cpp:73-82`、`tests/pinyin_session_test.cpp:257-260`、`tests/candidate_pager_test.cpp`、`HANDOVER.md:404,805,813,974`、`CHANGELOG.md:48`、`docs/milestones/m2/M2-REPORT.md:84`、`docs/milestones/m2/M2-REMAINING.md:76`、`docs/milestones/m2/M2-ACCEPTANCE.md:12,83-86`、`FONT-BUNDLING-ASSESSMENT.md:46-52,139,164-167`。
 
 > 所有结论均为静态代码 + 项目文档证据；探针的实际 GDI 行为、字体度量、候选窗观感必须由 ReactOS VM 实机验证收口。`.dat` 未入库，码点分布引用自 `HANDOVER.md:805` 的项目记录，未逐字节复算。

@@ -7,7 +7,7 @@
 // mkdat compiler (build time) and the pinyin engine (run time) so that both
 // agree on one canonical representation.
 //
-// Canonical form rules (see m2/M2-DATA-PLAN.md section 7):
+// Canonical form rules (see docs/milestones/m2/M2-DATA-PLAN.md section 7):
 //   * tone marks become a digit immediately AFTER the toned vowel:
 //       zhong-with-macron-o -> "zho1ng", "guo2", not "zhong1"
 //   * the entire u-umlaut family collapses to 'v':

@@ -123,7 +123,7 @@ M2 的 P1-2（`UiCanRender()` + `GetGlyphIndicesW` 过滤）现在会把**渲染
 - `RARE-CHAR-AND-GLYPH-SOLUTION.md`：生僻字策略（`show_rare`、TailLimited）**不变**，
   但前提从"字体缺字所以要过滤"变成"字体全覆盖，护栏只防字体缺失"。F4 时同步。
 - `FONT-BUNDLING-ASSESSMENT.md`：随包/安装路径的方案 A 仍然沿用，只是 payload 从 1 个变 3 个。
-- `m2/M2-REMAINING.md` 的 P1-2：F4 会放宽它的过滤口径，届时需要在原文标注"已被 F4 调整"。
+- `docs/milestones/m2/M2-REMAINING.md` 的 P1-2：F4 会放宽它的过滤口径，届时需要在原文标注"已被 F4 调整"。
 
 ---
 

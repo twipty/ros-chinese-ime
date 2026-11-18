@@ -21,7 +21,7 @@ v0.1「墨」→ v0.2「联」→ v0.3「全」→ v1.0「正」
 退出标准：日语候选窗在 ReactOS 记事本中正常显示并上屏，差异清单归档。
 （提前跟踪上游 CORE-19455：若热键已修复可少踩一坑。）
 
-**M0 实际结果（2026-11-13）**：日语输入全流程在 ReactOS 上实测可用（退出标准达成），但首次重启触发 **BSOD 0xF4**；另发现上游许可证已从公共领域改为 GPLv3、热键两议题（CORE-19455/20799）仍未修。WinXP 参照机与双机差异清单按用户决定跳过，由安装器解剖替代。**详见 [M0-REPORT.md](M0-REPORT.md)**；M1 需按其中四条设计红线执行（其中第 2 条已于 2026-11-18 降级，见下框）。
+**M0 实际结果（2026-11-13）**：日语输入全流程在 ReactOS 上实测可用（退出标准达成），但首次重启触发 **BSOD 0xF4**；另发现上游许可证已从公共领域改为 GPLv3、热键两议题（CORE-19455/20799）仍未修。WinXP 参照机与双机差异清单按用户决定跳过，由安装器解剖替代。**详见 [M0-REPORT.md](../milestones/M0-REPORT.md)**；M1 需按其中四条设计红线执行（其中第 2 条已于 2026-11-18 降级，见下框）。
 
 > **2026-11-18 前提变更**：当时写的「根因指向 IMM32 服务端在登录路径加载已注册 .ime」已被推翻——实际加载者是
 > `userinit`（非 csrss），且同一个 `.ime` 留在 `Preload` 里可以一直开机。当日两组对照（各 3 次启动，发版 940,601）：
@@ -35,13 +35,13 @@ v0.1「墨」→ v0.2「联」→ v0.3「全」→ v1.0「正」
 细节：以 mzimeja **v1.0.0.3（公共领域）** 源码为只读蓝本 → rospinyin；剥离假名/罗马字逻辑，保留 IMM32 状态机与 UI 窗口框架；**用 `ImmInstallIME` 动态分配 HKL 并记录返回值**（D3 已修正，不再硬编码 0xE0100804），~~且**绝不写 Preload 第一项**~~（2026-11-18 降为部署偏好：平台自己会写，见 `M0-REDLINE-REVIEW.md` §13；实质约束改为 `DllMain` 零工作）；ImeInquire/ImeSelect/ImeSetActiveContext/ImeProcessKey/NotifyIME 等导出函数接通；kbswitch 列表出现「简体中文」并可切换；ImeProcessKey 直通直出。
 退出标准：Ctrl+Space（或备用键）切到该 IME 不崩溃，任务栏指示正确，普通按键直通。
 
-**M1 进展（2026-11-13 宿主侧 / 2026-11-16 VM 实机完成）**：**M1 退出标准已达成**。宿主侧骨架完成——新写 16 个 IMM32 导出的直通实现、中文资源与合规版本信息、动态 HKL 且不写 Preload 的**分步安装器**、引擎 API 契约与 25 项静态契约检查 + Linux 语法编译 + 3/3 单测通过。工具链已切到 **MinGW-w64 i686 + 全静态**产物（规避 MSVC CRT / Vista+ API 在裸 ReactOS 0.4.16 上的缺失），CI 加 PE 导入表断言防回归。VM 实机完成：step1-4 分步注册（HKL=`e0210804`，无 0xF4）、50 次 IME 激活/停用压测无崩溃、托盘「中」字图标（内嵌 `RT_GROUP_ICON`）、**Alt+Shift 可靠切换**（`Ctrl+Space` 在此 VM 不可靠，作为 CORE-19455 备用热键落地 M3 WBS 4.4）。仅 Windows 参照机裸 LoadLibrary 与双机比对因本机 Linux + M0 已跳过 XP VM 而搁置（非技术缺口）。详见 **[M1-REPORT.md](M1-REPORT.md)** 第二轮更新。
+**M1 进展（2026-11-13 宿主侧 / 2026-11-16 VM 实机完成）**：**M1 退出标准已达成**。宿主侧骨架完成——新写 16 个 IMM32 导出的直通实现、中文资源与合规版本信息、动态 HKL 且不写 Preload 的**分步安装器**、引擎 API 契约与 25 项静态契约检查 + Linux 语法编译 + 3/3 单测通过。工具链已切到 **MinGW-w64 i686 + 全静态**产物（规避 MSVC CRT / Vista+ API 在裸 ReactOS 0.4.16 上的缺失），CI 加 PE 导入表断言防回归。VM 实机完成：step1-4 分步注册（HKL=`e0210804`，无 0xF4）、50 次 IME 激活/停用压测无崩溃、托盘「中」字图标（内嵌 `RT_GROUP_ICON`）、**Alt+Shift 可靠切换**（`Ctrl+Space` 在此 VM 不可靠，作为 CORE-19455 备用热键落地 M3 WBS 4.4）。仅 Windows 参照机裸 LoadLibrary 与双机比对因本机 Linux + M0 已跳过 XP VM 而搁置（非技术缺口）。详见 **[M1-REPORT.md](../milestones/M1-REPORT.md)** 第二轮更新。
 
 ## M2 单字引擎（4-6 周）★核心 — ✅ 完成（2026-11-18，验收 15/15）
 
 **目标：拼音→单字转换流畅可用，本项目最大价值在此落地。**
 
-**已落地（2026-11-16）**：D2 拍板 A（hanziDB MIT 主源 + Unihan kHanyuPinlu 辅源），`ü` 用 `v` 键输入；共用归一化库 + `mkdat` + `rospinyin.dat`（902,768 B / 418 音节 / 44,355 字，字节级可复现）+ 运行时表 + 单字引擎骨架。M2 剩余工程部分同日完成：候选分页器、`dat` 延迟加载、按 HIMC 会话、IMM32 键处理（组合/翻页/数字选字/上屏/回删/Esc）、组合串窗口与候选窗（`ui/`）。宿主 ctest **7/7** + 语法检查通过；真实 dat 实测 `zhongguo` → 国、`nv/lv/lve/nve` 全部命中预期字。详见 `m2/M2-DATA-PLAN.md` 第 8/9 节。剩余：CI 产出新 `.ime` 后在 ReactOS VM 执行 `m2/M2-ACCEPTANCE.md`。
+**已落地（2026-11-16）**：D2 拍板 A（hanziDB MIT 主源 + Unihan kHanyuPinlu 辅源），`ü` 用 `v` 键输入；共用归一化库 + `mkdat` + `rospinyin.dat`（902,768 B / 418 音节 / 44,355 字，字节级可复现）+ 运行时表 + 单字引擎骨架。M2 剩余工程部分同日完成：候选分页器、`dat` 延迟加载、按 HIMC 会话、IMM32 键处理（组合/翻页/数字选字/上屏/回删/Esc）、组合串窗口与候选窗（`ui/`）。宿主 ctest **7/7** + 语法检查通过；真实 dat 实测 `zhongguo` → 国、`nv/lv/lve/nve` 全部命中预期字。详见 `docs/milestones/m2/M2-DATA-PLAN.md` 第 8/9 节。剩余：CI 产出新 `.ime` 后在 ReactOS VM 执行 `docs/milestones/m2/M2-ACCEPTANCE.md`。
 
 **框架抽取（2026-11-16 变更目标，已完成）**：输入法引擎宿主（不含拼音码表与选字逻辑）、UI 窗口层与**输入法工具条**独立为可复用的 `framework/`（imfw），拼音退居 `pinyin/` 插件，`ime/` 只做装配。复用缝是 `imfw::Scheme` 插件接口（字母表、码表文件、窗口类名、工具条标签、引擎工厂、兜底表）；框架拥有 IMM32 通用键处理（翻页/选字/退格/Esc/上屏）与全部窗口渲染，`Result.segments` 让组合串窗口对拼音/形码通用。宿主 ctest 8/8（含新增 `pinyin-scheme` 契约测试）、ziglang 真实 MinGW 头交叉检查 12/12、真实 dat 链路复验通过。形码产品线 RosXingMa（`xingma/XINGMA-PLAN.md`）将作为第二个插件接入；其 G1 缺口（多码点/词组上屏）已由框架补齐。复用指南：`framework/README.md`。
 细节：
@@ -55,7 +55,7 @@ v0.1「墨」→ v0.2「联」→ v0.3「全」→ v1.0「正」
 > 前 500 高频字**首页覆盖率 96.8%（484/500）→ 达标**，余量 1.8 个百分点，已接进 CI 作回归门限。
 > 但**首选率只有 46.2%**（前 100 是 83%，前 1000 首页掉到 93.5%）——"空格即出"只对最常用的一百来字成立，
 > 这是 M4/M5 要解决的排序问题，不是 M2 欠账。
-> 逐条对照与四条记录缺口见 [`m2/M2-EXIT-GAP.md`](m2/M2-EXIT-GAP.md)。
+> 逐条对照与四条记录缺口见 [`M2-EXIT-GAP.md`](../milestones/m2/M2-EXIT-GAP.md)。
 
 ## X 结构治理（横切，1-2 周，插在 M3 之前）
 
@@ -79,7 +79,7 @@ v0.1「墨」→ v0.2「联」→ v0.3「全」→ v1.0「正」
 ## F 字形与字体（横切，2-3 周，F0 在 M3 前，其余可与 M3/M4 并行）
 
 **目标：`.dat` 里 44,355 个字**都能显示**——不是"有的能显示、有的画方框"。**
-完整评估见 [`FONT-PLAN-REVIEW.md`](FONT-PLAN-REVIEW.md)，两份输入方案
+完整评估见 [`FONT-PLAN-REVIEW.md`](../font/FONT-PLAN-REVIEW.md)，两份输入方案
 `FULL-GLYPH-COVERAGE-PLAN.md`（推算）与 `MINIMAL-FONT-SET-PLAN.md`（实测 100%）。
 
 > 现状：候选按字形**过滤**（M2 的 P1-2），扩展 A/B 的字被直接剔除——用户看到的是

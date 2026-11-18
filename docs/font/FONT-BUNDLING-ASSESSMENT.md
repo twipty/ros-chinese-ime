@@ -72,7 +72,7 @@ const wchar_t* const kFontFaces[] = {
 
 - `tools/install-rospinyin/install.cpp:27` 注释："payload is TWO files"；`:43-44` 仅 `kImeFileName` + `kDatFileName`；`:176-184` `/step1` 只拷这两个；`:326-350` `/status` 只报两个；`:383-384` 卸载只删两个。
 - GitHub Release `alpha0.0.1` 资产仅 `rospinyin.dat`(902,776 B)、`rospinyin.ime`(946,193 B)、`SHA256SUMS.txt`(160 B)——**无字体**。
-- `m0/share/NotoSansSC-subset.ttf`（11 MB，OpenType）是 `m2/M2-ACCEPTANCE.md:84` 与 `HANDOVER.md:377,805` 提到的 **VM 本地测试资产**；`m0/share/` 被 `.gitignore:31` 排除，**不在发行包里**。
+- `m0/share/NotoSansSC-subset.ttf`（11 MB，OpenType）是 `docs/milestones/m2/M2-ACCEPTANCE.md:84` 与 `HANDOVER.md:377,805` 提到的 **VM 本地测试资产**；`m0/share/` 被 `.gitignore:31` 排除，**不在发行包里**。
 - `NOTICE.txt:49-53` 第 6 节"字体"明确："**不打包任何字体**……发行包若未来捆绑字体，须在此追加对应许可声明。"
 
 > 注意一处文档措辞不一致：`HANDOVER.md:805` 称 `NotoSansSC-subset.ttf` 为"随包字体"，容易被误读成发行包内含字体；实际它只是随 VM 测试目录分发、被 gitignore 的本地资产。捆绑方案落地时应顺手澄清这句话。
@@ -136,9 +136,9 @@ const wchar_t* const kFontFaces[] = {
 | **P1-4** | 字体文件被映射/占用导致升级失败（同 `.ime`/`.dat` 的 sharing violation） | 复用 `move_aside()` 改名 `.old` 机制；`/status` 增加字体状态上报 |
 | **P1-5** | 全量 16 MB 使发行包膨胀 ~10 倍，RAPPS/ISO 分发体积失控 | 只发子集（目标 ≤3 MB）；或作为独立可选资产，不放进主发行包 |
 | **P1-6** | UI family name 字符串不匹配（`Noto Sans SC` vs `Noto Sans CJK SC`），装了也选不中 | `kFontFaces` 同时列出两个候选名；用 `GetTextFaceW` 实测确认实际返回的 family name |
-| **P2-7** | 字形过滤候选集变化：捆绑后更多生僻字可见，可能重新引入"选字上屏得到怪字" | 重跑 `m2/M2-ACCEPTANCE.md`；保留"过半被剔则放行"护栏；核对 `renderable_candidates()` 行为 |
+| **P2-7** | 字形过滤候选集变化：捆绑后更多生僻字可见，可能重新引入"选字上屏得到怪字" | 重跑 `docs/milestones/m2/M2-ACCEPTANCE.md`；保留"过半被剔则放行"护栏；核对 `renderable_candidates()` 行为 |
 | **P2-8** | 文档措辞不一致：NOTICE §6"不打包字体" vs HANDOVER:805"随包字体"；HANDOVER:376 的字体链顺序也与代码不符 | 落地时同步改写；明确区分"VM 测试资产"与"发行包内容" |
-| **P1-9** | **测试闸门完全缺失**：`tools/check_m1.py` 无任何字体/字形断言（`:36-46` 扫描后缀不含字体；`:371-385` 只有 `kDatFileName` 对称检查）；`tests/CMakeLists.txt:5-71` 的 11 个 ctest 无字体/UI 渲染测试；`m2/M2-ACCEPTANCE.md:83-86` 字体问题只靠 VM 人工看方框 | 新增 `check_m1.py` 静态断言（kFontFaces 含目标 family name、安装器字体清单对称性）；M2 验收单加字体度量项；真实渲染只能靠 VM |
+| **P1-9** | **测试闸门完全缺失**：`tools/check_m1.py` 无任何字体/字形断言（`:36-46` 扫描后缀不含字体；`:371-385` 只有 `kDatFileName` 对称检查）；`tests/CMakeLists.txt:5-71` 的 11 个 ctest 无字体/UI 渲染测试；`docs/milestones/m2/M2-ACCEPTANCE.md:83-86` 字体问题只靠 VM 人工看方框 | 新增 `check_m1.py` 静态断言（kFontFaces 含目标 family name、安装器字体清单对称性）；M2 验收单加字体度量项；真实渲染只能靠 VM |
 | **P1-10** | **子集化不可复现**：现有 `NotoSansSC-subset.ttf` 的生成脚本 `font_subset.py` 在 `~/.workbuddy/tmp/`、未入仓（`HANDOVER.md:825`），无法按固定输入重建；11 MB 体积也偏大 | 把子集化脚本纳入 `tools/`，固定上游 URL + SHA256 + 字符集来源，产出目标 ≤3 MB（沿用 mkdat 的可复现模式） |
 
 ---
@@ -154,7 +154,7 @@ const wchar_t* const kFontFaces[] = {
 | **2. 合规打包** | 新增 `OFL.txt`（许可全文 + Adobe/Google 版权行）；改写 NOTICE §6 为"字体单独授权单元" | 每份字体拷贝旁都有许可文件；MIT 授权单元不含字体 |
 | **3. UI 置顶（可回退）** | `kFontFaces` 置顶 `L"Noto Sans CJK SC"`，保留 `Droid Sans Fallback` 为第二；同时保留 `Noto Sans SC` 条目 | Linux 语法检查 + ReactOS VM 实测 `GetTextFaceW` 返回预期名 |
 | **4. 安装器（可选开关）** | 新增 `/with-font`：拷贝字体到 Fonts 目录、`AddFontResourceW`、写 `HKLM\...\Fonts`、`WM_FONTCHANGE` 广播；`/u` 对称清理 | 分步验证；重启后字体仍在；无 0xF4 类崩溃 |
-| **5. 实机验收** | ReactOS VM 对比有无字体的候选窗：行高、截断、重叠、扩展区字可见性；≥50 次切换压测 | 对齐 `m2/M2-ACCEPTANCE.md`，无度量回归 |
+| **5. 实机验收** | ReactOS VM 对比有无字体的候选窗：行高、截断、重叠、扩展区字可见性；≥50 次切换压测 | 对齐 `docs/milestones/m2/M2-ACCEPTANCE.md`，无度量回归 |
 
 ### 方案 B（不推荐，仅记录）：全量 OTF 直接随包
 
@@ -203,7 +203,7 @@ const wchar_t* const kFontFaces[] = {
 
 **测试层**
 - `tools/check_m1.py` — 新增静态断言：`kFontFaces` 含目标 family name、安装器字体清单对称性。当前**无任何**字体闸门。
-- `m2/M2-ACCEPTANCE.md` — `:83-86` 增补字体度量验收项（行高/截断/重叠/扩展区可见性）。
+- `docs/milestones/m2/M2-ACCEPTANCE.md` — `:83-86` 增补字体度量验收项（行高/截断/重叠/扩展区可见性）。
 - （维护收益低）`tests/CMakeLists.txt` — 11 个 ctest 无字体/渲染测试；真实字体渲染无法在 Linux 覆盖。
 
 > 字体改动**不涉及** `.ico`/`.rc`/布局显示名（`ime/rospinyin_res.rc:24,57,74-75`、`ime/rospinyin.h:13-16`），`CI` 的 ICON 资源闸门（`:172-188`）无需调整。
@@ -212,7 +212,7 @@ const wchar_t* const kFontFaces[] = {
 
 ## 8. 证据来源
 
-**本仓库**：`framework/ui/ui_window.cpp:104-113,115-126,173-196,231`、`framework/ui/ui_window.h:20-23`、`framework/ui/candidate_window.cpp:109-113`、`framework/ui/composition_window.cpp:55-57,65`、`framework/ui/toolbar.cpp:84-90`、`pinyin/src/scheme.cpp:179`、`framework/ui/ime_ui.cpp:231-298`、`framework/host/imm_entry.cpp:344-382,402`、`tools/install-rospinyin/install.cpp:27,43-44,70-81,117-124,176-203,326-350,371-385`、`tools/check_m1.py:36-46,371-385`、`tests/CMakeLists.txt:5-71`、`.github/workflows/ci.yml:39-49,123-145,172-188,194-196,205-211`、`NOTICE.txt:43-53`、`HANDOVER.md:376-377,805,825`、`m2/M2-ACCEPTANCE.md:83-86`、`.gitignore:31`、`ime/rospinyin_res.rc`、`ime/rospinyin.h`、GitHub Release `alpha0.0.1` 资产清单。
+**本仓库**：`framework/ui/ui_window.cpp:104-113,115-126,173-196,231`、`framework/ui/ui_window.h:20-23`、`framework/ui/candidate_window.cpp:109-113`、`framework/ui/composition_window.cpp:55-57,65`、`framework/ui/toolbar.cpp:84-90`、`pinyin/src/scheme.cpp:179`、`framework/ui/ime_ui.cpp:231-298`、`framework/host/imm_entry.cpp:344-382,402`、`tools/install-rospinyin/install.cpp:27,43-44,70-81,117-124,176-203,326-350,371-385`、`tools/check_m1.py:36-46,371-385`、`tests/CMakeLists.txt:5-71`、`.github/workflows/ci.yml:39-49,123-145,172-188,194-196,205-211`、`NOTICE.txt:43-53`、`HANDOVER.md:376-377,805,825`、`docs/milestones/m2/M2-ACCEPTANCE.md:83-86`、`.gitignore:31`、`ime/rospinyin_res.rc`、`ime/rospinyin.h`、GitHub Release `alpha0.0.1` 资产清单。
 
 **字体上游**：[Google Fonts — Noto Sans SC 许可页](https://fonts.google.com/specimen/Noto+Sans+SC/license)（SIL OFL 1.1 全文、版权行、RFN 'Source'）；[notofonts/noto-cjk](https://github.com/notofonts/noto-cjk)；[CTAN notocjksc 文件清单](https://ctan.org/tex-archive/fonts/notocjksc)（字体 16–17 MB、TTC 109 MB）；[SIL OFL 官网](https://openfontlicense.org/)。
 

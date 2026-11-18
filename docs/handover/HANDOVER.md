@@ -163,7 +163,7 @@ Commit：emit_text() 逐 UTF-16 码单元生成 TRANSMSG，写入 list->TransMsg
 | 拼音引擎（切分、候选、`v` 键、声调转换） | ✅ 宿主单测全覆盖 |
 | `rospinyin.dat` 数据链路（Unihan 18.0 + hanziDB 字频 → mkdat） | ✅ 44,355 字 / 418 音节，可复现构建 |
 | Win32 产物 CI（MinGW i686 → `m1-artifacts` 分支） | ✅ 三 job 全绿 |
-| **VM 内 M2 端到端验收** | ✅ 2026-11-16 全部通过（15/15，见 `m2/M2-ACCEPTANCE.md`）；`alpha0.0.2` 已发布 |
+| **VM 内 M2 端到端验收** | ✅ 2026-11-16 全部通过（15/15，见 `docs/milestones/m2/M2-ACCEPTANCE.md`）；`alpha0.0.2` 已发布 |
 | **M0 红线 #2（不写 Preload / 不设默认 IME）** | ⚠️ **2026-11-18 降级为部署偏好**——前提被两组对照推翻，见 §11.18 |
 
 ---
@@ -422,7 +422,7 @@ VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
 
 ### 8.6 VM 验收（M2）
 
-按 `m2/M2-ACCEPTANCE.md` 执行：产物入 system32 → 重启 → Alt+Shift 切到「中」→ 记事本 → 15 项用例（含词组上屏 ≥2 字，这是唯一能在真机暴露 TRANSMSGLIST ABI 缺陷的用例）。结果回填表格并截图存 `m0/vm/evidence/`。
+按 `docs/milestones/m2/M2-ACCEPTANCE.md` 执行：产物入 system32 → 重启 → Alt+Shift 切到「中」→ 记事本 → 15 项用例（含词组上屏 ≥2 字，这是唯一能在真机暴露 TRANSMSGLIST ABI 缺陷的用例）。结果回填表格并截图存 `m0/vm/evidence/`。
 
 ---
 
@@ -434,7 +434,7 @@ VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
 | 契约静态检查 | `python3 tools/check_m1.py` | 63/63（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
 | Win32 语法检查 | CI 的第一步，见 §6.3 | 0 error（用 `tools/syntax_stub` 提供的 Windows 头） |
 | PE 导入表 | CI `objdump -p` | 不得出现 Vista+ 导出或非系统 DLL |
-| 真机验收 | `m2/M2-ACCEPTANCE.md` | 15 项全绿 |
+| 真机验收 | `docs/milestones/m2/M2-ACCEPTANCE.md` | 15 项全绿 |
 
 > 本地若装了 `ziglang`，可用真实 MinGW 头做交叉验证（比语法桩更可信）：
 > `zig c++ -target x86-windows-gnu -c -o /tmp/x.o -I framework/host -I framework/include ...`
@@ -514,7 +514,7 @@ VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
 - **与 mzimeja 参考实现的字段差异**（`vendor/mzimeja-ref/ime/imm.cpp:27-49`）：其 `fdwProperty = KBD_CHAR_FIRST|UNICODE|AT_CARET`、`fdwConversionCaps = LANGUAGE|FULLSHAPE|ROMAN|CHARCODE`、`dwPrivateDataSize = sizeof(UIEXTRA)`、`fdwSelectCaps = SELECT_CAP_CONVERSION`；我们对应为 `UNICODE|AT_CARET` / `0` / `0` / `0`。这些差异是否致命需上机验证。
 - **本机能力边界**：QEMU 在 `~/.workbuddy/binaries/qemu-user`（可跑 VM、串口日志 `rosdbg.log`）；但**本机无 MinGW 交叉编译器**（CI 用 MSYS2 产 `.ime`），改宿主代码后需走 CI 重编译才能进 VM 验证。已编译产物在 `origin/m1-artifacts`（`rospinyin.ime`）。
 
-**闭环要求**：修复后重跑 `m2/M2-ACCEPTANCE.md` 全部 15 项，重点词组上屏（≥2 字）。
+**闭环要求**：修复后重跑 `docs/milestones/m2/M2-ACCEPTANCE.md` 全部 15 项，重点词组上屏（≥2 字）。
 
 **2026-11-17 源码级排查结论（第二轮：定位到唯一的硬门槛 `pWnd->hImc`）**
 
@@ -668,7 +668,7 @@ if ((static_cast<unsigned long>(lParam) & kKeyUpBit) != 0) return FALSE;
 注入 → GetWindowTextW 读回 → 与验收单期望值比对 → PASS / EXTRA / MISS / WRONG / ASCII-LEAK
 ```
 
-判定标准全部来自 `m2/M2-ACCEPTANCE.md`；没有明确期望值的用例**只校验汉字个数**，不猜具体是哪个字（猜错就会把正常行为判成 bug）。用例表在启动时整表写进日志，日志自带判定标准，事后可复查。
+判定标准全部来自 `docs/milestones/m2/M2-ACCEPTANCE.md`；没有明确期望值的用例**只校验汉字个数**，不猜具体是哪个字（猜错就会把正常行为判成 bug）。用例表在启动时整表写进日志，日志自带判定标准，事后可复查。
 
 **16 条用例 × 两轮**（首尾各 1 条为环境/Esc 自检）：
 
@@ -1149,7 +1149,7 @@ RENZHI [BACK] ICHU 1{人} 1{之} 4{初} XINGBENSHAN 2{性} 1{本} 2{善} [RETURN
    资产走 `uploads.github.com`，这个域名是通的）。整理成 `tools/make_release.py`；
    **注意**：`alpha0.0.2` 实际是一次性脚本跑的，`tools/make_release.py` 是按它整理的通用版，
    尚未实战——下次发版先核对资产过滤器（它会跳过 `.md`/`.py`）与 tagger 日期。
-6. 发布说明正文同时入库：`releases/<tag>.md`，与 GitHub release body 完全一致。
+6. 发布说明正文同时入库：`docs/releases/<tag>.md`，与 GitHub release body 完全一致。
 7. 回验：从 `https://gh-proxy.com/https://github.com/.../releases/download/alpha0.0.2/*` 下载，
    三个文件字节数与 sha256 与本地一致；GitHub 自己算的 `digest` 字段也与之相同
    （`sha256:c9dc17c0…` / `f28b2606…`），这是"发出去的就是验收的那份代码"的最强证据。
@@ -1251,7 +1251,7 @@ uninstall 里第二处 swprintf 换前缀     → FAIL  prefixes: ['L"Keyboard L
    `FILEVERSION` 与两个字符串都从这里展开。只有一个地方要改，就没有"改了两处漏一处"。
 2. **版本门禁** `tools/check_release_version.py <tag> [--binary X.ime]`：校验
    tag ↔ `version.h` ↔ **产物里的 `FILEVERSION`**（自己解析 PE 的 `.rsrc` /
-   `VS_VERSIONINFO` / `VS_FIXEDFILEINFO`，无第三方依赖）。`releases/<tag>.md` 必须存在。
+   `VS_VERSIONINFO` / `VS_FIXEDFILEINFO`，无第三方依赖）。`docs/releases/<tag>.md` 必须存在。
    反例实测：拿 U1/U3 版（rc 仍 0.0.1）跑 → `artifact FILEVERSION ... binary=0.0.1.0` 判红。
 3. **CI release job**：`on.push.tags: alpha*/beta*` 触发；`needs: [engine-smoke, windows-build]`，
    所以门禁红了就发不出去。产物装配后 `gh release create/edit` + `upload --clobber`
@@ -1265,6 +1265,45 @@ uninstall 里第二处 swprintf 换前缀     → FAIL  prefixes: ['L"Keyboard L
 **遗留**：`alpha0.0.2` 的资产仍是手工上传的那份（版本资源 0.0.1）；不打算重发，
 下一次发版会自带 0.0.x 的正确版本号。若要补，`gh release upload --clobber` 即可，
 但 tag 不变而资产变了，反而破坏"资产 = tag 构建"的可追溯性，所以不做。
+
+### 11.21 文档归位：根目录只留 README（2026-11-18 21:2x）
+
+**问题不是文件多，是"没有规则说明新文件该放哪"**。根目录堆了 16 个 `.md`，
+每写一份报告就多一个同级文件；即使这次手工整理干净，下一份报告照样会落在
+`README.md` 旁边，而且没有人会发现。
+
+**结构**（`docs/README.md` 是唯一索引，已登记全量文件）：
+
+```
+docs/
+├── README.md      文档地图：先读什么 + 全量索引 + 归置规则
+├── plan/          PLAN / ROADMAP / PLAN-MODULARIZATION      活文档，每轮必读
+├── handover/      HANDOVER / CHANGELOG                      活文档，交接与登记
+├── milestones/    M0-REPORT / M0-REDLINE-REVIEW / M1-REPORT + m2/  只读，回溯用
+├── font/          5 份字体与字形专题（FONT-PLAN-REVIEW 是裁决）
+├── reviews/       框架路线、上游 64/ARM64 可移植性
+└── releases/      <tag>.md，被 CI 与版本门禁直接读取
+```
+
+**留在根目录的四个东西，理由各不相同**：`README.md`（门面）、`CMakeLists.txt`
+（构建入口）、`LICENSE` / `NOTICE.txt`（法律声明——**25 个源码文件头部写着
+"See LICENSE and NOTICE.txt at the repository root"**，搬走就要改 25 处注释，
+而法律指针指向错位置比多两个文件糟糕得多）。
+
+**引用怎么改的**：14 条 markdown 链接按"新位置"重算相对路径（链接方与目标方都
+可能移动），59 处行内代码里的根相对路径加 `docs/` 前缀。**裸文件名不改**——
+正文里写"见 `HANDOVER.md §11.20`"是在说名字，不是路径，索引负责回答"它现在在哪"。
+
+**新门禁 `tools/check_docs.py`（7 项，已进 CI）**：根目录无多余 md、`docs/` 下
+每个文件都在索引里、所有相对链接可解析、链接不被闭合两次、`docs/releases/` 命名
+符合 tag、子系统文档仍贴着代码。**推演**：没有这道门，这次整理只是一次性劳动。
+
+**过程中踩的坑（值得记）**：迁移脚本的正则 `\]\(([^)\s]+)` 里那个 `)` 是**分组的
+右括号**，不是字面量——于是 14 条链接全变成 `](x.md))`。`check_docs` 的链接检查
+**抓不到**它（目标照样能解析，多出的括号只是文本），是我肉眼在 `README.md` 第 5 行
+看出来的。已补一条"链接不得闭合两次"的断言把这个 bug 类型钉住。
+**教训**：链接检查器只能验"指向对不对"，验不了"括号配没配平"；改写正文的正则，
+要先在一条已知样本上验证 group 边界。
 
 ### 11.2 其他待办
 
@@ -1296,14 +1335,14 @@ uninstall 里第二处 swprintf 换前缀     → FAIL  prefixes: ['L"Keyboard L
 
 **发版/验收**
 
-1. **发版前一个提交**：写 `releases/<tag>.md`，同时把 `ime/version.h` 的四个数字与
+1. **发版前一个提交**：写 `docs/releases/<tag>.md`，同时把 `ime/version.h` 的四个数字与
    `ROSPINYIN_VERSION_STRING` 一起 bump。`python3 tools/check_release_version.py <tag>`
    必须全绿——它同时校验发布说明是否存在，所以"先写说明再打 tag"是被强制的，不是靠记性。
 2. **打 tag 并 push 那个 tag**：CI 的 `release` job 用**本次运行的产物**建 release
    （`.ime` / `.dat` / `install-rospinyin.exe` / `INFO.txt` / `SHA256SUMS.txt`），
    再把资产下载回来逐个 `sha256sum -c`。手工上传已不是路径；
    `tools/make_release.py` 只在 CI 不可用时兜底（它同时负责打 tag）。
-3. VM 拉取产物 → 重启 → 跑 `m2/M2-ACCEPTANCE.md`；
+3. VM 拉取产物 → 重启 → 跑 `docs/milestones/m2/M2-ACCEPTANCE.md`；
 4. 更新 `M2-REPORT.md`（若新建）与 `PLAN.md`/`ROADMAP.md` 状态。
 
 #### 推送通道（2026-11-17 实测，务必按此执行）
@@ -1383,10 +1422,10 @@ python3 tools/push_via_api.py <repo> main <expected_remote_sha> <sha1> <sha2> ..
 | `M1-REPORT.md` | 16 导出骨架、分步注册、动态 HKL、托盘图标修复、MinGW 切换 |
 | `framework/README.md` | 框架模块地图、Scheme 复用缝、G1–G4 处置、生命周期红线 |
 | `pinyin/README.md` | 拼音插件文件职责与数据所有权 |
-| `m2/M2-ACCEPTANCE.md` | 15 项真机验收操作单（含判定口径） |
-| `m2/M2-REPORT.md` | M2 报告：结论、交付物、根因修复 10 条、已知限制、门禁 |
-| `m2/M2-REMAINING.md` | M2 剩余事项与优先级（当前只剩真机验收单） |
-| `m2/M2-DATA-PLAN.md` | 数据源选型、声调/`ü` 处理、规模核算 |
+| `docs/milestones/m2/M2-ACCEPTANCE.md` | 15 项真机验收操作单（含判定口径） |
+| `docs/milestones/m2/M2-REPORT.md` | M2 报告：结论、交付物、根因修复 10 条、已知限制、门禁 |
+| `docs/milestones/m2/M2-REMAINING.md` | M2 剩余事项与优先级（当前只剩真机验收单） |
+| `docs/milestones/m2/M2-DATA-PLAN.md` | 数据源选型、声调/`ü` 处理、规模核算 |
 | `m0/vm/NOVNC-GUIDE.md` | VM 人机协作操作单（v7，含所有键位坑与图标修复说明） |
 | `xingma/XINGMA-PLAN.md` | 形码产品线正式计划（1.0） |
 | `xingma/docs/FRAMEWORK-AUDIT-2026-11-17.md` | 框架能力审计（G1 ABI P0 / G2 顺序 P2）与处置记录 |

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """建 annotated tag + GitHub release 并上传资产（只走 api.github.com / uploads.github.com）。
 
-**这不是首选路径**（2026-11-18 起）。正常发版 = 写好 `releases/<tag>.md`、bump
+**这不是首选路径**（2026-11-18 起）。正常发版 = 写好 `docs/releases/<tag>.md`、bump
 `ime/version.h`、push tag，由 CI 的 `release` job 用本次运行的产物发布并回验资产
 （见 HANDOVER §11.20）。本脚本保留为兜底：CI 不可用、或本机需要绕过 git push 建 tag 时用。
 

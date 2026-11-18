@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fetch the pinned raw inputs for mkdat, with sha256 verification.
 
-All conclusions come from m2/M2-DATA-PLAN.md. The files are NOT checked into
+All conclusions come from docs/milestones/m2/M2-DATA-PLAN.md. The files are NOT checked into
 the repository (8 MB zip); this script makes the build reproducible instead.
 
 Usage:

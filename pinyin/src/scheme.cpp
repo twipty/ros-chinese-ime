@@ -20,7 +20,7 @@ namespace rospinyin {
 namespace {
 
 // Canonical readings use the digit tone immediately after the vowel and 'v'
-// for the u-umlaut (see m2/M2-DATA-PLAN.md section 7).
+// for the u-umlaut (see docs/milestones/m2/M2-DATA-PLAN.md section 7).
 struct BuiltinReading {
     const char* reading;
     const wchar_t* chars;  // BMP Hanzi: wchar_t value == code point

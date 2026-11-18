@@ -48,12 +48,12 @@
 
 ## 3. M2 单字引擎（估 22-30 人日）★核心里程碑 — ✅ 完成（2026-11-18，验收 15/15，`alpha0.0.2` 已发布）
 
-> 准出复核（2026-11-18）：`m2/M2-ACCEPTANCE.md` 15/15；P0/P1/P2 全绿；
+> 准出复核（2026-11-18）：`docs/milestones/m2/M2-ACCEPTANCE.md` 15/15；P0/P1/P2 全绿；
 > 唯一量化退出标准首测——**前 500 高频字首页覆盖 96.8%（≥95% 达标）**，由
 > `tools/coverage_report.py` 产出（已接进 CI）。同期发现**首选率仅 46.2%**，归给 M4/M5 的排序工作。
-> 四条记录缺口（截图未归档、3.9–3.11 无逐页图、版本号漂移已修源码、dat 数字两套）见 `m2/M2-EXIT-GAP.md`。
+> 四条记录缺口（截图未归档、3.9–3.11 无逐页图、版本号漂移已修源码、dat 数字两套）见 `docs/milestones/m2/M2-EXIT-GAP.md`。
 
-> 进展：D2 已拍板 A；共用归一化库、`mkdat` 编译器、`rospinyin.dat` v1 格式、运行时表与单字引擎骨架已落地。2026-11-16 完成 M2 剩余工程部分：候选分页器、`rospinyin.dat` 延迟加载、按 HIMC 会话管理、IMM32 键处理（组合/翻页/数字选字/上屏/回删/Esc）以及组合串窗口与候选窗（`ui/`）；宿主 ctest **7/7**、语法检查通过。实测加载真实 dat 后 `zhongguo` → `[zhong][guo]` / 首选 `国`（U+56FD），`nv` → 女、`lv` → 律、`lve` → 略、`nve` → 虐。ReactOS 记事本验收操作单见 `m2/M2-ACCEPTANCE.md`，待 CI 产出新 `.ime` 后在 VM 执行（见 `m2/M2-DATA-PLAN.md` 第 8/9 节）。2026-11-16 变更目标：框架抽取完成（见 3.6），M2 工程部分全部落地，宿主 ctest 8/8。
+> 进展：D2 已拍板 A；共用归一化库、`mkdat` 编译器、`rospinyin.dat` v1 格式、运行时表与单字引擎骨架已落地。2026-11-16 完成 M2 剩余工程部分：候选分页器、`rospinyin.dat` 延迟加载、按 HIMC 会话管理、IMM32 键处理（组合/翻页/数字选字/上屏/回删/Esc）以及组合串窗口与候选窗（`ui/`）；宿主 ctest **7/7**、语法检查通过。实测加载真实 dat 后 `zhongguo` → `[zhong][guo]` / 首选 `国`（U+56FD），`nv` → 女、`lv` → 律、`lve` → 略、`nve` → 虐。ReactOS 记事本验收操作单见 `docs/milestones/m2/M2-ACCEPTANCE.md`，待 CI 产出新 `.ime` 后在 VM 执行（见 `docs/milestones/m2/M2-DATA-PLAN.md` 第 8/9 节）。2026-11-16 变更目标：框架抽取完成（见 3.6），M2 工程部分全部落地，宿主 ctest 8/8。
 
 - **3.1 引擎库 `pinyin-core` ✓**
   - 3.1.1 音节数据结构（415 左右合法音节 + 声调变体）
@@ -81,7 +81,7 @@
   - 3.4.5 焦点切换：`ImeSetActiveContext` 激活/隐藏；`ImeSelect(FALSE)` 销毁窗口与会话
   - 3.4.6 会话激活：`ImeSelect(TRUE)` / `ImeSetActiveContext(TRUE)` 必须调用 `on_select(true)`，否则引擎拒绝 `feed()`（已加 contract 断言防回归）
 - **3.5 ReactOS 记事本验收 🧪（操作单就绪，待 VM 执行）**
-  - 3.5.1 全流程测试操作单：`m2/M2-ACCEPTANCE.md`（15 项用例）
+  - 3.5.1 全流程测试操作单：`docs/milestones/m2/M2-ACCEPTANCE.md`（15 项用例）
   - 3.5.2 长时间输入会话（30 分钟）稳定性
   - 3.5.3 **v0.1 预览版发布**（提前收集社区反馈，不等 M3）
 - **3.6 框架抽取：引擎宿主 / UI / 工具条可复用化 ✅（2026-11-16 变更目标）**
@@ -217,6 +217,6 @@
 - **12.5 F4 过滤三态化与回归**（估 1-2 人日）
   - 12.5.1 `UiCanRender()` 从「剔不剔」改为三态：有字形 / 可兜底 / 探针不可用则放行
   - 12.5.2 字体覆盖断言（44,355/44,355）+ 扩展区 5 字截图归档
-  - 12.5.3 同步 `RARE-CHAR-AND-GLYPH-SOLUTION.md` 与 `m2/M2-REMAINING.md` 的 P1-2 口径
+  - 12.5.3 同步 `RARE-CHAR-AND-GLYPH-SOLUTION.md` 与 `docs/milestones/m2/M2-REMAINING.md` 的 P1-2 口径
 
 退出标准：`.dat` 全部 44,355 字在候选窗可见（真缺字形显示码点标签）；字体包缺失时行为可预期。

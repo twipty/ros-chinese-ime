@@ -10,7 +10,7 @@ Checks three things, all of which used to be "remembered by hand":
 
   1. `ime/version.h` numbers equal the tag           (alpha0.0.2 -> 0,0,2)
   2. `ROSPINYIN_VERSION_STRING` equals the tag       (shows up in Explorer)
-  3. `releases/<tag>.md` exists                      (release notes are written
+  3. `docs/releases/<tag>.md` exists                 (release notes are written
      before tagging, not improvised afterwards)
 
 Why a gate and not a checklist: `alpha0.0.2` shipped while the version resource
@@ -159,7 +159,7 @@ def main() -> int:
     ap.add_argument("--root", type=Path,
                     default=Path(__file__).resolve().parent.parent)
     ap.add_argument("--no-notes", action="store_true",
-                    help="skip the releases/<tag>.md check (dry runs)")
+                    help="skip the docs/releases/<tag>.md check (dry runs)")
     ap.add_argument("--binary", type=Path, default=None,
                     help="also verify FILEVERSION inside this built .ime/.exe")
     a = ap.parse_args()
@@ -193,7 +193,7 @@ def main() -> int:
           f"tag={tag} header={got.get('STRING', '<missing>')}")
 
     if not a.no_notes:
-        notes = a.root.resolve() / "releases" / f"{tag}.md"
+        notes = a.root.resolve() / "docs" / "releases" / f"{tag}.md"
         check("release notes exist before tagging", notes.is_file(), str(notes))
 
     if a.binary is not None:
@@ -210,7 +210,7 @@ def main() -> int:
 
     if failures:
         print(f"\n{failures} release gate(s) failed -- bump ime/version.h in the "
-              f"commit you tag, and write releases/{tag}.md first.")
+              f"commit you tag, and write docs/releases/{tag}.md first.")
         return 1
     print(f"\nrelease gate ok for {tag}")
     return 0

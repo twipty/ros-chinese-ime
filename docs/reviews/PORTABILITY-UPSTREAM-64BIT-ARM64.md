@@ -1,7 +1,7 @@
 # RosPinyin → ReactOS 上游 64 位 / ARM64 兼容性评估
 
 > 状态：**静态评估完成，实机验证未做**。本文基于 ReactOS 官方 wiki / JIRA / 官方发布公告（一手来源）、主流技术报道（二手佐证），以及本仓库代码与契约的逐行核对。
-> 范围说明：本文评估的两个对象是 **(1) ReactOS 官方主线的后续 64 位实现（AMD64/x64）** 与 **(2) ReactOS 官方主线的 ARM64（AArch64）移植**。这与已有的 [`libernt/PORTABILITY-ASSESSMENT.md`](libernt/PORTABILITY-ASSESSMENT.md) 不同——libernt 是**自研内核分支**，其 64 位成熟度、WoW64/FEX 能力、ImmInstallIMEW 行为均与上游不同，结论不可互换。
+> 范围说明：本文评估的两个对象是 **(1) ReactOS 官方主线的后续 64 位实现（AMD64/x64）** 与 **(2) ReactOS 官方主线的 ARM64（AArch64）移植**。这与已有的 [`libernt/PORTABILITY-ASSESSMENT.md`](../../libernt/PORTABILITY-ASSESSMENT.md) 不同——libernt 是**自研内核分支**，其 64 位成熟度、WoW64/FEX 能力、ImmInstallIMEW 行为均与上游不同，结论不可互换。
 > 评估日期：2026-11-17。本文不改动任何构建目标或契约。
 
 ---
@@ -99,7 +99,7 @@ CORE-11700（IMM32 总纲）记录主要 IMM32 函数已实现并进入内核态
 | **E** | **工具链战略冲突** | 上游 AMD64 官方以 **MSVC x64** 为可用构建路径（GCC/Clang 版 "probably not boot"）；本项目 CI 用 MinGW 静态 CRT 策略，正是为了绕开 MSVC CRT 导入 `InitializeCriticalSectionEx`（ReactOS 默认导出版本 0x502 无此 API，`ci.yml:52-57`）。而 `pinyin/src/dat_source.cpp:12-14` 的 `RPY_WEAK` 在 MSVC 下为空宏，`framework/host/imm_entry.cpp:56-58` 的 `#pragma GCC diagnostic` 在 MSVC 下无效。 | **P1**：若走 MSVC 需重做 CRT/弱符号策略 |
 | **F** | **陈旧注释/文档表述** | `imm32_abi.h:13`「all pointer-shaped parameters are 32-bit on our x86 target」；`dat_format.hpp:10`「target is 32-bit ReactOS x86」。均为注释，不影响运行，但会误导后续移植者。 | **P2**：非阻塞，随改造一并更新 |
 | **G** | **字体链 ReactOS 特化** | `framework/ui/ui_window.cpp` 的 CJK 回退链（Droid Sans Fallback / Noto Sans SC / 微软雅黑 / 宋体）。有 `GetTextFaceW` 校验与最终兜底，降级安全。 | **P2**：非架构相关，可后置 |
-| **H** | **验收环境全绑 32 位** | `m0/vm/common.sh:8,11,22` 写死 `qemu-system-i386` / `ReactOS-0.4.16-i386.iso` / `-machine pc`；`m2/M2-ACCEPTANCE.md:4,24,30-31` 全 ReactOS 0.4.16 + `C:\ReactOS\system32`；CI 只有 i686 job。ARM64 需换 `qemu-system-aarch64 -machine virt` + ARM64 镜像（仓库内无）。 | **P1**：需新建 x64 环境；②arm64 为 P0（环境不存在） |
+| **H** | **验收环境全绑 32 位** | `m0/vm/common.sh:8,11,22` 写死 `qemu-system-i386` / `ReactOS-0.4.16-i386.iso` / `-machine pc`；`docs/milestones/m2/M2-ACCEPTANCE.md:4,24,30-31` 全 ReactOS 0.4.16 + `C:\ReactOS\system32`；CI 只有 i686 job。ARM64 需换 `qemu-system-aarch64 -machine virt` + ARM64 镜像（仓库内无）。 | **P1**：需新建 x64 环境；②arm64 为 P0（环境不存在） |
 | **I** | **`ROSPINYIN_TRACE` 构建实际无法编译** | `framework/host/imm_entry.cpp:507` 在 trace 分支引用 `HIMC` 与 `ImmGetOpenStatus`，但全仓无 `#include <imm.h>`（`imm32_abi.h:21-24` 刻意不引入；`tools/syntax_stub/imm.h` 也没有）。现有 CI 不开 trace 故漏掉。 | **P1**：64 位冒烟取证依赖 trace，会先卡在这里 |
 | **J** | **trace 路径指针被当 32 位截断** | `framework/host/dllmain.cpp:80-81` 把 `HINSTANCE` 截到低 32 位且只打印 8 位 hex；`imm_entry.cpp:70` `TraceLine::h(unsigned long)` 形参只收 32 位，`:439-440`、`:462-463` 把 `uintptr_t(hIMC)` 强转 `unsigned long`。 | **P2**：仅 trace 构建日志失真，不影响功能，但会误导 64 位排错 |
 | **K** | **`LPARAM` 32 位截断隐患** | `imm_entry.cpp:494` `(static_cast<unsigned long>(lParam) & kKeyUpBit) != 0`（`kKeyUpBit=0x80000000UL`，`:179`）；`:511` 的 `HIWORD(lParam)` 同理。LPARAM 在 64 位为 8 字节；key-up 位恰在 bit 31（低半内）故**当前功能正常**，属隐患而非现 bug。 | **P2**：保持低 32 位语义即可，建议显式掩码 |
@@ -154,7 +154,7 @@ CORE-11700（IMM32 总纲）记录主要 IMM32 函数已实现并进入内核态
 | **0. 宿主侧排雷** | 消除确定阻塞 | 修 §2.2-A 的守卫与断言；把 `offsetof` 断言参数化（32 位 4 / 64 位 8）；补 16 导出签名的头文件级 `static_assert`；修 §2.2-I 的 trace include；**CI 语法检查增加 `_WIN32` 定义与 64 位 trace 构建**堵住盲区 | Linux `ctest` 全绿 + MinGW 头文件语法检查覆盖 x64 + trace 构建可编译 |
 | **1. 64 位产物** | 打通构建 | 新增 `x86_64-w64-mingw32`（或既定 MSVC 方案）CMake/CI 目标；重审 PE 导入断言（64 位应允许更多 Vista+ API） | 产出 64 位 `rospinyin.ime`；在 x64 Windows 参照机上裸 `LoadLibrary`/`FreeLibrary` 无害 |
 | **2. 上游 x64 探针** | 验证注册与加载 | 在**上游**（非 libernt）x64 构建上分步注册 + 重启 + 切换；记录 `ImmInstallIMEW` 是否写 Preload、HKL 落点与布局键；**加载期行为按 A1/A1b 先加固再上机** | 确认 ABI 能加载、登录路径不崩、可获得的 IMM32 功能边界 |
-| **3. 双机验收** | 功能闭环 | x64 + i386 各跑 `m2/M2-ACCEPTANCE.md`；≥50 次切换压测 | 对齐既有验收单，新增 upstream-x64 章节与证据 |
+| **3. 双机验收** | 功能闭环 | x64 + i386 各跑 `docs/milestones/m2/M2-ACCEPTANCE.md`；≥50 次切换压测 | 对齐既有验收单，新增 upstream-x64 章节与证据 |
 
 > 顺序理由：阶段 0 是纯宿主侧、成本最低且必然要做；先把「编译失败」变成「可构建的产物」，再谈注册与实机。探针必须在**上游**做，因为 libernt 的 `ImmInstallIMEW` 行为与「安装器零写入」的部署偏好直接冲突，其结论不可套用。**阶段 2 的前提已变**：2026-11-18 的对照实验表明 `Preload` 预载与「设为默认」都不致命，因此探针的第一目标是「能否注册 / 能否加载 / 状态是否自洽」，不再以「会不会蓝屏」为主要观测。
 
@@ -202,6 +202,6 @@ CORE-11700（IMM32 总纲）记录主要 IMM32 函数已实现并进入内核态
 - [BetaNews](https://betanews.com/article/reactos-free-open-source-windows-alternative)（0.4.16 与 32/64 位定位）
 
 **本项目（本地核查）：**
-`README.md`、`libernt/PORTABILITY-ASSESSMENT.md`、`.github/workflows/ci.yml`、`tools/syntax_stub/windows.h`、`CMakeLists.txt`、`ime/CMakeLists.txt`、`framework/host/imm32_abi.h`、`framework/host/imm_entry.cpp`、`framework/host/dllmain.cpp`、`framework/include/imfw/emit_text.hpp`、`framework/include/imfw/dat_format.hpp`、`framework/src/code_table.cpp`、`framework/src/emit_text.cpp`、`framework/src/utf8.cpp`、`framework/ui/ui_window.cpp`、`ime/rospinyin.def`、`pinyin/src/dat_source.cpp`、`pinyin/host/dat_source_win.cpp`、`tools/install-rospinyin/install.cpp`、`tools/mkdat/mkdat.cpp`、`m0/vm/common.sh`、`m2/M2-ACCEPTANCE.md`。
+`README.md`、`libernt/PORTABILITY-ASSESSMENT.md`、`.github/workflows/ci.yml`、`tools/syntax_stub/windows.h`、`CMakeLists.txt`、`ime/CMakeLists.txt`、`framework/host/imm32_abi.h`、`framework/host/imm_entry.cpp`、`framework/host/dllmain.cpp`、`framework/include/imfw/emit_text.hpp`、`framework/include/imfw/dat_format.hpp`、`framework/src/code_table.cpp`、`framework/src/emit_text.cpp`、`framework/src/utf8.cpp`、`framework/ui/ui_window.cpp`、`ime/rospinyin.def`、`pinyin/src/dat_source.cpp`、`pinyin/host/dat_source_win.cpp`、`tools/install-rospinyin/install.cpp`、`tools/mkdat/mkdat.cpp`、`m0/vm/common.sh`、`docs/milestones/m2/M2-ACCEPTANCE.md`。
 
 > 所有「吻合/可复用」结论均为静态核查；必须在目标平台上以实机注册、加载、切换测试收口。ARM64 目标在当前上游状态下**无法收口**。

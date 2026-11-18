@@ -1,7 +1,7 @@
 # RosPinyin → LiberNT 移植可行性评估
 
 > 状态：**静态评估完成，实机验证未做**。本文基于对 libernt 主线源码树（`main-nt10`，2026-11-17 核查）、官方文档/新闻、一手用户报告，以及本仓库代码与契约检查的交叉核对。
-> 前置背景见 [README.md](../README.md)、[M0-REPORT.md](../M0-REPORT.md)、[M1-REPORT.md](../M1-REPORT.md)。本文是独立评估文档，不改动任何构建目标或契约。
+> 前置背景见 [README.md](../README.md)、[M0-REPORT.md](../docs/milestones/M0-REPORT.md)、[M1-REPORT.md](../docs/milestones/M1-REPORT.md)。本文是独立评估文档，不改动任何构建目标或契约。
 > 评估日期：2026-11-17。
 
 ---
@@ -142,7 +142,7 @@ option(IMM_WIN3_SUPPORT "IMM Win 3.x support" ON)
 | E | **手写 ABI 仅部分被断言覆盖** | `static_assert` 只覆盖 TransMsg 布局；`ImeInfo`、能力位、16 导出签名未全验 | 与 libernt imm32 逐字段核对（§2.2 已核对资源校验字段），补 x64 冒烟 |
 | F | **字体链 ReactOS 特化硬编码** | `ui_window.cpp:107-113`：Droid Sans Fallback / Noto Sans SC / Microsoft YaHei / SimSun / Arial Unicode MS | 有 `GetTextFaceW` 校验与最终兜底，降级安全；建议按 Win11 字体集重排 |
 | G | **弱符号技巧 MSVC 下失效** | `dat_source.cpp` 的 `RPY_WEAK` 在 MSVC 下为空 | 若引入 MSVC 构建需处理 |
-| H | **测试全绑 x86 ReactOS** | `m0/vm/`、`m2/M2-ACCEPTANCE.md`、CI 导入表断言 | 新增 libernt amd64 + i386 冒烟（见 §6） |
+| H | **测试全绑 x86 ReactOS** | `m0/vm/`、`docs/milestones/m2/M2-ACCEPTANCE.md`、CI 导入表断言 | 新增 libernt amd64 + i386 冒烟（见 §6） |
 
 ### 3.4 对初判的修正：HKL 位宽不是问题
 
@@ -202,7 +202,7 @@ option(IMM_WIN3_SUPPORT "IMM Win 3.x support" ON)
 | **0. 低成本探针** | 用最小成本定性 | 走 libernt **i386** 源码构建；现有 32 位 `.ime` 不动引擎，执行 `ImmInstallIME` 注册 + 重启 + 切换压测 | 确认 ① ABI 能加载 ② Preload/0xF4 是否重现 ③ csrss 登录时序。产出：探针报告，决定是否需绕开 `ImmInstallIMEW` |
 | **1. 64 位构建** | 打通产物 | 新增 `x86_64-w64-mingw32` CMake/CI 目标；产出 64 位 `rospinyin.ime`；CI 增 x64 PE 导入表断言（此时应允许 UCRT/Vista+ API） | 64 位 `.ime` 在 libernt amd64 上裸 `LoadLibrary`/`FreeLibrary` 无害 |
 | **2. 安装器改造** | 部署正确 | 安装器升 64 位；修 native System32、显式注册表视图；按阶段 0 结论决定是否手工分步写键绕开 Preload | `/step1`…`/step4`（或新方案）在 amd64 上逐步注册成功、无 Preload 崩溃 |
-| **3. 双机验收** | 功能闭环 | libernt amd64 + i386 各跑记事本输入（组合串/候选/选字/翻页/Esc/退格）、≥50 次切换压测 | 对齐 `m2/M2-ACCEPTANCE.md`，新增 libernt 章节与证据截图 |
+| **3. 双机验收** | 功能闭环 | libernt amd64 + i386 各跑记事本输入（组合串/候选/选字/翻页/Esc/退格）、≥50 次切换压测 | 对齐 `docs/milestones/m2/M2-ACCEPTANCE.md`，新增 libernt 章节与证据截图 |
 
 > 顺序理由：阶段 0 用现成产物先排除最大的不确定性（Preload 红线），避免在错误的部署假设上先花大力气做 64 位构建。若阶段 0 发现 libernt 上 `ImmInstallIMEW` 安全，则阶段 2 大幅简化。
 

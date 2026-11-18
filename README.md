@@ -2,8 +2,9 @@
 
 **项目章程 / Project Charter**
 状态：已立项（2026-11-12）｜路线：B（以 mzimeja 为蓝本新写 IMM32 拼音 IME）｜目标平台：ReactOS 0.4.16+（IMM32 架构）
-当前阶段：**M2 单字拼音引擎已完成并发布**（ReactOS VM 真实手打端到端上屏，`M2-ACCEPTANCE.md` 15/15；前 500 高频字首页覆盖 **96.8%**；`ctest` 11/11、`check_m1` 63/63）｜最新版本：**alpha0.0.2**（2026-11-18，[Release 说明](CHANGELOG.md)）｜首个公开版本：**alpha0.0.1**（2026-11-17）
+当前阶段：**M2 单字拼音引擎已完成并发布**（ReactOS VM 真实手打端到端上屏，`M2-ACCEPTANCE.md` 15/15；前 500 高频字首页覆盖 **96.8%**；`ctest` 11/11、`check_m1` 63/63）｜最新版本：**alpha0.0.2**（2026-11-18，[Release 说明](docs/handover/CHANGELOG.md)）｜首个公开版本：**alpha0.0.1**（2026-11-17）
 仓库：https://github.com/twipty/ros-chinese-ime（public, main）｜代码许可证：**MIT**（D1 已定，2026-11-13）｜第三方与数据分层授权见 `NOTICE.txt`
+文档：本文件只讲项目本身；**计划、报告、评审、发版说明全部在 [`docs/`](docs/README.md)**，入口是文档地图 [`docs/README.md`](docs/README.md)（由 `tools/check_docs.py` 保证不腐化）
 
 > **⚠️ 重大前提变更（2026-11-18 19:56，读下文前必看）**
 > 立项时把 M0 那次 0xF4 归因为「Preload 预载第三方 IME ⇒ 确定性崩溃」，并据此立了「绝不写 Preload / 绝不注册为默认 IME」的红线。
@@ -12,7 +13,7 @@
 > 加载者是 `userinit` 而非 csrss。
 > **新前提**：风险在「**登录路径上执行可能失败的初始化**」，不在「被 Preload 载入」。
 > 因此红线 #2 降级为部署偏好，A1（`DllMain` 零工作）/A1b（`ImeInquire` 可拒绝）保留但理由改为健壮性。
-> 完整证据与处置：[`M0-REDLINE-REVIEW.md`](M0-REDLINE-REVIEW.md) §13；实验记录：`m0/vm/PRELOAD-PROBE.md`。
+> 完整证据与处置：[`M0-REDLINE-REVIEW.md`](docs/milestones/M0-REDLINE-REVIEW.md) §13；实验记录：`m0/vm/PRELOAD-PROBE.md`。
 > 下文凡出现「csrss 承载 IMM32」「确定性 0xF4」「绝不写 Preload」的表述，均以本框为准。
 
 ## 1. 一句话使命
@@ -78,7 +79,7 @@
 |---|---|---|---|
 | IME 代码 | 自研（蓝本 mzimeja v1.0.0.3 PDS） | **MIT**（D1 已定） | OSI 认证 + 跨法域可执行 + 与 ReactOS GPLv2+ 兼容；见 `LICENSE` 与 `NOTICE.txt` |
 | 字级拼音映射 | Unicode Unihan `kMandarin` | Unicode License（自由使用） | 唯一权威来源 |
-| 字频 | **已定 D2=A**：hanziDB.csv（MIT，基于 Jun Da 排名）主源 + Unihan `kHanyuPinlu` 辅源；Jun Da 原始表因商用限制已排除 | hanziDB MIT + Unihan License 双署名 | 决策见 `m2/M2-DATA-PLAN.md`；`ü` 用 `v` 键输入，数据层统一归一 |
+| 字频 | **已定 D2=A**：hanziDB.csv（MIT，基于 Jun Da 排名）主源 + Unihan `kHanyuPinlu` 辅源；Jun Da 原始表因商用限制已排除 | hanziDB MIT + Unihan License 双署名 | 决策见 `docs/milestones/m2/M2-DATA-PLAN.md`；`ü` 用 `v` 键输入，数据层统一归一 |
 | 词组词典（v0.2） | CC-CEDICT | CC-BY-SA | 若采用须与主代码分开分发（GPL/CC-BY-SA 单独打包） |
 
 ## 6. 上游协调
@@ -98,7 +99,7 @@
 | 编号 | 决策 | 默认倾向 | 决定时机 |
 |---|---|---|---|
 | D1 | 代码许可证 | ~~公共领域~~ → **MIT** | ✅ **已定（2026-11-13）**：蓝本锁定 PDS 的 `v1.0.0.3`，本项目代码用 MIT；理由见 `NOTICE.txt` 第 1 条与 `M0-REPORT.md` 第 6.2 节 |
-| D2 | 字频数据来源 | ~~Jun Da 原始表~~（License 限研究/教学、商用需书面许可，与 MIT 冲突，已排除）→ **hanziDB.csv（MIT）主源 + Unihan `kHanyuPinlu` 辅源** | ✅ **已定 A（2026-11-16）**；附带约束：`ü` 输入用 `v` 键，数据层统一归一（见 `m2/M2-DATA-PLAN.md` 第 7 节） |
+| D2 | 字频数据来源 | ~~Jun Da 原始表~~（License 限研究/教学、商用需书面许可，与 MIT 冲突，已排除）→ **hanziDB.csv（MIT）主源 + Unihan `kHanyuPinlu` 辅源** | ✅ **已定 A（2026-11-16）**；附带约束：`ü` 输入用 `v` 键，数据层统一归一（见 `docs/milestones/m2/M2-DATA-PLAN.md` 第 7 节） |
 | D3 | IME HKL 布局 ID | ~~硬编码 0xE0100804~~ → **由 `ImmInstallIME` 动态分配并记录返回值**（M0 解剖实证：mzimeja 用 `%08X` 接收系统分配值）；0xE0100804 仅作冲突排查参考 | M1 前（结论已定） |
 | D4 | v0.1 是否含词组 | 不含（单字流畅 + 连续输入即可） | M2 末 |
 | D5 | 是否以 modules/optional 进官方树 | 仅评估不承诺（v1.0 后视质量与上游意愿） | v1.0 后 |
@@ -138,11 +139,11 @@
 - **ReactOS JIRA**：CORE-19268（CJK Season 2）仍 Unresolved/Major、无 Fix Version，中文 IME 无排期；**CORE-19455（IME 热键）Reopened/Unresolved、无 Fix Version**（Alt+`VK_KANJI` 不生效，`ImmProcessKey` 不识别 Alt）；**CORE-20799（键盘 NLS 表）Unresolved** 且 blocks 19455。→ 热键短期内不会修，**M3 备用切换键方案不能砍**。
 - 对 M1 的操作建议：以 `vendor/fetch-vendor.sh` 复现 mzimeja **`v1.0.0.3`** 只读参考树（非 master，带 SHA256 校验，上游源码不入库）；IME 核心引擎（romanic conversion/dic/UI）借鉴，部署层（Inno/ime_setup/ImmInstallIME 路径）按 M0 红线全部重写。
 
-> 完整的实测记录、证据清单、范围偏差与 M1 交接见 **[M0-REPORT.md](M0-REPORT.md)**。
+> 完整的实测记录、证据清单、范围偏差与 M1 交接见 **[M0-REPORT.md](docs/milestones/M0-REPORT.md)**。
 
 ## 10. M1 进展（2026-11-13）
 
-骨架替换的宿主侧工作已完成，详见 **[M1-REPORT.md](M1-REPORT.md)**：
+骨架替换的宿主侧工作已完成，详见 **[M1-REPORT.md](docs/milestones/M1-REPORT.md)**：
 
 - `ime/` 从零新写 IMM32 骨架：16 个导出全部实现，M1 语义为「空 IME 直通」（`ImeProcessKey` 全放行、`ImeToAsciiEx` 零消息）；`DllMain` 只注册窗口类，保证裸 `LoadLibrary` 在登录路径无害（M0 红线 #1）。
 - 中文资源与版本信息落定：`FILETYPE=VFT_DRV` / `FILESUBTYPE=VFT2_DRV_INPUTMETHOD`、`Translation 0x0804/1200`、布局文本「中文(简体) - RosPinyin」。
@@ -150,7 +151,7 @@
 - 引擎契约 `engine/include/rospinyin/engine.hpp` 定型，M2 替换实现时 API 不变；`ui/` 给出窗口分层约定。
 - 质量闸门：`tools/check_m1.py`（长期契约闸门，当前 63 项：日语残留、导出表、版本字段、加载期调用白名单、命名一致性、M2 不变量；另有 `tools/coverage_report.py`（前 500 高频字首页覆盖，准出判据）与 `tools/check_release_version.py`（发版：tag ↔ 版本头 ↔ 产物 FILEVERSION））+ Linux 下用 `tools/syntax_stub` 对 Windows 源码做零链接语法编译；本机 `ctest` 11/11 通过。
 
-**尚未完成（此为 2026-11-13 历史状态，后续已更新）**：真实 Windows/MinGW 构建产物、Windows 参照机裸加载验证、ReactOS VM 分步注册与 50 次切换压测。本机为 Linux 无 Windows 工具链，**当前仓库不含可运行的 `rospinyin.ime` 二进制**；Windows CI job 已接线，推送后应先确认其产物。→ 见 [M1-REPORT.md](M1-REPORT.md) 第二轮更新与下文第 11 节。
+**尚未完成（此为 2026-11-13 历史状态，后续已更新）**：真实 Windows/MinGW 构建产物、Windows 参照机裸加载验证、ReactOS VM 分步注册与 50 次切换压测。本机为 Linux 无 Windows 工具链，**当前仓库不含可运行的 `rospinyin.ime` 二进制**；Windows CI job 已接线，推送后应先确认其产物。→ 见 [M1-REPORT.md](docs/milestones/M1-REPORT.md) 第二轮更新与下文第 11 节。
 
 ## 11. M2 进展（2026-11-16）
 
@@ -158,7 +159,7 @@
 - **引擎**：共用拼音归一化库、`mkdat` 编译器、运行时表、`PinyinSession`（最长匹配+回溯切分、连续输入、音节下划线数据）、`CandidatePager`（9 候选、翻页、数字选字）。
 - **IMM32 + UI**：`ime/imm_entry.cpp` 已实现真实键处理（组合、翻页、选字上屏、退格、Esc）；`ui/` 提供组合串窗口与候选窗，字体带 CJK 兜底链；窗口惰性创建，不在 `DllMain` 建窗。
 - **质量闸门**：Linux 语法检查（`ime/` + `ui/` + 安装器）通过；`ctest` **7/7**；真实 dat 端到端验证 `zhongguo → 国`、`nv/lv/lve/nve` 命中预期字。
-- **验收准备**：操作单 `m2/M2-ACCEPTANCE.md` 与数据 `m0/share/rospinyin.dat` 已就位，待 CI 产出含 M2 UI 的新 `.ime` 后在 ReactOS VM 执行。
+- **验收准备**：操作单 `docs/milestones/m2/M2-ACCEPTANCE.md` 与数据 `m0/share/rospinyin.dat` 已就位，待 CI 产出含 M2 UI 的新 `.ime` 后在 ReactOS VM 执行。
 - M1 的 passthrough 契约断言已随 M2 语义更新（保留注册/资源/DllMain 红线，新增会话激活断言），详见 `tools/check_m1.py`。
 
 ### M2 打通记录（2026-11-17，alpha0.0.1）

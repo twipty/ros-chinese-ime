@@ -223,6 +223,6 @@
 **测试与验收**
 - `tests/`：UTF-32→代理对纯函数单测、rare 标志传播、尾部限量。
 - `tools/check_m1.py`：字体清单对称性、family name 断言。
-- `m2/M2-ACCEPTANCE.md`：扩展区逐字截图验收项（Ext-B/C/G 各取 5 字）、双字体度量对比。
+- `docs/milestones/m2/M2-ACCEPTANCE.md`：扩展区逐字截图验收项（Ext-B/C/G 各取 5 字）、双字体度量对比。
 
 **不在本次范围**：`emit_text()` 上屏链（已支持代理对，勿动）；`.dat` 扩表（§7，独立工程）。

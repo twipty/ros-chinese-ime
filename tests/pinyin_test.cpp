@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 //
 // M2 unit tests for the shared pinyin normalization (D2=A + v-key rule).
-// These are the exact examples recorded in m2/M2-DATA-PLAN.md section 7.
+// These are the exact examples recorded in docs/milestones/m2/M2-DATA-PLAN.md section 7.
 
 #include <rospinyin/pinyin.hpp>
 

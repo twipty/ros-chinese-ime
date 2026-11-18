@@ -1,7 +1,7 @@
 # M1 阶段报告（骨架替换）— 2026-11-13
 
 > 状态：**宿主侧代码完成，VM 实测待做**。本报告记录 M1 第一轮推进（WBS 2.2 全部、2.3.2 安装工具源码、2.4.1 直通语义及其宿主可测部分）。
-> 前置结论见 [M0-REPORT.md](M0-REPORT.md)，任务总表见 [PLAN.md](PLAN.md)，仓库章程见 [README.md](README.md)。
+> 前置结论见 [M0-REPORT.md](M0-REPORT.md)，任务总表见 [PLAN.md](../plan/PLAN.md)，仓库章程见 [README.md](../../README.md)。
 
 > **⚠️ 前提变更（2026-11-18 19:56）**：本报告中「四条设计红线」的第 2 条（绝不写 Preload / 不注册为默认 IME）
 > 所依据的 0xF4 归因已被两组对照实验推翻——修 `Preload` 的是平台 `ImmInstallIMEW` 自己，

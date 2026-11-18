@@ -2,7 +2,7 @@
 
 > 版本基线：`alpha0.0.1`（2026-11-17 发布）＋ 2026-11-17 夜间的 M2 收口改动（未发版，将随 `alpha0.0.2`）
 > 环境：ReactOS 0.4.16 i386 / QEMU / 真实键盘手打（禁止程序注入按键）
-> 相关文档：`m2/M2-ACCEPTANCE.md`（15 项操作单）、`m2/M2-REMAINING.md`（剩余事项）、`HANDOVER.md` §11
+> 相关文档：`docs/milestones/m2/M2-ACCEPTANCE.md`（15 项操作单）、`docs/milestones/m2/M2-REMAINING.md`（剩余事项）、`HANDOVER.md` §11
 
 ## 1. 结论
 
@@ -125,4 +125,4 @@ install-rospinyin.exe /status
 install-rospinyin.exe /step1        # 拷 .ime + .dat，校验字节数
 ```
 
-真机验收按 `m2/M2-ACCEPTANCE.md` 执行，`imhost.exe rec` 只记录不注入。
+真机验收按 `docs/milestones/m2/M2-ACCEPTANCE.md` 执行，`imhost.exe rec` 只记录不注入。

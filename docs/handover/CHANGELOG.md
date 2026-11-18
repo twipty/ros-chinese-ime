@@ -7,6 +7,19 @@
 
 ## 未发布
 
+### 仓库结构
+
+- **文档全部收进 `docs/`，根目录只留 `README.md`（+ `LICENSE`、`NOTICE.txt`、`CMakeLists.txt`）**。
+  16 个根目录 `.md` 按「谁在什么时候读」分为六类：`plan/`（每轮必读的活文档）、
+  `handover/`（交接与变更登记）、`milestones/`（阶段报告，只读）、`font/`（字体与字形专题）、
+  `reviews/`（跨切面评估）、`releases/`（发版说明，机器读取）。`docs/README.md` 是唯一索引。
+- **新增门禁 `tools/check_docs.py`（7 项，已接入 CI）**：根目录不得有多余 markdown、
+  `docs/` 下每个文档必须登记在索引里、相对链接必须可解析、链接不得闭合两次、
+  `docs/releases/` 命名须匹配 tag、子系统文档须贴着代码。整理若没有门禁，
+  下一份报告还会落在 `README.md` 旁边。
+- 引用同步：14 条 markdown 链接按新位置重算、59 处行内路径加 `docs/` 前缀；
+  `tools/check_release_version.py` 与 CI 的发布 job 改读 `docs/releases/<tag>.md`。
+
 ### 发版工程化
 
 - **版本号收敛到单一真相源**：新增 `ime/version.h`，`rospinyin_res.rc` 从这里展开
@@ -15,7 +28,7 @@
   而"发布的二进制 = 该 tag 的构建"当时无法检验。
 - **新增版本门禁** `tools/check_release_version.py <tag> [--binary X.ime]`：校验
   tag ↔ `ime/version.h` ↔ **产物 PE 里的 `FILEVERSION`**（自行解析 `.rsrc`，无第三方依赖），
-  并要求 `releases/<tag>.md` 已存在。反例实测可判红（拿 rc 仍是 0.0.1 的旧产物跑，
+  并要求 `docs/releases/<tag>.md` 已存在。反例实测可判红（拿 rc 仍是 0.0.1 的旧产物跑，
   输出 `binary=0.0.1.0`）。
 - **CI 由 tag 触发发版**（P2-1）：`on.push.tags: ['alpha*','beta*']` → `release` job，
   `needs: [engine-smoke, windows-build]`，用**本次运行的产物**发布 `.ime` / `.dat` /
@@ -97,7 +110,7 @@
   同音节内 rank 升序）计算，不重新实现排序。实测 **96.8%（484/500，达标 ≥95%）**，
   但**首选率仅 46.2%**（前 100 是 83%、前 1000 首页 93.5%）——"空格即出"只对最常用的一百来字成立。
   已接进 CI 作回归门限（`--fail-under 95`）。
-- **`m2/M2-EXIT-GAP.md`**：M2 距离准出的逐条对照。结论是**准出成立**，
+- **`docs/milestones/m2/M2-EXIT-GAP.md`**：M2 距离准出的逐条对照。结论是**准出成立**，
   另列 4 条记录缺口（验收截图未归档、3.9–3.11 无逐页图、版本号漂移、dat 两套数字）与 3 条已知限制。
 - **`FONT-PLAN-REVIEW.md`**：两份字形方案的评估。`MINIMAL-FONT-SET-PLAN.md`（实测 100%）
   取代 `FULL-GLYPH-COVERAGE-PLAN.md`（推算 ≥99%）作为实施依据，后者的"非 BMP 退路"与
@@ -131,7 +144,7 @@
 
 - **M2 验收单 15/15 通过（2026-11-18）**：真机手打一轮 433 键，入口层与窗口层逐条对齐、程序注入 0 次；
   `nv/lv/lve/nve`、跨页选字、Backspace/Esc、100+ 字连打、lone-Shift 中英往返均有日志实据。
-  逐项实测见 `m2/M2-ACCEPTANCE.md` §3，还原方法见 `HANDOVER.md` §11.16。
+  逐项实测见 `docs/milestones/m2/M2-ACCEPTANCE.md` §3，还原方法见 `HANDOVER.md` §11.16。
 
 ---
 
@@ -207,7 +220,7 @@ M2 收口改动。**不改数据格式、不改 IMM32 ABI**，`alpha0.0.1` 的�
 
 - `tools/check_m1.py`：53 → **57** 项，新增 4 条 M2 不变量（组合窗几何 owner、重绘条件化、
   安装器两份 payload、open 状态不得作为门禁）。
-- 新增 `m2/M2-REPORT.md`；`m2/M2-REMAINING.md` 更新为"仅剩真机验收单"。
+- 新增 `docs/milestones/m2/M2-REPORT.md`；`docs/milestones/m2/M2-REMAINING.md` 更新为"仅剩真机验收单"。
 - trace 新增 `wmove=`（真正改变窗口几何的次数）与 `wrep=`（重绘请求次数）、
   `cand-filter`（字形过滤剔除数）。
 

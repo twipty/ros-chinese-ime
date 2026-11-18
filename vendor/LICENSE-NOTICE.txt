@@ -30,4 +30,4 @@ DO NOT copy code, resources or dictionary data from:
 ...unless decision D1 is explicitly changed to "accept GPLv3", in which
 case this notice and the project's own license must be updated together.
 
-See: ../M0-REPORT.md section 5.2 and ../README.md section 9.
+See: ../docs/milestones/M0-REPORT.md section 5.2 and ../README.md section 9.

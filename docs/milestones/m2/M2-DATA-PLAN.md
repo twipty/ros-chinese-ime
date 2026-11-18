@@ -217,7 +217,7 @@ rospinyin.dat = 882 KB（目标 < 2 MB ✅）
 | 窗口层 | `ui/ui_window.*`、`ui/composition_window.*`、`ui/candidate_window.*` | ✅ 组合串音节下划线、候选窗 9 项编号与页码、跟随插入符、边缘避让、CJK 字体兜底链 |
 | IMM32 入口 | `ime/imm_entry.cpp` | ✅ M1 passthrough → M2 键处理；`ImeSelect(TRUE)` 调用 `on_select(true)`（关键集成修复） |
 | 构建/CI | `ime/CMakeLists.txt`、`tools/syntax_stub/windows.h`、`.github/workflows/ci.yml`、`tools/check_m1.py` | ✅ 接入 engine 与 UI 源、扩展语法桩、CI 生成并发布 dat、contract 断言随 M2 语义更新 |
-| VM 验收 | `m2/M2-ACCEPTANCE.md`、`m0/share/rospinyin.dat` | 🧪 操作单与数据就位，待新 `.ime` 产出后执行 |
+| VM 验收 | `docs/milestones/m2/M2-ACCEPTANCE.md`、`m0/share/rospinyin.dat` | 🧪 操作单与数据就位，待新 `.ime` 产出后执行 |
 
 验证结果：
 
