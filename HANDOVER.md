@@ -1237,6 +1237,35 @@ uninstall 里第二处 swprintf 换前缀     → FAIL  prefixes: ['L"Keyboard L
 **教训（通用）**：断言要用**白名单 + 调用点**，不要用关键词黑名单。黑名单只能证明
 「某个词没出现」，白名单能证明「只有这些事可能发生」。后者才是行为契约。
 
+### 11.20 P2-1 落地：tag 即发版，并由门禁盯住版本（2026-11-18 21:1x）
+
+**做之前先发现的真问题**：`ime/rospinyin_res.rc` 里 `FILEVERSION` 还是 `0, 0, 1, 0`，
+`FileVersion` / `ProductVersion` 两个字符串还是 `"alpha0.0.1"`——而 `alpha0.0.2` 已经发布了。
+也就是说，用户在文件属性里看到的版本是错的，而"发布的二进制 = 该 tag 的构建"这句话
+当时**无法被检验**。根因不是谁忘了改，而是**没有任何东西比较这两者**。
+
+**改了三处：**
+
+1. **版本单一真相源** `ime/version.h`：`MAJOR/MINOR/PATCH/BUILD` + `ROSPINYIN_VERSION_STRING`
+   + 给 rc 用的 `ROSPINYIN_VERSION_COMMA`。`rospinyin_res.rc` 改为 `#include "version.h"`，
+   `FILEVERSION` 与两个字符串都从这里展开。只有一个地方要改，就没有"改了两处漏一处"。
+2. **版本门禁** `tools/check_release_version.py <tag> [--binary X.ime]`：校验
+   tag ↔ `version.h` ↔ **产物里的 `FILEVERSION`**（自己解析 PE 的 `.rsrc` /
+   `VS_VERSIONINFO` / `VS_FIXEDFILEINFO`，无第三方依赖）。`releases/<tag>.md` 必须存在。
+   反例实测：拿 U1/U3 版（rc 仍 0.0.1）跑 → `artifact FILEVERSION ... binary=0.0.1.0` 判红。
+3. **CI release job**：`on.push.tags: alpha*/beta*` 触发；`needs: [engine-smoke, windows-build]`，
+   所以门禁红了就发不出去。产物装配后 `gh release create/edit` + `upload --clobber`
+   （可重跑），最后**把资产下载回来 `sha256sum -c`** —— 这一步原来是手工做的（alpha0.0.2
+   下载回验三件），现在成了流程的一部分。
+
+**顺带验证的一件事**：本地按 CI 的装配步骤跑一遍，`.dat` 的 sha256 是
+`f28b2606338431d2…`，与 `alpha0.0.2` 已发布的资产**完全一致**。说明 CI 从固定源编译的
+数据表确实能重现发布物，这条以前只是相信。
+
+**遗留**：`alpha0.0.2` 的资产仍是手工上传的那份（版本资源 0.0.1）；不打算重发，
+下一次发版会自带 0.0.x 的正确版本号。若要补，`gh release upload --clobber` 即可，
+但 tag 不变而资产变了，反而破坏"资产 = tag 构建"的可追溯性，所以不做。
+
 ### 11.2 其他待办
 
 - ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。
@@ -1267,9 +1296,15 @@ uninstall 里第二处 swprintf 换前缀     → FAIL  prefixes: ['L"Keyboard L
 
 **发版/验收**
 
-1. push 到 `main` → CI 三个 job 绿 → `m1-artifacts` 更新（核对 `INFO.txt` 的 source commit）；
-2. VM 拉取产物 → 重启 → 跑 `m2/M2-ACCEPTANCE.md`；
-3. 更新 `M2-REPORT.md`（若新建）与 `PLAN.md`/`ROADMAP.md` 状态。
+1. **发版前一个提交**：写 `releases/<tag>.md`，同时把 `ime/version.h` 的四个数字与
+   `ROSPINYIN_VERSION_STRING` 一起 bump。`python3 tools/check_release_version.py <tag>`
+   必须全绿——它同时校验发布说明是否存在，所以"先写说明再打 tag"是被强制的，不是靠记性。
+2. **打 tag 并 push 那个 tag**：CI 的 `release` job 用**本次运行的产物**建 release
+   （`.ime` / `.dat` / `install-rospinyin.exe` / `INFO.txt` / `SHA256SUMS.txt`），
+   再把资产下载回来逐个 `sha256sum -c`。手工上传已不是路径；
+   `tools/make_release.py` 只在 CI 不可用时兜底（它同时负责打 tag）。
+3. VM 拉取产物 → 重启 → 跑 `m2/M2-ACCEPTANCE.md`；
+4. 更新 `M2-REPORT.md`（若新建）与 `PLAN.md`/`ROADMAP.md` 状态。
 
 #### 推送通道（2026-11-17 实测，务必按此执行）
 

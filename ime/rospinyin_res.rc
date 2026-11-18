@@ -10,6 +10,7 @@
 // reference it without duplicating the translated string in the registry.
 
 #include "resource.h"
+#include "version.h"   // single source of truth: bump before tagging
 #include <windows.h>
 // MSVC rc.exe needs the pragma; GNU windres rejects it and instead receives
 // the codepage from CMake ("-c 65001", see the root CMakeLists.txt).
@@ -42,8 +43,8 @@ LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
 #endif
 
 1 VERSIONINFO
-FILEVERSION     0, 0, 1, 0
-PRODUCTVERSION  0, 0, 1, 0
+FILEVERSION     ROSPINYIN_VERSION_COMMA
+PRODUCTVERSION  ROSPINYIN_VERSION_COMMA
 FILEFLAGSMASK   0x3fL
 FILEOS          0x40004L
 FILETYPE        0x3L
@@ -55,12 +56,12 @@ FILESUBTYPE     0xBL
         {
             VALUE "CompanyName",      "RosPinyin contributors\0"
             VALUE "FileDescription", "中文(简体) - RosPinyin\0"
-            VALUE "FileVersion",     "alpha0.0.1\0"
+            VALUE "FileVersion",     ROSPINYIN_VERSION_STRING "\0"
             VALUE "InternalName",    "rospinyin\0"
             VALUE "LegalCopyright",  "Copyright (c) 2026 RosPinyin contributors. MIT.\0"
             VALUE "OriginalFilename", "rospinyin.ime\0"
             VALUE "ProductName",     "RosPinyin\0"
-            VALUE "ProductVersion",  "alpha0.0.1\0"
+            VALUE "ProductVersion",  ROSPINYIN_VERSION_STRING "\0"
         }
     }
     BLOCK "VarFileInfo"

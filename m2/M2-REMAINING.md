@@ -1,12 +1,12 @@
 # M2 剩余事项清单
 
-> 基线：`alpha0.0.1`（2026-11-17）｜状态：**M2 已完成（2026-11-18 12:5x），仅 P2-1 发版工程化未动**
+> 基线：`alpha0.0.2`（2026-11-18）｜状态：**M2 已完成，P0/P1/P2 全部关闭（P2-1 于 2026-11-18 21:1x 完成）**
 > 已确认可用：真实键盘输入 → 组合串 → 候选窗 → 选字上屏（`nihao`/`zhong`/`guo`/`shui`），
 > 三层记录（入口 `WH_KEYBOARD` / 窗口消息 / IME trace）逐条对齐，无多余字符、无丢键。
 
 优先级定义：**P0** = 不解决就不能宣布 M2 完成；**P1** = 能宣布完成但用户会碰到；**P2** = 工程化/文档。
 
-进度：**P0-1 / P0-2 / P0-3 / P1-1 / P1-2 / P1-3 / P2-2 / P2-3 已完成**；**P2-1 未动**（发版工程化，不影响 M2 判定）。
+进度：**P0-1 / P0-2 / P0-3 / P1-1 / P1-2 / P1-3 / P2-1 / P2-2 / P2-3 全部完成**。
 真机三轮反馈（`zhongguo` 只显示 zhong、Shift 不切中英、翻页弹窗位移、汉字字距重叠）已全部修复并复验，
 见 `HANDOVER.md` §11.13–§11.16。
 
@@ -87,11 +87,24 @@
 
 ## P2：工程化与文档（3 项）
 
-### ⬜ P2-1 CI 直接产出 release 资产
+### ✅ P2-1 CI 直接产出 release 资产（已完成 2026-11-18）
 
 现在 `.ime`/`.dat` 是本地构建后手工上传。CI 已有三个 job（Linux 测试 + MinGW i686 +
 VM 资产暂存），可加一个 tag 触发的 release job，保证"发布的二进制 = 该 tag 的源码构建"。
-**未动**——它不影响 M2 判定，建议与 `alpha0.0.2` 的发版一起做。
+
+**做完的样子**：`on.push.tags: ['alpha*','beta*']` → `release` job（`needs:
+[engine-smoke, windows-build]`）用**本次运行的产物**建 release，资产为
+`rospinyin.ime` / `rospinyin.dat` / `install-rospinyin.exe` / `INFO.txt`（tag + commit +
+run 链接）/ `SHA256SUMS.txt`，发布后再下载回来 `sha256sum -c` 自检。手工上传不再是路径；
+`tools/make_release.py` 降为 CI 不可用时的兜底。
+
+**做这件事时抓到的真问题**：版本资源停在 `FILEVERSION 0,0,1,0` / `"alpha0.0.1"`，
+而 `alpha0.0.2` 已经发布——用户在文件属性里看到的是错的版本，且"资产 = tag 构建"
+无法被检验。修法：新增 `ime/version.h` 作单一真相源（rc 从这里展开），
+新增 `tools/check_release_version.py` 校验 tag ↔ 头文件 ↔ **产物 PE 里的 FILEVERSION**
+（自己解析 `.rsrc`，无依赖），并在 release job 里作为第一道门。
+
+细节见 `HANDOVER.md` §11.20；发版流程见 §12「发版/验收」。
 
 ### ✅ P2-2 `M2-REPORT.md`（已完成 2026-11-17）
 
@@ -213,8 +226,8 @@ P0-1 已全绿（15/15），`alpha0.0.2` 已于 2026-11-18 发布（`ROSPINYIN_T
 
 1. **U1 + U3**（共约 9 行，两个独立小改）—— 都是真机每天会撞到的观感问题，且都不碰状态机语义；
    U1 改完正好被 N′ 顺带验证（N′ 本来就是"登录期被激活"，能直接看出首次是否已开）；
-2. **P2-1**（CI 产出 release 资产）—— 本次发版仍是"本地构建 + 脚本上传"，
-   靠人记住"发布的二进制 = 该 tag 源码构建"；让 tag 触发 CI 构建才能真正保证；
+2. ~~**P2-1**（CI 产出 release 资产）~~ **已完成**：tag 即发版，release job 用本次运行产物，
+   并校验 tag ↔ `ime/version.h` ↔ 产物 `FILEVERSION`；见 `HANDOVER.md` §11.20；
 3. 归档截图进 `m0/vm/evidence/m2-acceptance/`（日志已齐，缺图）；
 4. 进 M3：语言栏菜单、生僻字开关入口、冷僻字支持（见 `RARE-CHAR-AND-GLYPH-SOLUTION.md`）。
 

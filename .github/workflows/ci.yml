@@ -6,6 +6,10 @@ name: CI
 on:
   push:
     branches: [main]
+    # Tag pushes build and then publish the release from the same artifacts.
+    # Pushing the tag is the whole release act; there is no manual upload step
+    # left that could attach a binary built from something other than the tag.
+    tags: ['alpha*', 'beta*']
   pull_request:
   workflow_dispatch:
 
@@ -213,3 +217,70 @@ jobs:
           # Force push: this branch is a binary drop zone, newest run wins.
           # Also removes non-fast-forward failures from concurrent runs.
           git push --force origin m1-artifacts
+
+  release:
+    # P2-1: pushing the tag *is* the release. The assets are the artifacts this
+    # very run produced, so "the published binary is the build of this tag" is
+    # enforced instead of remembered -- alpha0.0.2 shipped from a local build
+    # with the version resource still saying alpha0.0.1, and nothing noticed.
+    #
+    # The version gate compares three things: the tag name, ime/version.h, and
+    # FILEVERSION inside the built .ime. Bump ime/version.h in the commit you
+    # tag, and write releases/<tag>.md before tagging (the gate requires it).
+    name: Publish release assets (tag)
+    runs-on: ubuntu-latest
+    needs: [engine-smoke, windows-build]
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: rospinyin-m1-win32
+          path: stage
+      - uses: actions/download-artifact@v4
+        with:
+          name: rospinyin-m2-data
+          path: m2-stage
+      - name: Version gate (tag == version.h == FILEVERSION of the artifact)
+        run: python3 tools/check_release_version.py "$TAG" --binary stage/rospinyin.ime
+      - name: Assemble assets
+        run: |
+          set -eu
+          mkdir -p out
+          cp stage/rospinyin.ime stage/install-rospinyin.exe m2-stage/rospinyin.dat out/
+          printf 'tag: %s\nsource commit: %s\nworkflow run: %s\n' \
+            "$TAG" "$GITHUB_SHA" \
+            "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            > out/INFO.txt
+          cd out
+          sha256sum rospinyin.ime rospinyin.dat install-rospinyin.exe INFO.txt \
+            > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+      - name: Publish
+        # Re-runs are idempotent: an existing release gets its notes refreshed
+        # and its assets replaced with --clobber.
+        run: |
+          set -eu
+          NOTES="releases/${TAG}.md"
+          PRE=""
+          case "$TAG" in alpha* | beta*) PRE="--prerelease" ;; esac
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --notes-file "$NOTES" $PRE
+          else
+            gh release create "$TAG" --verify-tag --title "$TAG" \
+              --notes-file "$NOTES" $PRE
+          fi
+          gh release upload "$TAG" out/* --clobber
+      - name: Verify the public assets byte-for-byte
+        # The same check that was done by hand for alpha0.0.2 (three files
+        # downloaded back through gh-proxy and compared). Automating it means a
+        # truncated upload can no longer be discovered by a user.
+        run: |
+          set -eu
+          gh release download "$TAG" --dir verify --clobber
+          cd verify && sha256sum -c SHA256SUMS.txt

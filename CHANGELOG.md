@@ -7,6 +7,32 @@
 
 ## 未发布
 
+### 发版工程化
+
+- **版本号收敛到单一真相源**：新增 `ime/version.h`，`rospinyin_res.rc` 从这里展开
+  `FILEVERSION` / `FileVersion` / `ProductVersion`。此前资源里写死 `0, 0, 1, 0` 与
+  `"alpha0.0.1"`，**`alpha0.0.2` 发布后仍如此**——文件属性显示的版本是错的，
+  而"发布的二进制 = 该 tag 的构建"当时无法检验。
+- **新增版本门禁** `tools/check_release_version.py <tag> [--binary X.ime]`：校验
+  tag ↔ `ime/version.h` ↔ **产物 PE 里的 `FILEVERSION`**（自行解析 `.rsrc`，无第三方依赖），
+  并要求 `releases/<tag>.md` 已存在。反例实测可判红（拿 rc 仍是 0.0.1 的旧产物跑，
+  输出 `binary=0.0.1.0`）。
+- **CI 由 tag 触发发版**（P2-1）：`on.push.tags: ['alpha*','beta*']` → `release` job，
+  `needs: [engine-smoke, windows-build]`，用**本次运行的产物**发布 `.ime` / `.dat` /
+  `install-rospinyin.exe` / `INFO.txt` / `SHA256SUMS.txt`，发布后把资产下载回来
+  `sha256sum -c`。手工上传不再是路径；`tools/make_release.py` 降为兜底。
+- 顺带核实：按 CI 步骤本地装配一遍，`.dat` 的 sha256 与 `alpha0.0.2` 已发布资产一致，
+  说明 CI 从固定源编译的数据表可重现发布物。
+
+### 门禁
+
+- **契约断言从「黑名单扫词」改为「调用白名单」**（`tools/check_m1.py`，59 → 63 项）：
+  旧的 `installer never writes Preload` 扫的是源码里的 `"Preload"` 一词，
+  而写注册表的是平台；把写入写成 `L"Keyboard Layout\\Pre" L"load"` 即可绕过（实测旧断言 0 命中）。
+  现改为 5 条结构断言：`DLL_PROCESS_ATTACH` 调用名白名单、类注册只调 `RegisterClassExW`、
+  `ImeInquire` 有拒绝分支、安装器注册表写入限于两键白名单、注册表路径必须由
+  `kKeyboardLayouts` 拼出。每条都做过反向验证（改坏必 FAIL）。
+
 ### 前提变更（文档层面，不改运行时代码）
 
 - **M0 那次 `0xF4` 的归因被推翻，红线 #2 降级为部署偏好**。立项时把崩溃归因为

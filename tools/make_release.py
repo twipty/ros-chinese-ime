@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """建 annotated tag + GitHub release 并上传资产（只走 api.github.com / uploads.github.com）。
 
+**这不是首选路径**（2026-11-18 起）。正常发版 = 写好 `releases/<tag>.md`、bump
+`ime/version.h`、push tag，由 CI 的 `release` job 用本次运行的产物发布并回验资产
+（见 HANDOVER §11.20）。本脚本保留为兜底：CI 不可用、或本机需要绕过 git push 建 tag 时用。
+
 用途：本机 git push 走不通时（沙箱代理只放行 api.github.com），发版仍能完成。
-前置：目标 commit 已经在远端 main 上（用 tools/push_via_api.py 推）。
+前置：① 目标 commit 已经在远端 main 上（用 tools/push_via_api.py 推）；
+     ② `python3 tools/check_release_version.py <tag>` 已全绿（否则发出去的版本号是假的）。
 
 用法：
     make_release.py <tag> <target_sha> <assets_dir> <notes_file> [--title T] [--final]
