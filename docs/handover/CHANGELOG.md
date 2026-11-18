@@ -7,6 +7,20 @@
 
 ## 未发布
 
+### 注入缝（X2-a0）：scheme 可替换，框架不动
+
+- **`imfw::SchemeRegistry`**（`framework/include/imfw/scheme_registry.hpp`）：把 `scheme_instance()`
+  拆成"创建"（装配件提供 `scheme_factory()`）与"查询"（框架 `get()`，结果缓存一次）两半；
+  `install(Scheme*)` 是测试/宿主的注入点。`scheme_instance()` 保留为别名，**6 处调用点零改动**。
+  解决审计 A-P0-2：此前换一个方案只能换掉框架所依赖的那个符号再重编。
+- **toy scheme**（`samples/toy-scheme/`）：字母表 `a-z`、每键两个候选、零数据纯 ASCII，
+  作注入缝首个消费者；`-DROSPINYIN_SCHEME=toy` 编出玩具版 `rospinyin.ime`（870,475 B，
+  不可发布，configure 时有明确警告）。该提交 `framework/` 零 diff——G4 判据提前达成，
+  X3 只剩打包与文档。
+- **门禁**：`check_m1` 65 项（装配件断言改为查定义形式，堵掉"注释里出现关键词即通过"的假绿）；
+  CI 语法检查覆盖玩具路径，MinGW job 多一个 `build-toy` 并断言两个 `.ime` 不是同一份字节。
+  `ctest` 13/13（新增 `scheme-registry`、`toy-scheme`）。
+
 ### 架构审计复核与 X 计划扩容
 
 - **新增 `docs/reviews/ARCH-AUDIT-VERIFICATION.md`**：对一份外部架构审计（13 条问题结论）逐条回代码取证。

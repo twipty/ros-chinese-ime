@@ -43,19 +43,19 @@
 > 现在 2697（+113，一天之内）。所以每项都附生成命令——**用命令，别引用本文的数字**。
 
 ```bash
-wc -l framework/src/*.cpp framework/include/imfw/*.hpp | tail -1   # 993   可移植层
-wc -l framework/host/* framework/ui/*                 | tail -1   # 2697  平台层（Win32）→ 0 测试
-wc -l ime/*.cpp                                       | tail -1   # 19    装配
-wc -l tests/*.cpp                                     | tail -1   # 1314  测试（全 host-side）
-python3 tools/check_m1.py | tail -1                               # 63 项 契约断言（静态）
-(cd build && ctest -N | tail -1)                                  # 11 项 全在可移植层
+wc -l framework/src/*.cpp framework/include/imfw/*.hpp | tail -1   # 1147  可移植层（X2-a0 后 +154）
+wc -l framework/platform/win32/imm32/* framework/platform/win32/ui/* | tail -1  # 2697  平台层（Win32）→ 0 测试
+wc -l ime/*.cpp                                       | tail -1   # 46    装配（含玩具装配件，不进产品构建）
+wc -l tests/*.cpp samples/toy-scheme/*.cpp | tail -1   # 1614  测试（全 host-side）
+python3 tools/check_m1.py | tail -1                               # 65 项 契约断言（静态）
+(cd build && ctest -N | tail -1)                                  # 13 项 全在可移植层
 ```
 
 | 文件 | 行数 | 性质 |
 |---|---|---|
-| `framework/host/imm_entry.cpp` | 783 | IMM32 入口 + 键路由 + 会话，**最重**（6 类职责混在一个 TU） |
-| `framework/ui/ime_ui.cpp` | 300 | 窗口编排、锚点、`GlyphProbe` 字形探针 |
-| `framework/ui/ui_window.cpp` | — | 几何单一 owner；开头 28 处 `#ifndef` 重定义 Win32 常量 |
+| `framework/platform/win32/imm32/imm_entry.cpp` | 783 | IMM32 入口 + 键路由 + 会话，**最重**（6 类职责混在一个 TU） |
+| `framework/platform/win32/ui/ime_ui.cpp` | 300 | 窗口编排、锚点、`GlyphProbe` 字形探针 |
+| `framework/platform/win32/ui/ui_window.cpp` | — | 几何单一 owner；开头 28 处 `#ifndef` 重定义 Win32 常量 |
 | `framework/include/imfw/{engine,scheme}.hpp` | 72 / 131 | 可移植契约，**Win32 类型 0 处** |
 
 **接缝现状（这是本计划的地基）**：`imm_entry.cpp` 对外部世界的依赖只有五项，数量都很小，
@@ -73,7 +73,7 @@ python3 tools/check_m1.py | tail -1                               # 63 项 契�
 
 | 缺口 | 证据 | 为什么它属于本计划 |
 |---|---|---|
-| 无注入点 | `scheme_instance()` 是链接期硬接线（`scheme.hpp:129` → `scheme_reg.cpp:14`）；第二方案靠**换一个 `scheme_reg.cpp` 再编译**（`ime/CMakeLists.txt:7` 注释自述） | G3 要假 scheme、G4 要第二个方案，两者都过不去 |
+| 无注入点（**已修，X2-a0**） | `scheme_instance()` 曾是链接期硬接线（`scheme.hpp:129` → `scheme_reg.cpp:14`）；第二方案靠**换一个 `scheme_reg.cpp` 再编译**（`ime/CMakeLists.txt:7` 注释自述）。现在装配件只提供 `scheme_factory()`，框架经 `SchemeRegistry::get()` 查询 | G3 要假 scheme、G4 要第二个方案，两者都过不去 |
 | 库边界不一致 | `framework/CMakeLists.txt` 只构建 `imfw-engine`（5 cpp）；`framework/host`+`ui` 2697 行**无库目标**，由 `ime/CMakeLists.txt:26-35` 用 9 条相对路径直接编进 `.ime` | G1 说"目录自解释"，但没有库边界时目录只是名字 |
 | 构建碎片 | `EXISTS` 守卫 4 处、`CMAKE_SOURCE_DIR`/`PROJECT_SOURCE_DIR` 混用、C 标准未设、无 `CMakePresets.json`、静态链接策略 3 份、`build-win` 与 `build-win-trace-en` 测试开关漂移 | G6；且 X 阶段的验收要靠可复现构建才有意义 |
 | 版本四处 | `CMakeLists.txt:3`=`0.0.1`、`pinyin/version.hpp:9`=`0.0.2-m2-dev`、`imfw/version.hpp:14`=`0.1.0-imfw`、`ime/version.h`=`alpha0.0.2` | G7；`0.0.1` 这个最危险（`project(VERSION)`，一旦被用于产物命名就带错版本） |
@@ -141,7 +141,7 @@ artifact 从未上传，使 `publish-artifacts-branch` 永久失败。补全 `to
 原计划 X2 只有"剥 `handle_key` + 冒烟 + 路由"。审计复核后扩成五步，
 **顺序是硬的**——理由在下面每一步里。
 
-**X2-a0 注入缝 + toy scheme（1–1.5 天）**
+**X2-a0 注入缝 + toy scheme（1–1.5 天）— ✅ 2026-11-18 完成**
 
 `Scheme& scheme_instance()` 换成可注册的上下文：`imfw::SchemeRegistry`（进程内一个实例，
 但**创建与查询分离**，允许在测试里 `install(fake)`）。toy scheme 同时落地，
@@ -153,6 +153,35 @@ artifact 从未上传，使 `publish-artifacts-branch` 永久失败。补全 `to
 
 判据：`-DROSPINYIN_SCHEME=toy` 能构建出可跑的 `.ime`；且该提交 `git diff --stat` **不出现 `framework/`**
 （G4 判据提前达成，X3 只剩打包与文档）。
+
+**✅ 执行记录（2026-11-18 22:5x）**
+
+| 项 | 计划 | 实际 |
+|---|---|---|
+| 创建/查询分离 | `SchemeRegistry` + `install(fake)` | 一致：装配件给 `scheme_factory()`，框架给 `get()` |
+| 调用点改动 | — | **0 处**：`scheme_instance()` 保留为 `get()` 的别名 |
+| toy scheme 位置 | `tests/fixtures/`（允许） | `samples/toy-scheme/`——它要证明的是"第二个方案只加文件夹"，放 tests 会读成"只给测试用" |
+| `framework/` 零 diff | 该提交 | **拆成两个提交**：加缝的提交必然改 `framework/`，接入 toy 的提交是 0（详见下） |
+| 门禁 | — | `ctest` 13/13、`check_m1` 65/65、`check_docs` 7/7 |
+| 玩具 `.ime` | 能构建 | 870,475 B；16 个 IMM32 导出、导入表与拼音版一致 |
+| 真机冒烟 | "可跑" | **未做**（不能代用户敲键）。待用户有手时：装玩具版 → 敲 `abc` → 空格上屏 `abc`、`abc`+`2` 上屏 `abc!` |
+
+**判据拆开写，因为它和现实互斥。** "该提交 `framework/` 零 diff"与"引入注入缝"不可能同时成立：
+缝不在共享核心里，第二个方案就只能复制一份注册表。审计的原话是"**接入 toy scheme 时**
+`framework/` 零 diff"——按这个读，判据成立，而且正是要问的问题（消费者能不能不动框架）。
+于是：
+
+| 提交 | `framework/` |
+|---|---|
+| `feat(framework): SchemeRegistry 注入缝` | 有（2 新文件 + 3 处注释/CMake）——这就是缝 |
+| `feat(samples): toy scheme 作首个消费者` | **0** |
+
+**执行中发现的两件事**：
+
+1. `check_m1` 原来断言 `"scheme_instance" in ime/scheme_reg.cpp`——改完后这个词仍在文件里，
+   在我写的注释里。门禁靠词匹配就会被注释骗，断言已改为查定义形式 `Scheme& scheme_instance`。
+2. 注册表**不能**用静态初始化器绑定（那会让工作在 loader lock 里发生），
+   所以走"第一次查询时问工厂"，DllMain 的行为与改动前逐字一致。
 
 **X2-a `handle_key` 剥离（0.5 天）**
 
@@ -306,7 +335,7 @@ Ctrl+Space 与备用热键——**全部改在 `process_key` 里**。先有冒�
 
 **X2 — 安全网 + 构建收敛**
 
-- [ ] X2-a0 `SchemeRegistry` 注入缝 + toy scheme（审计 A-P0-2；达成 G4）
+- [x] X2-a0 `SchemeRegistry` 注入缝 + toy scheme（审计 A-P0-2；达成 G4）— 2026-11-18，见 §3 X2-a0 执行记录
 - [ ] X2-a `handle_key` 剥离 + `KeyEvent`/`KeyResult`（行为不变）
 - [ ] X2-b `tests/host_smoke_test.cpp`（假 engine/scheme/sink/can_render，5 段键序）（审计 A-P0-1）
 - [ ] X2-c `route_key` + `Intent` 单测；`host_smoke` 序列不变

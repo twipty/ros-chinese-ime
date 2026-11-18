@@ -86,7 +86,7 @@
   - 3.5.3 **v0.1 预览版发布**（提前收集社区反馈，不等 M3）
 - **3.6 框架抽取：引擎宿主 / UI / 工具条可复用化 ✅（2026-11-16 变更目标）**
   - 3.6.1 目录重组：`framework/`（imfw：engine 契约、CodeTable/dat、CandidatePager、IMM32 host、UI 窗口）+ `pinyin/`（拼音插件）+ `ime/`（装配）；`engine/`、`ui/` 消失
-  - 3.6.2 Scheme 插件接口（`imfw/scheme.hpp`）：字母表/码表名/窗口类名/工具条标签/引擎工厂/兜底表；`scheme_instance()` 由装配模块定义
+  - 3.6.2 Scheme 插件接口（`imfw/scheme.hpp`）：字母表/码表名/窗口类名/工具条标签/引擎工厂/兜底表；`scheme_instance()` 由框架定义，装配模块提供 `scheme_factory()`（X2-a0 注入缝，见 `PLAN-MODULARIZATION.md`）
   - 3.6.3 `Result.segments` 通用切分视图：组合串下划线对拼音/形码通用
   - 3.6.4 通用 `CodeTable`：键名改由 dat 自带 SylEntry 名提供，框架不含拼音知识（check_m1 新增防污染断言 + `pinyin-scheme` 契约测试）
   - 3.6.5 **输入法工具条**（`framework/platform/win32/ui/toolbar.*`）：右下角浮动、Scheme 标签（RosPinyin 显示「拼」）、`ImeSelect` 驱动显隐；M3 再扩展中/英与全/半角

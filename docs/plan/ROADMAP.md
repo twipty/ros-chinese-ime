@@ -69,13 +69,14 @@ v0.1「墨」→ v0.2「联」→ v0.3「全」→ v1.0「正」
 | 阶段 | 内容 | 工期 | 位置 |
 |---|---|---|---|
 | **X1** ✅ | 目录归位：`framework/host` + `framework/ui` → `framework/platform/win32/{imm32,ui}/`，纯 `git mv` | 0.5-1 天 | ✅ 2026-11-18（字节比对 equivalent） |
-| **X2** | 安全网 + 构建收敛：注入缝（`SchemeRegistry`+toy scheme）→ `handle_key` 剥离 → 宿主冒烟 → `route_key/Intent` → 拆 god object → 库目标/presets/版本收敛 | 6-8 天 | **M3 开工前**（M3 全在 `process_key` 里加键） |
+| **X2** | 安全网 + 构建收敛：注入缝（`SchemeRegistry`+toy scheme，**a0 ✅ 2026-11-18**）→ `handle_key` 剥离 → 宿主冒烟 → `route_key/Intent` → 拆 god object → 库目标/presets/版本收敛 | 6-8 天（已用 0.5） | **M3 开工前**（M3 全在 `process_key` 里加键） |
 | **X3** | 可插拔验收：`samples/toy-scheme/` 接入演练 + per-instance 隔离（双 IME 同进程共存） | 2-3 天 | 与 M4 并行或推迟 |
 | **X4** | 前端抽象：**只立门不排期**（触发条件见计划 §3） | — | 等第二个消费者 |
 
 退出标准：`framework/` 目录名自解释；`route_key` 与宿主冒烟进 ctest；`ime` 只 link 两个库目标；
 `cmake --preset` 两条路径零手工 flag；发版版本号只在 `ime/version.h`；
-接入 `toy-scheme` 时 `framework/` 下 `git diff` 为空。
+接入 `toy-scheme` 时 `framework/` 下 `git diff` 为空（**已有机械证据**：`-DROSPINYIN_SCHEME=toy`
+那条提交的 `git diff --stat` 不含 `framework/`，见 `HANDOVER` §11.24）。
 
 > X2 范围与工期在 2026-11-18 扩大：并入架构审计复核确认的注入缝、库边界、构建收敛三类事项
 > （`docs/reviews/ARCH-AUDIT-VERIFICATION.md` §4）。原估 3-5 天只够"剥键路由 + 冒烟"。
