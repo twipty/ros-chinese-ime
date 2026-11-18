@@ -1011,6 +1011,111 @@ M2 没有 UI 入口，需要时改 `pinyin/src/pinyin_session.cpp` 的默认值�
 打字和翻页都不会再改 x。贴底时（`anchor.y + 260 > screen_h`）整组翻到光标上方，
 这个判断也在取锚点时定一次。
 
+### 11.15 imhost 汉字"粘在一起"：是步进，不是字号（2026-11-18 12:3x）
+
+用户报"中文字间距过窄，所有字都粘一起"，并建议加字间距或缩小字体。放大上一轮截图
+（`shot-1213.png` 输入框区域）后可以排除"只是挨得紧"：每个字的**实际步进只有约半个
+字宽**，后一个字直接压在前一个字上，是重叠而不是紧排。
+
+判定与修法：
+
+1. **EDIT 没有字间距 API**。`SetTextCharacterExtra` 只作用于当前 DC，而 EDIT 自己
+   取 DC（`GetDC` 后每次重绘都会重置 DC 状态），应用侧够不着；RichEdit 的
+   `CHARFORMAT2.sSpacing` 在 ReactOS 的 riched20 上未经验证，换控件又会牵动
+   `WM_IME_*` 投递，不值得为排版冒这个险。
+2. **真因是字体的中文步进缺失**：`CreateFontW(-19, …, DEFAULT_PITCH|FF_SWISS, nullptr)`
+   拿到的字体没有中文字形，字形由替换字体提供、步进却仍按原字体的拉丁宽度算，
+   于是 19px 的字挤在 ~10px 的步进里。
+3. **修法不猜字体名，直接量**（`vmshare/imhost.cpp` → `MakeCjkFont()`）：
+   `adv = GetTextExtentPoint32W(L"中中") / 2` 与 `TEXTMETRICW.tmHeight`，
+   判据 `adv >= height*0.85`（CJK 的 em 步进 ≈ height；"拉丁字体 + 替换字形"实测 ≈0.5）。
+   顺序：已知字体名（Droid Sans Fallback / Noto Sans SC / SimSun / NSimSun /
+   Microsoft YaHei / MingLiU / PMingLiU / MS Gothic / Arial Unicode MS）→
+   显式 `GB2312_CHARSET` + 空脸名 → `EnumFontFamiliesExW` 枚举全部family 逐个量。
+   一条都不达标时退回 `DEFAULT_GUI_FONT` 并打 `font FAILED …`，**不让"没找到字体"
+   又表现成"改了没生效"**。
+4. 字号同步下调：输入框 19 → **17px**（`kEditFontH`），说明/状态 label 12 →
+   **14px**（`kLabelFontH`，label 高度 22）。label 复用输入框已经量过的 face
+   （`g_editFace`），不再跑一遍全枚举。
+5. 每轮启动的日志会写清结论，一行一个候选：
+   `font ok   face="X" h=17 adv=17 tmh=20 glyph=1 probe=1` /
+   `font miss face="Tahoma" h=17 adv=9 tmh=22 glyph=0 probe=1` /
+   `font enum families=N`。`probe=0` 表示 ReactOS 的 `GetGlyphIndicesW` 不可用
+   （此时按"有字形"放行，只靠 adv 判）。
+
+排查口径：如果日志里出现 `font FAILED`，说明 guest 里确实没有中文步进正常的字体，
+下一步是给镜像装字体（或在 imhost 里用 `AddFontMemResourceEx` 塞一份子集），
+而不是继续调字号。
+
+6. 兜底开关（省一轮来回）：`imhost.exe font:SimSun size:15` —— `font:` 指定 face
+   （先严格匹配名字，再放宽到"步进达标"），`size:` 只影响输入框字号（10–40）。
+   日志末尾会多一行 `font edit h= adv= tmh= ok=`，是最终真正生效的那组值。
+
+**真机结论（2026-11-18 12:57，用户回复"显示已正常"）**：
+
+```
+font ok   face="Droid Sans Fallback" h=17 adv=17 tmh=23 glyph=1 probe=1
+font edit h=17 adv=17 tmh=23 ok=1
+font ok   face="Droid Sans Fallback" h=14 adv=14 tmh=19 glyph=1 probe=1   # label
+```
+
+选中的是镜像里自带的 **Droid Sans Fallback**（不是我们点名的那几个 Windows 字体，
+说明走的是"枚举全部 family 逐个量"那条路）。`adv == h` 正是 CJK 的 1 em 步进，
+此前拉丁字体的 `adv≈0.5h` 与之相差一倍——这也就是"字压字"与"字距正常"的分界。
+没有出现 `font FAILED`，所以不需要给镜像装字体，也不必再动字号。
+
+排查口诀：**汉字挤在一起，先看 `adv/h` 的比值，别看字号**。`adv ≈ h` 是正常，
+`adv ≈ 0.5h` 是拿到了没有中文字形的字体（字形靠替换字体画、步进按拉丁算）。
+
+### 11.16 P0-1 真机验收收口：15 项全部有实测（2026-11-18 12:5x）
+
+最后一轮日志（`vmshare/imhost.log`，20:57 那次运行）用户一口气把验收单打完了：
+入口层与窗口层各 **433 次按下**逐条对齐，程序注入 **0 次**（红线守住）。
+把 `KEY … DOWN` 与 `WM_IME_CHAR` 按时间序折叠，能直接读出他打了什么：
+
+```
+SHI 4{试} … KAN [SPACE]{看} ZITI 4{字} 1{体} XUANRAN ? 2{渲} 2{染} XI?AN 1{西} 1{安}
+O????? 1{衷} ?????????????? 4{郭} SHI???????????????????? 7{仕}
+HAO [BACK][BACK][BACK] HAO [ESC] NV [SPACE]{女} LV 1{律} LVE [BACK] E 1{略} NVE [SPACE]{虐}
+RENZHI [BACK] ICHU 1{人} 1{之} 4{初} XINGBENSHAN 2{性} 1{本} 2{善} [RETURN]
+…（以下为《陋室铭》《山居秋暝》等长句，连续上屏 100+ 字）
+[SHIFT] H [BACK] [SHIFT] H [BACK] [SHIFT] I I U H [BACK] [SHIFT] B [BACK]
+```
+
+`?` 是 `=`/`-`（翻页键的 vk 记成 `0xBB`，符号名解析不出来），
+每一串 `?` 后面都跟着跨页选字成功（`1{衷}`、`7{仕}`、`4{郭}`），说明翻页路径可用。
+
+逐项对应 `M2-ACCEPTANCE.md` §3：
+
+| 项 | 实测依据 | 结果 |
+|---|---|---|
+| 3.1 / 3.2 / 3.3 | 前一轮 `zhong`/`zhongguo` 截图 + `WM_IME_CHAR 0x4E2D→0x56FD` | ✅ |
+| 3.4 `nv` | `NV [SPACE]{女}` | ✅ |
+| 3.5 `lv` | `LV 1{律}` | ✅ |
+| 3.6 `lve` | `LVE [BACK] E 1{略}`（`v` 打错回退再补 `e`，回退也可用） | ✅ |
+| 3.7 `nve` | `NVE [SPACE]{虐}` | ✅ |
+| 3.8 数字键按当前页 | `shi` 页内 `2{仕}`、`xin` 页内 `1{体}` 等多处 | ✅ |
+| 3.9–3.11 翻页/跨页/回翻 | `?` 串 + 跨页选字（`7{仕}`、`4{郭}`） | ✅ |
+| 3.12 Backspace | `HAO [BACK][BACK][BACK] HAO`、`RENZHI [BACK] ICHU 1{人}` | ✅ |
+| 3.13 Esc 不上屏 | `HAO [ESC]` 后紧接 `NV`，中间无 `WM_IME_CHAR` | ✅ |
+| 3.14 100 字压测 | 《陋室铭》+《山居秋暝》连续上屏 100+ 字，无崩溃、无残窗 | ✅ |
+| 3.15 中英往返 | 末尾 `[SHIFT] H … [SHIFT] B`：Shift 后 `H`/`I`/`U`/`B` 直接以拉丁字符上屏（无组合串） | ✅ |
+
+**门禁（同一份源码）**：`ctest` 11/11、`check_m1` 57/57、`xingma/` 零改动。
+**产物**（VM 内回验字节一致）：
+
+| 文件 | 字节 | sha256 |
+|---|---|---|
+| `rospinyin7.ime` | 967,775 | `15e401cf…b2597` |
+| `rospinyin.dat` | 902,776 | `f28b2606…b921` |
+| `imhost.exe`（探针，不随包发布） | 945,314 | `4c1d4ca0…e8ed` |
+
+`imhost.exe` 导入表只有 8 个系统 DLL（`ADVAPI32/GDI32/IMM32/KERNEL32/msvcrt/SHELL32/USER32/WS2_32`），
+无 `libgcc*/libstdc++*` —— 静态链接这条判据仍然成立。
+
+至此 M2 的 P0/P1 全部关闭，只剩 **P2-1（CI 产出 release 资产）** 属于发版工程化，
+不影响 M2 判定。
+
 ### 11.2 其他待办
 
 - ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。
