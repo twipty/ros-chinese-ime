@@ -69,12 +69,16 @@ v0.1「墨」→ v0.2「联」→ v0.3「全」→ v1.0「正」
 | 阶段 | 内容 | 工期 | 位置 |
 |---|---|---|---|
 | **X1** | 目录归位：`framework/host` + `framework/ui` → `framework/platform/win32/{imm32,ui}/`，纯 `git mv` | 0.5-1 天 | M2 收口后立刻 |
-| **X2** | `handle_key` 从 IMM32 ABI 剥离 + 宿主冒烟测试（假 engine/scheme/sink）+ 抽 `route_key → Intent` | 3-5 天 | **M3 开工前**（M3 全在 `process_key` 里加键） |
-| **X3** | `samples/toy-scheme/` 第三方方案示例 + `-DROSPINYIN_SCHEME=toy` 开关 | 3-5 天 | 与 M4 并行或推迟 |
+| **X2** | 安全网 + 构建收敛：注入缝（`SchemeRegistry`+toy scheme）→ `handle_key` 剥离 → 宿主冒烟 → `route_key/Intent` → 拆 god object → 库目标/presets/版本收敛 | 6-8 天 | **M3 开工前**（M3 全在 `process_key` 里加键） |
+| **X3** | 可插拔验收：`samples/toy-scheme/` 接入演练 + per-instance 隔离（双 IME 同进程共存） | 2-3 天 | 与 M4 并行或推迟 |
 | **X4** | 前端抽象：**只立门不排期**（触发条件见计划 §3） | — | 等第二个消费者 |
 
-退出标准：`framework/` 目录名自解释；`route_key` 与宿主冒烟进 ctest；
+退出标准：`framework/` 目录名自解释；`route_key` 与宿主冒烟进 ctest；`ime` 只 link 两个库目标；
+`cmake --preset` 两条路径零手工 flag；发版版本号只在 `ime/version.h`；
 接入 `toy-scheme` 时 `framework/` 下 `git diff` 为空。
+
+> X2 范围与工期在 2026-11-18 扩大：并入架构审计复核确认的注入缝、库边界、构建收敛三类事项
+> （`docs/reviews/ARCH-AUDIT-VERIFICATION.md` §4）。原估 3-5 天只够"剥键路由 + 冒烟"。
 
 ## F 字形与字体（横切，2-3 周，F0 在 M3 前，其余可与 M3/M4 并行）
 
@@ -162,15 +166,17 @@ M0 ──► M1 ──► M2 ──► X1 ──► X2 ──► M3 ──► v0
        └─ CORE-19455 热键跟踪
 
 F0 ──► D-F1 ──► F1 ──► F2 ──► F3 ──► F4        （F0 在 M3 前；F1–F4 与 M3/M4 并行）
-X3（玩具方案）与 M4 并行；X4 不排期
+X3（可插拔验收）与 M4 并行；X4 不排期
 ```
 
 ## 总工期预估
 
 乐观 3.5 个月，现实 5-6 个月（单人业余时间）；M0/M1 是去风险阶段，M2 是价值锚点——**建议 M2 结束时就发 v0.1 预览版收集反馈**，不要憋大招。
 
-X 结构治理把乐观值推到约 4 个月、现实 6 个月：X1 不占关键路径，X2 让 v0.1 推迟约一周，
+X 结构治理把乐观值推到约 4 个月、现实 6 个月：X1 不占关键路径，X2 让 v0.1 推迟约 1.5 周，
 换来 M3 每加一个键都有回归网。**这笔账只在"先 X2 再 M3"的顺序下成立**（详见 `PLAN-MODULARIZATION.md` §5）。
+X2 的工期从 3-5 天上调到 6-8 天，是因为审计复核把注入缝、库边界、构建收敛并了进来——
+没有它们，"能模块化"只是目录好看（见 `docs/reviews/ARCH-AUDIT-VERIFICATION.md`）。
 
 F 字形与字体本身 2-3 周，但只有 **F0（半天）** 在关键路径上；F1–F4 与 M3/M4 并行，
 不推迟 v0.1/v0.2 的时间点。代价是字体包体积（≈57 MB）与一次字体风格的决策（D-F1），

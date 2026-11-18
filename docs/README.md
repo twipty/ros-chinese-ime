@@ -73,6 +73,7 @@
 | --- | --- |
 | [FRAMEWORK-ROUTE-A-REVIEW.md](reviews/FRAMEWORK-ROUTE-A-REVIEW.md) | 框架路线 A 的评审：可复用宿主 / UI 模块的边界与代价 |
 | [PORTABILITY-UPSTREAM-64BIT-ARM64.md](reviews/PORTABILITY-UPSTREAM-64BIT-ARM64.md) | 上游 64 位与 ARM64 可移植性评估（与 libernt 自研分支区分，结论不可互换） |
+| [ARCH-AUDIT-VERIFICATION.md](reviews/ARCH-AUDIT-VERIFICATION.md) | 架构审计的逐条复核：13 条结论的判定、3 处需修正、3 条审计漏项、与 X1–X4 的映射 |
 
 ### releases/ — 发版说明
 
