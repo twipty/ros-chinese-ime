@@ -2,8 +2,18 @@
 
 **项目章程 / Project Charter**
 状态：已立项（2026-11-12）｜路线：B（以 mzimeja 为蓝本新写 IMM32 拼音 IME）｜目标平台：ReactOS 0.4.16+（IMM32 架构）
-当前阶段：**M2 单字拼音引擎已完成并发布**（ReactOS VM 真实手打端到端上屏，`M2-ACCEPTANCE.md` 15/15 通过；`ctest` 11/11、`check_m1` 57/57）｜最新版本：**alpha0.0.2**（2026-11-18，[Release 说明](CHANGELOG.md)）｜首个公开版本：**alpha0.0.1**（2026-11-17）
+当前阶段：**M2 单字拼音引擎已完成并发布**（ReactOS VM 真实手打端到端上屏，`M2-ACCEPTANCE.md` 15/15 通过；`ctest` 11/11、`check_m1` 59/59）｜最新版本：**alpha0.0.2**（2026-11-18，[Release 说明](CHANGELOG.md)）｜首个公开版本：**alpha0.0.1**（2026-11-17）
 仓库：https://github.com/twipty/ros-chinese-ime（public, main）｜代码许可证：**MIT**（D1 已定，2026-11-13）｜第三方与数据分层授权见 `NOTICE.txt`
+
+> **⚠️ 重大前提变更（2026-11-18 19:56，读下文前必看）**
+> 立项时把 M0 那次 0xF4 归因为「Preload 预载第三方 IME ⇒ 确定性崩溃」，并据此立了「绝不写 Preload / 绝不注册为默认 IME」的红线。
+> 当日两组对照实验（各 3 次启动，均用发版二进制 940,601）**证伪了这个归因**：N 组（在 `Preload` 里但非首项）3/3 活，
+> N′ 组（**首项 = 默认输入语言**，走完整激活路径）3/3 活；源码同时显示写 `Preload` 的是平台自己的 `ImmInstallIMEW`、
+> 加载者是 `userinit` 而非 csrss。
+> **新前提**：风险在「**登录路径上执行可能失败的初始化**」，不在「被 Preload 载入」。
+> 因此红线 #2 降级为部署偏好，A1（`DllMain` 零工作）/A1b（`ImeInquire` 可拒绝）保留但理由改为健壮性。
+> 完整证据与处置：[`M0-REDLINE-REVIEW.md`](M0-REDLINE-REVIEW.md) §13；实验记录：`m0/vm/PRELOAD-PROBE.md`。
+> 下文凡出现「csrss 承载 IMM32」「确定性 0xF4」「绝不写 Preload」的表述，均以本框为准。
 
 ## 1. 一句话使命
 
@@ -98,15 +108,25 @@
 ### 蓝本 mzimeja 1.0.1.1 在 ReactOS 0.4.16 上开箱即崩（实测）
 
 - **现象**：mzimeja 安装成功 → 重启 → BSOD **STOP 0x000000F4**（CRITICAL_OBJECT_TERMINATION，挂在 ntoskrnl.exe）。复位后系统可正常引导（注册表被回滚，仅剩孤儿 `system32\mzimeja.ime`）；随后用户实测**任务栏 EN 可切换、输入法实际可用并可输入日文**（中途曾出现「可切换但输入无效」的短时窗口）。→ 引擎本体在 ReactOS 上能跑，问题集中在**注册/预载路径与登录初始化时序**。蓝屏现场存证：`m0/vm/reactos.bsod-evidence.qcow2`，截图与 OCR 在 `m0/vm/logs/bsod*`。
-- **解释**：0xF4 = 关键用户进程（csrss/winlogon 级）意外退出。ReactOS 的 IMM32 服务端位于 csrss：登录路径会加载已注册的 .ime DLL，DLL/注册在 ReactOS 上不兼容时连带杀死 csrss → 整机蓝屏。**这与立项时预判的头号风险完全吻合，现已从「预测」升级为「实证」。**
-  - **2026-11-18 重判**：读崩溃时被注册的那个二进制与其参考源码后，致伤机制**不是 Preload 本身**，而是它在 `DLL_PROCESS_ATTACH` 里做 UI 初始化（注册表 + 词典映射 + 原子表 + `RegisterClassEx`）**且吞掉失败**；Preload 只是把它送进 csrss 的投递手段。证据与推理见 `M0-REDLINE-REVIEW.md` §9。四条红线是否随之改写，取决于 §11 的三组对照实验。
+- **解释（2026-11-18 修正，重大前提变更）**：0xF4 = 关键用户进程意外退出。立项时把它读成「ReactOS 的 IMM32 服务端位于 csrss，登录路径加载不兼容的 .ime 连带杀死 csrss → 整机蓝屏」，并据此认定「Preload 预载 = 确定性崩溃」。**这个读法已被两处取证推翻**：
+  - **加载者是 `userinit.exe`，不是 csrss**：`userinit!wWinMain → SetUserSettings → UpdatePerUserSystemParameters → IntLoadPreloadKeyboardLayouts → LoadKeyboardLayoutW`（ReactOS 0.4.16 源码）；
+  - **同一个 `.ime` 留在 `Preload` 里可以一直开机**：本盘连续多次启动无 0xF4（`m0/vm/PRELOAD-PROBE.md`）。
+  - 结论：**「安装即蓝屏」不能作为「Preload 有害」的证据**，它只说明「那次安装后的加载期行为出了问题」。
+- **致伤机制重判 → 定判（2026-11-18 19:56）**：读崩溃时被注册的那个二进制与其参考源码后，机制**不是 Preload 的投递**，而是它在 `DLL_PROCESS_ATTACH` 里做 UI 初始化（注册表 + 词典映射 + 原子表 + `RegisterClassEx`）**且把失败吞成 `return TRUE`**。当日完成两组对照（各 3 次启动，均用发版二进制 940,601）：
+
+  | 组 | 变量 | 结果 |
+  |---|---|---|
+  | N | 在 `Preload` 里但**非首项**（仅加载） | **3/3 活** |
+  | N′ | **首项 = 本 IME**（默认输入语言，走 `KLF_ACTIVATE` → `ImeSelect` → 建 UI） | **3/3 活** |
+
+  → **投递方式与登录期激活都不致命**，红线 #2 因此降级为部署偏好，约束改为「登录路径上不做任何可能失败的事」。完整证据与处置见 `M0-REDLINE-REVIEW.md` §13。
 - **安装器解剖**（宿主侧完成，见 `m0/extract/`）：mzimeja setup = Inno Setup（2018-06-14）；数据流为 `zlb\x1a` + RAW LZMA1。内含 mzimeja.ime（x86/x64）、ime_setup32/64.exe、imepad.exe、verinfo.exe、五套词典。ime_setup32 逻辑：`ImmInstallIMEW` → 写 `SYSTEM\...\Keyboard Layouts\<HKL>`（IME File/Layout Text=MZ-IME/Layout Display Name）→ 写 `Keyboard Layout\Preload` → 写 `SOFTWARE\Katayama Hirofumi MZ\mzimeja`（字典路径等）。HKL 由系统动态生成（`%08X`），非固定常量。
-- **对 M1 的设计红线（本实测直接触发）**：
+- **设计红线（M0 实测触发 → 2026-11-18 按新前提修订）**：
   1. 拼音 IME DLL 必须先在 Windows 参照机验证「纯 LoadLibrary 无害」后再进 ReactOS；
-  2. **绝不把拼音 IME 注册为默认 IME / Preload 第一项**——只作可切换布局追加（崩溃面最小化）；
-  3. 安装器自带 Uninstall + 安全模式救援文档（mzimeja 的 Install/Uninstall 双按钮模式可借鉴）；
+  2. ~~**绝不把拼音 IME 注册为默认 IME / Preload 第一项**~~ → **已降级为部署偏好**（N/N′ 两组 6 次启动均活，且平台自己会写 Preload）。保留下来的约束是它的实质内容：**登录路径上不做任何可能失败的事**（`DllMain` 零工作 + `ImeInquire` 失败必须 `return FALSE`）；
+  3. 安装器自带 Uninstall + 安全模式救援文档（mzimeja 的 Install/Uninstall 双按钮模式可借鉴）——**并且升级为必须清理悬空布局项**：`/u` 要按「布局键 `Ime File` 指向 `rospinyin*.ime`」扫全表，而不是只删自己刚写的那一条（本盘已存在历史遗留项，实测）；
   4. 注册步骤逐键分步验证（每次只加一个键并重启确认），避免一次全量注册后无法定位崩溃点。
-- **M0 核心结论**：蓝本**代码可参考**（架构、词典结构、UI 流程），第三方 IMM32 IME 在 ReactOS 上**确实能工作**；但其「一次全量注册 + Preload 预载」的即装即用部署路径存在**确定性 0xF4 崩溃风险**，不可照搬。M1 起按上述红线重写注册与加载链路。
+- **M0 核心结论（修订版）**：蓝本**代码可参考**（架构、词典结构、UI 流程），第三方 IMM32 IME 在 ReactOS 上**确实能工作**；其「一次全量注册 + Preload 预载」的即装即用在当时触发了 0xF4，但 2026-11-18 的对照表明**触发条件是加载期行为，不是 Preload 预载这条路径本身**。M1 起重写的注册与加载链路照旧保留（分步注册 + `DllMain` 零工作），理由从「防 Preload 蓝屏」改为「**登录路径不留静默失败**」。
 
 ### 上游状态核查（2026-11-13，Task 1.5）
 
@@ -126,7 +146,7 @@
 
 - `ime/` 从零新写 IMM32 骨架：16 个导出全部实现，M1 语义为「空 IME 直通」（`ImeProcessKey` 全放行、`ImeToAsciiEx` 零消息）；`DllMain` 只注册窗口类，保证裸 `LoadLibrary` 在登录路径无害（M0 红线 #1）。
 - 中文资源与版本信息落定：`FILETYPE=VFT_DRV` / `FILESUBTYPE=VFT2_DRV_INPUTMETHOD`、`Translation 0x0804/1200`、布局文本「中文(简体) - RosPinyin」。
-- `tools/install-rospinyin/install.cpp` 按 M0 红线重写注册链路：**动态 HKL**、**不写 Preload**、**`/step1`…`/step4` 逐键分步注册**（ReactOS 每步重启验证）、自带 `/status` 与 `/u`。
+- `tools/install-rospinyin/install.cpp` 按 M0 红线重写注册链路：**动态 HKL**、**安装器自身不写 `Preload`**（注意：`ImmInstallIMEW` 内部会写，见 `M0-REDLINE-REVIEW.md` §12；我们不写 ≠ 注册表里没有）、**`/step1`…`/step4` 逐键分步注册**（ReactOS 每步重启验证）、自带 `/status` 与 `/u`。
 - 引擎契约 `engine/include/rospinyin/engine.hpp` 定型，M2 替换实现时 API 不变；`ui/` 给出窗口分层约定。
 - 质量闸门：`tools/check_m1.py`（长期契约闸门，当前 57 项：日语残留、导出表、版本字段、M0 红线、命名一致性、M2 不变量）+ Linux 下用 `tools/syntax_stub` 对 Windows 源码做零链接语法编译；本机 `ctest` 11/11 通过。
 

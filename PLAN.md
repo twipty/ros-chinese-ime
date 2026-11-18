@@ -38,7 +38,7 @@
   - 2.2.2 ✅ 资源全替换：`ime/rospinyin_res.rc` 中文/英文字符串表、布局文本「中文(简体) - RosPinyin」、IDS 1024 供 Layout Display Name 引用；图标留待 M3（WBS 4.5）
   - 2.2.3 ✅ 版本信息：`FILETYPE=0x3 (VFT_DRV)`、`FILESUBTYPE=0xB (VFT2_DRV_INPUTMETHOD)`、`Translation 0x0804/1200`、`OriginalFilename=rospinyin.ime`，静态校验入 CI
 - **2.3 中文注册 ✓**（源码完成，VM 分步验证 2026-11-16 已完成，见 M1-REPORT.md 第二轮更新）
-  - 2.3.1 ✅ **由 `ImmInstallIMEW` 动态分配 HKL 并记录返回值**（D3，不硬编码 0xE0100804）；注册表只写 `HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layouts\<HKL>` 的 Layout Text / Layout Display Name；**逐键分步注册 + 每步重启验证**，**禁止写 Preload 第一项**（M0 的 0xF4 红线）；检查脚本剥离注释后扫描违规调用
+  - 2.3.1 ✅ **由 `ImmInstallIMEW` 动态分配 HKL 并记录返回值**（D3，不硬编码 0xE0100804）；注册表只写 `HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layouts\<HKL>` 的 Layout Text / Layout Display Name；**逐键分步注册 + 每步重启验证**；~~禁止写 Preload 第一项（M0 的 0xF4 红线）~~ → **2026-11-18 降为部署偏好**：写 `Preload` 的是平台 `ImmInstallIMEW` 内部（无法选择），且 N/N′ 两组 6 次启动均活，见 `M0-REDLINE-REVIEW.md` §13；保留的实质约束是「登录路径不做可能失败的初始化」
   - 2.3.2 ✅ 安装工具 `tools/install-rospinyin/install.cpp`：`/step1`…`/step4` / `/i` / `/status` / `/u`
   - 2.3.3 ✅ 验证 kbswitch 出现简体中文项并切换（VM 实测：`Chinese (Simplified) - RosPinyin`，HKL=`e0210804`；托盘「中」字图标 + Alt+Shift 切换均已确认，见 `m0/vm/evidence/m1-2.5/`、`m1-altshift/`）
 - **2.4 空输入法直通 ✓**（宿主侧完成，VM 压测 2026-11-16 已完成，见 M1-REPORT.md 第二轮更新）
@@ -169,7 +169,7 @@
 > 缺口说明：传统中文输入法普遍在桌面常驻一条可交互的「状态工具条 / 状态条」，一键切换中/英、全角/半角、中文/英文标点，并提供软键盘入口以输入特殊符号。现有 WBS 4.1/4.2 覆盖了状态机、4.5 覆盖了「状态窗（提示）」，但**没有把状态做成可点击的按钮工具条，也完全没有软键盘**，且 4.1 的标点开关缺少可见的切换入口。本章补齐这一交互层，逻辑复用 4.x，不重复造轮子。
 
 - **11.1 状态工具条窗口 ⬜**（`ui/toolbar_window.*`，估 4-6 人日）
-  - 11.1.1 常驻工具条窗口（独立 `WS_EX_TOOLWINDOW`，或复用 `ui_server` 窗口类扩展）；仅在 IME 被选中后创建，遵守 M1 的 0xF4 红线——绝不在 `DllMain` 里建窗
+  - 11.1.1 常驻工具条窗口（独立 `WS_EX_TOOLWINDOW`，或复用 `ui_server` 窗口类扩展）；仅在 IME 被选中后创建，**绝不在 `DllMain` 里建窗**（A1：登录路径上零工作；2026-11-18 后这条的论据是"不留静默失败"，不再挂 0xF4，见 `M0-REDLINE-REVIEW.md` §13）
   - 11.1.2 按钮布局：中/英、全/半角、中文/英文标点、软键盘、设置菜单入口；显式字体链（Droid Sans Fallback 优先）与 DPI 自适应
   - 11.1.3 点击 → 驱动 4.1/4.2 状态机即时切换、重绘按钮图标，并与 4.5 托盘图标及候选窗提示保持同步
   - 11.1.4 位置记忆、屏幕边缘避让、可隐藏/显示（开关并入 M6 WBS 7.1 设置项）

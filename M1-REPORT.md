@@ -3,6 +3,12 @@
 > 状态：**宿主侧代码完成，VM 实测待做**。本报告记录 M1 第一轮推进（WBS 2.2 全部、2.3.2 安装工具源码、2.4.1 直通语义及其宿主可测部分）。
 > 前置结论见 [M0-REPORT.md](M0-REPORT.md)，任务总表见 [PLAN.md](PLAN.md)，仓库章程见 [README.md](README.md)。
 
+> **⚠️ 前提变更（2026-11-18 19:56）**：本报告中「四条设计红线」的第 2 条（绝不写 Preload / 不注册为默认 IME）
+> 所依据的 0xF4 归因已被两组对照实验推翻——修 `Preload` 的是平台 `ImmInstallIMEW` 自己，
+> 加载者是 `userinit` 而非 csrss，且本 IME 在 `Preload` 里（含设为默认输入语言）连续 6 次启动全部正常。
+> **下文凡称某条做法「因为 0xF4」的，请改读为「因为登录路径不该留静默失败」。** 详见
+> [M0-REDLINE-REVIEW.md](M0-REDLINE-REVIEW.md) §13。本报告的实测数据与结论本身不受影响。
+
 > **第二轮 VM 实测更新（2026-11-16）**：下文第 5 节「尚未完成」中的
 > **真实构建、#10 VM 分步注册、#11 VM 切换压测三项均已在 ReactOS 0.4.16 实机完成**，
 > 仅「Windows 参照机裸 LoadLibrary」「双机比对」仍待做。要点：
@@ -76,6 +82,7 @@ M0 结束后任务板剩下 #9（剥离日语逻辑 + 资源/版本信息替换�
 1. **新写，不复制蓝本**。`vendor/mzimeja-ref/` 仍是只读参考树（不入库、不构建、不分发）。本轮所有 `ime/` 代码从零写，只对齐 IMM32 的公开 ABI；`tools/check_m1.py` 会扫描假名、罗马字、`mzimeja`/`MZ-IME`/作者名等残留，保证 MIT 代码树干净。
 2. **动态 HKL（D3）**。`ImmInstallIMEW` 的返回值被记到 `HKCU\SOFTWARE\RosPinyin\Install`，后续注册按 `%08X` 反查 `HKLM\SYSTEM\...\Keyboard Layouts\<HKL>`；没有硬编码 `0xE0100804`。
 3. **不碰 Preload（M0 红线 #2）**。安装器不写 `HKCU\Keyboard Layout\Preload`、不调用 `ActivateKeyboardLayout`/`LoadKeyboardLayoutW`，也不把本 IME 设为默认布局。检查脚本在剥离注释后扫描这些调用，注释里的说明不算绕过。
+   - **2026-11-18 前提变更**：这条的**依据已被推翻**——写 `Preload` 的是平台 `ImmInstallIMEW` 内部（`Imm32WriteImeLayout`），我们写不写不由自己决定；而 N/N′ 两组 6 次启动（含设为默认输入语言）全部无蓝屏，见 `M0-REDLINE-REVIEW.md` §13。**行为保留**（安装器仍不主动写、不主动抢默认），但性质从「红线」降为「部署偏好」；`check_m1.py` 第 7 项据此失去判据价值，待改为行为断言。
 4. **分步注册（M0 红线 #4）**：`/step1` 只复制文件 → `/step2` 只调 `ImmInstallIMEW` → `/step3` 只写 `Layout Text` → `/step4` 只写 `Layout Display Name`。`/i` 一键连跑仅限 Windows 参照机；**ReactOS 必须每步重启验证**，以便任何一步崩掉都能立刻定位。
 5. **DllMain 无害（M0 红线 #1）**。登录路径会加载已注册 .ime；M0 的 0xF4 就出在这一环。M1 的 `DllMain` 只做窗口类注册，且 `ImeInquire` 明确忽略 `IME_SYSINFO_WINLOGON`。
 6. **版本资源一次性做对**（WBS 2.2.3）。`VFT_DRV` + `VFT2_DRV_INPUTMETHOD` + zh-CN/Unicode 是 `ImmLoadLayout` 校验的常见翻车点；字符串表 ID 1024 让注册表用 `@%SystemRoot%\system32\rospinyin.ime,-1024` 引用，避免本地化文本散落。

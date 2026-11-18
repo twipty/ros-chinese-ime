@@ -193,9 +193,9 @@ ros-pinyin/
 ├── ime/                        装配层：rospinyin.def（16 导出）、rospinyin_res.rc、scheme_reg.cpp、图标
 ├── tests/                      11 个宿主测试（ctest）
 ├── tools/
-│   ├── check_m1.py             契约静态检查（50 项，无第三方依赖）
+│   ├── check_m1.py             契约静态检查（59 项，无第三方依赖）
 │   ├── mkdat/                  数据编译器 + fetch_data.py + fixtures
-│   ├── install-rospinyin/      安装器（分步注册，无 Preload 红线）
+│   ├── install-rospinyin/      安装器（分步注册；自身不写 Preload，属部署偏好）
 │   ├── httpdl/                 全静态 HTTP 下载器（guest 侧 wget/curl 替身）
 │   └── syntax_stub/            宿主侧 Win32 头桩（Linux 语法检查用）
 ├── m0/vm/                      QEMU/ReactOS 实验环境（qcow2、启动脚本、noVNC、证据、日志）
@@ -228,7 +228,7 @@ ros-pinyin/
 | 装配 | `ime/scheme_reg.cpp` | 定义 `imfw::scheme_instance()`（唯一的 Scheme 注入点） | Win |
 | 数据编译 | `tools/mkdat/mkdat.cpp` | Unihan + hanziDB → `rospinyin.dat`（确定性输出） | 宿主 |
 | 安装器 | `tools/install-rospinyin/install.cpp` | `/step1..4` 分步注册、动态 HKL 记录、`/i` 串行（仅 Windows 参照机） | Win |
-| 契约检查 | `tools/check_m1.py` | 50 项静态断言（SPDX、16 导出、DllMain 无害、无 Preload、ABI、reload 顺序…） | 宿主 |
+| 契约检查 | `tools/check_m1.py` | 59 项静态断言（SPDX、16 导出、DllMain 无害、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、ABI、reload 顺序…） | 宿主 |
 
 ---
 
@@ -244,7 +244,7 @@ cd ros-pinyin
 cmake -S . -B build -DROSPINYIN_BUILD_TESTS=ON
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure        # 11 个测试，应 100% 通过
-python3 tools/check_m1.py                          # 50 项契约检查，应 50/50
+python3 tools/check_m1.py                          # 59 项契约检查，应 59/59
 ```
 
 - 宿主构建**不编译** Windows 专有部分（`ime/`、安装器、`httpdl`、`framework/host`、`framework/ui`），只测纯 C++ 层。
@@ -432,7 +432,7 @@ VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
 | 门禁 | 命令 | 通过标准 |
 |---|---|---|
 | 宿单单测 | `ctest --test-dir build` | 11/11（smoke、session、pinyin、pinyin-session、candidate-pager、pinyin-scheme、emit-text、utf8、code-table、m1-contract、mkdat-e2e） |
-| 契约静态检查 | `python3 tools/check_m1.py` | 50/50（SPDX、16 导出、DllMain 无害、无 Preload、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
+| 契约静态检查 | `python3 tools/check_m1.py` | 59/59（SPDX、16 导出、DllMain 无害、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
 | Win32 语法检查 | CI 的第一步，见 §6.3 | 0 error（用 `tools/syntax_stub` 提供的 Windows 头） |
 | PE 导入表 | CI `objdump -p` | 不得出现 Vista+ 导出或非系统 DLL |
 | 真机验收 | `m2/M2-ACCEPTANCE.md` | 15 项全绿 |
@@ -1155,6 +1155,50 @@ RENZHI [BACK] ICHU 1{人} 1{之} 4{初} XINGBENSHAN 2{性} 1{本} 2{善} [RETURN
    三个文件字节数与 sha256 与本地一致；GitHub 自己算的 `digest` 字段也与之相同
    （`sha256:c9dc17c0…` / `f28b2606…`），这是"发出去的就是验收的那份代码"的最强证据。
 
+### 11.18 重大前提变更：0xF4 的归因被推翻，红线 #2 降级（2026-11-18 19:56）
+
+**这是立项以来第一次推翻「立项依据级」的前提，接手时必读。** 项目的整个「分步注册 + 不碰 Preload」
+部署策略都建立在 M0 那次 `0xF4` 的解释之上；该解释现在已知是错的。
+
+**旧说法**：mzimeja「一次全量注册 + `Preload` 预载」⇒ ReactOS 登录路径把关不兼容的 `.ime` 载进
+csrss ⇒ 确定性 `0xF4` ⇒ 因此红线「绝不写 Preload / 绝不注册为默认 IME」。
+
+**新事实**（三条独立证据）：
+
+1. **写 `Preload` 的不是安装器，是平台**：ReactOS 0.4.16 `win32ss/user/imm32/install.c`
+   `Imm32WriteImeLayout()`（L256–341）在 `ImmInstallIMEW` 内部自己
+   `RegCreateKeyW(HKCU, "Keyboard Layout\Preload")` + `RegSetValueExW`，**没有 opt-out**。
+   也就是说「不写 Preload」这件事从来不在我们手里——而 `Preload` 里一直有我们。
+2. **加载者是 `userinit.exe`，不是 csrss**：`userinit!wWinMain → SetUserSettings →
+   UpdatePerUserSystemParameters → IntLoadPreloadKeyboardLayouts → LoadKeyboardLayoutW`
+   （`base/system/userinit/userinit.c` L452/670；`user32/windows/input.c` L145）。
+   且 `0xF4` 要求进程调用过 `RtlSetProcessIsCritical`，`userinit` 没有，所以
+   「userinit 死 → 0xF4」这条因果还缺一环（记作待解，见 `M0-REDLINE-REVIEW.md` §9.3）。
+3. **两组对照实验（2026-11-18，覆盖层，各 3 次启动，均用发版二进制 940,601）**：
+
+   | 组 | 变量 | 结果 |
+   |---|---|---|
+   | N | 在 `Preload` 里但**非首项**（仅加载） | **3/3 活** |
+   | N′ | **首项 = 默认输入语言**（`KLF_ACTIVATE` → `ImeSelect` → 建 UI server 窗口 + 工具条） | **3/3 活** |
+
+   N′ 三次托盘都是红底`中`、N 组是`EN`——变量确实生效，不是空转。
+
+**结论**：致伤机制在「**登录路径上执行可能失败的初始化，并把失败吞掉**」，不在「被 Preload 载入」。
+红线 #2 的落地形态（一条字符串禁令）**既不必要、也不充分、还不可执行**，降级为**部署偏好**；
+A1（`DllMain` 零工作）与 A1b（`ImeInquire` 失败必须 `return FALSE`）**保留但换论据**——
+不再防蓝屏，而是「登录路径上不留静默失败」，对 liberNT / x64 / 别的 imm32 实现仍是必要的健壮性措施。
+
+**已知的不对称**（别过度引用本结论）：N′ 证伪的是「**我们的**二进制在登录路径被激活会崩」，
+**不是**「mzimeja 的 `DllMain` 就是 M0 的凶手」。后者仍只是推断（时间上最先、行为上不同、
+失败被吞已被 `objdump` 证实），没有做过直接指向它的分离实验。
+
+**证据与全文**：`M0-REDLINE-REVIEW.md` §13（13.1 结果 / 13.2 判据兑现 / 13.3 换对象 /
+13.4 仍未知 / 13.5 对移植）；操作与截图 `m0/vm/PRELOAD-PROBE.md` §2、§6，
+截图在 `m0/vm/evidence/preload-probe/N/`。
+
+**覆盖面层**：两组实验全程在 qcow2 覆盖层上做，基础盘 `reactos.qcow2` 零改动；
+`/u` 与「整改」= 丢弃覆盖层。
+
 ### 11.2 其他待办
 
 - ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。
@@ -1172,7 +1216,7 @@ RENZHI [BACK] ICHU 1{人} 1{之} 4{初} XINGBENSHAN 2{性} 1{本} 2{善} [RETURN
 **改代码**
 
 1. `cmake --build build --parallel && ctest --test-dir build` → 11/11；
-2. `python3 tools/check_m1.py` → 57/57（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
+2. `python3 tools/check_m1.py` → 59/59（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
 3. 动了 `framework/host` 或 `framework/ui`：跑 CI 那步宿主语法检查（§6.3），确认 `-Wchanges-meaning` / ABI 断言不炸；
 4. 动了 ABI：本地用 zig 真实 MinGW 头编译一次 `framework/host/imm_entry.cpp`（`-target x86-windows-gnu -c`）。
 

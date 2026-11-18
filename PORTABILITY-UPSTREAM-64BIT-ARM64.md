@@ -26,7 +26,7 @@
 | ① 引擎 / 词库数据 / 编码 | 纯 C++、dat 全 uint32 小端 | 可直接复用 | 可直接复用（ARM64 亦小端） |
 | ② IME 核心 / UI 窗口 | 公开 API、指针已 64 位化 | 可复用，**1 处硬编译阻塞** | 可复用，**同 1 处 + MSVC 弱符号问题** |
 | ③ IMM32 16 导出 ABI | 手写 ABI、仅部分断言覆盖 | 结构吻合·零实测 | 结构吻合·零实测·调用约定待核 |
-| ④ 安装器 / 注册链路 | HKL 32 位语义、Preload 红线 | 需 64 位原生重写·红线待重验 | 同左·且平台无从验证 |
+| ④ 安装器 / 注册链路 | HKL 32 位语义、`ImmInstallIMEW` 写 Preload 由平台决定 | 需 64 位原生重写·平台行为待核 | 同左·且平台无从验证 |
 | ⑤ 构建工具链 / 位宽 | 仅 i686 MinGW + 静态 CRT | **主要阻塞**：无 x64 目标 | **主要阻塞**：无 ARM64 目标 + 工具链未定 |
 | ⑥ 实机验证环境 | 全部绑 32 位 ReactOS | 需新建 x64 环境 | **当前不存在可用环境** |
 
@@ -95,7 +95,7 @@ CORE-11700（IMM32 总纲）记录主要 IMM32 函数已实现并进入内核态
 | **A** | **`_WIN32` 守卫在 64 位下触发错误断言** | `framework/host/imm_entry.cpp:221-229`：`#if defined(_WIN32) \|\| defined(__i686__) …` 内断言 `offsetof(TransMsgList, TransMsg) == sizeof(UINT)`。`_WIN32` 在 x64/ARM64 MinGW 与 MSVC 下**同样定义**；64 位下 `TransMsg` 因 `WPARAM/LPARAM` 8 字节对齐从偏移 8 开始，而 `sizeof(UINT)==4`。**已用 64 位 g++ `-fsyntax-only` 实测断言为 `(8 == 4)`，编译硬失败**。代码注释自己也承认 "On LP64 hosts … the offset grows"，但守卫没排除 64 位。注意**运行时逻辑本身在 64 位是对的**（IMM32 与本项目同布局），坏的只是断言。 | **P0**：x64/ARM64 构建第一步就失败 |
 | **B** | **零 64 位构建路径** | `.github/workflows/ci.yml:58-69` 仅 `MINGW32` + `mingw-w64-i686-*`；`:98-122` 的 PE 导入表断言（禁 UCRT/`InitializeCriticalSectionEx`）是 i686/ReactOS 0.4.16 特化；根 `CMakeLists.txt:9-10` 只有 `ROSPINYIN_IN_TREE` / build tests 两个选项，无架构选项；全仓无 `-m64`/x86_64 toolchain。 | **P0**：无原生 `.ime`；在上游 64 位（无 WoW64）上 **32 位 DLL 根本无法加载** |
 | **C** | **IMM32 ABI 静态校验覆盖不足** | `imm32_abi.h:28-36` 的 `ImeInfo` 全 DWORD（架构无关，好）；`:84-121` 的 16 导出签名仅由编译器自查；唯一跨模块断言在 `imm_entry.cpp:217,226`，且 `:226` 受 A 项错误守卫。无对 `imm.h`/`immdev.h` 真头的 `static_assert(offsetof/sizeof)`。 | **P1**：x64/ARM64 下字段/签名偏差可能静默错 |
-| **D** | **注册链路 64 位零实测 + M0 红线待重验** | `tools/install-rospinyin/install.cpp:42,50` 硬编码 `@%SystemRoot%\system32\...` 与 `GetSystemDirectoryW`；M0 在 0.4.16 上实测「一次全量注册 + Preload」→ **BSOD 0xF4**，故定下「不写 Preload / 分步注册」红线。上游 x64 上 `ImmInstallIMEW` 行为、是否存在同类崩溃**完全未知**。 | **P1**：可能重现登录期崩溃 |
+| **D** | **注册链路 64 位零实测**（2026-11-18 定级下调） | `tools/install-rospinyin/install.cpp:42,50` 硬编码 `@%SystemRoot%\system32\...` 与 `GetSystemDirectoryW`；上游 x64 上 `ImmInstallIMEW` 的 HKL 语义、布局键路径、`.ime` 位数匹配**完全未知**。~~M0 实测「一次全量注册 + Preload」→ BSOD 0xF4，故定下「不写 Preload」红线~~ —— **该归因已被 2026-11-18 的两组对照推翻**（见 `M0-REDLINE-REVIEW.md` §13）：写 Preload 的是平台 `ImmInstallIMEW`，加载者是 `userinit`，本 IME 在 Preload 里（含设为默认输入语言）连续 6 次启动全部正常。 | **P2**（原 P1）：不再预期「重现登录期崩溃」；风险收窄为「注册在这套 imm32 上能不能成」 |
 | **E** | **工具链战略冲突** | 上游 AMD64 官方以 **MSVC x64** 为可用构建路径（GCC/Clang 版 "probably not boot"）；本项目 CI 用 MinGW 静态 CRT 策略，正是为了绕开 MSVC CRT 导入 `InitializeCriticalSectionEx`（ReactOS 默认导出版本 0x502 无此 API，`ci.yml:52-57`）。而 `pinyin/src/dat_source.cpp:12-14` 的 `RPY_WEAK` 在 MSVC 下为空宏，`framework/host/imm_entry.cpp:56-58` 的 `#pragma GCC diagnostic` 在 MSVC 下无效。 | **P1**：若走 MSVC 需重做 CRT/弱符号策略 |
 | **F** | **陈旧注释/文档表述** | `imm32_abi.h:13`「all pointer-shaped parameters are 32-bit on our x86 target」；`dat_format.hpp:10`「target is 32-bit ReactOS x86」。均为注释，不影响运行，但会误导后续移植者。 | **P2**：非阻塞，随改造一并更新 |
 | **G** | **字体链 ReactOS 特化** | `framework/ui/ui_window.cpp` 的 CJK 回退链（Droid Sans Fallback / Noto Sans SC / 微软雅黑 / 宋体）。有 `GetTextFaceW` 校验与最终兜底，降级安全。 | **P2**：非架构相关，可后置 |
@@ -135,7 +135,7 @@ CORE-11700（IMM32 总纲）记录主要 IMM32 函数已实现并进入内核态
 | **P0-B** | 无原生 64 位 `.ime`（§2.2-B）；上游无 WoW64 → 32 位 DLL 无法加载 | ①+② | 新增交叉目标；先在宿主侧拿到可加载的 64 位产物 |
 | **P0-G** | ②arm64 工具链 / 宿主 / 镜像三重缺失（§2.2-H）：无 aarch64 交叉配置，MSYS2 `windows-latest` 无 `aarch64-w64-mingw32` 包，`m0/vm/` 只有 i386 镜像与 machine type | ② | 观察期只做跨架构语法编译；实机等上游门禁 |
 | **P1-C** | IMM32 16 导出 / ImeInfo / TransMsgList 在 64 位无完整断言（§2.2-C） | ①+② | 以目标平台真头补 `static_assert(offsetof/sizeof)`；x64 冒烟 |
-| **P1-D** | 注册链路 `ImmInstallIMEW` / Preload 行为在上游 x64 未验证，可能重现 0xF4（§2.2-D） | ①+② | 阶段探针：分步调用 + 重启 + 切换压测；必要时手工写键绕开 |
+| **P2-D** | 注册链路 `ImmInstallIMEW` / 布局键 / `.ime` 位数在上游 x64 未验证（§2.2-D）；~~可能重现 0xF4~~ **已由 2026-11-18 对照实验排除该预期**（§2.2-D 说明） | ①+② | 阶段探针：分步调用 + 重启 + 切换压测；记录 HKL 与布局键实际落点 |
 | **P1-E** | 工具链：上游 AMD64 官方 MSVC 优先，与本项目 MinGW 静态 CRT 相冲；**MSVC 下弱符号变重复定义**（§2.2-E/L） | ①+②（②更甚） | 先定工具链；MSVC 路需处理 `RPY_WEAK` 重复定义 / `#pragma GCC diagnostic` / CRT 导入断言 |
 | **P1-F** | 上游 ARM64 无可用用户态/应用，IME 无法验证（§1.2） | ② | 门禁：CORE-18200 达到「user-mode apps work」且有 IMM32 启用证据后再启动 |
 | **P1-I** | `ROSPINYIN_TRACE` 构建缺 `<imm.h>` 实际无法编译（§2.2-I），卡住 64 位取证 | ①+② | 先修 include 或补齐 trace stub；把 trace 构建加入 CI 矩阵 |
@@ -153,10 +153,10 @@ CORE-11700（IMM32 总纲）记录主要 IMM32 函数已实现并进入内核态
 |---|---|---|---|
 | **0. 宿主侧排雷** | 消除确定阻塞 | 修 §2.2-A 的守卫与断言；把 `offsetof` 断言参数化（32 位 4 / 64 位 8）；补 16 导出签名的头文件级 `static_assert`；修 §2.2-I 的 trace include；**CI 语法检查增加 `_WIN32` 定义与 64 位 trace 构建**堵住盲区 | Linux `ctest` 全绿 + MinGW 头文件语法检查覆盖 x64 + trace 构建可编译 |
 | **1. 64 位产物** | 打通构建 | 新增 `x86_64-w64-mingw32`（或既定 MSVC 方案）CMake/CI 目标；重审 PE 导入断言（64 位应允许更多 Vista+ API） | 产出 64 位 `rospinyin.ime`；在 x64 Windows 参照机上裸 `LoadLibrary`/`FreeLibrary` 无害 |
-| **2. 上游 x64 探针** | 验证注册与加载 | 在**上游**（非 libernt）x64 构建上分步注册 + 重启 + 切换；观测是否重现 0xF4；记录 `ImmInstallIMEW` 是否写 Preload | 确认 ABI 能加载、登录路径不崩、可获得的 IMM32 功能边界 |
+| **2. 上游 x64 探针** | 验证注册与加载 | 在**上游**（非 libernt）x64 构建上分步注册 + 重启 + 切换；记录 `ImmInstallIMEW` 是否写 Preload、HKL 落点与布局键；**加载期行为按 A1/A1b 先加固再上机** | 确认 ABI 能加载、登录路径不崩、可获得的 IMM32 功能边界 |
 | **3. 双机验收** | 功能闭环 | x64 + i386 各跑 `m2/M2-ACCEPTANCE.md`；≥50 次切换压测 | 对齐既有验收单，新增 upstream-x64 章节与证据 |
 
-> 顺序理由：阶段 0 是纯宿主侧、成本最低且必然要做；先把「编译失败」变成「可构建的产物」，再谈注册与实机。探针必须在**上游**做，因为 libernt 的 `ImmInstallIMEW` 已经证明与本项目红线冲突，其结论不可套用。
+> 顺序理由：阶段 0 是纯宿主侧、成本最低且必然要做；先把「编译失败」变成「可构建的产物」，再谈注册与实机。探针必须在**上游**做，因为 libernt 的 `ImmInstallIMEW` 行为与「安装器零写入」的部署偏好直接冲突，其结论不可套用。**阶段 2 的前提已变**：2026-11-18 的对照实验表明 `Preload` 预载与「设为默认」都不致命，因此探针的第一目标是「能否注册 / 能否加载 / 状态是否自洽」，不再以「会不会蓝屏」为主要观测。
 
 ### 目标②：ReactOS 上游 ARM64
 

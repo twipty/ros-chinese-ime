@@ -11,7 +11,7 @@ M0 原目标是「mzimeja 在 ReactOS 上原样跑通，取得『什么能跑』
 | # | 结论 | 性质 |
 |---|---|---|
 | 1 | **第三方 IMM32 IME 在 ReactOS 0.4.16 上确实能工作**：任务栏 EN 指示器可切换，用户实测可输入日文（候选 → 假名/汉字上屏） | ✅ 立项前提被实证 |
-| 2 | **「即装即用」部署路径会触发 BSOD 0xF4**（首次重启），且 Install 后的短时窗口内切换输入法曾出现「可切换但输入无效」 | ⚠️ M0 最核心发现 |
+| 2 | **「即装即用」部署路径会触发 BSOD 0xF4**（首次重启），且 Install 后的短时窗口内切换输入法曾出现「可切换但输入无效」。*（2026-11-18 修正：触发条件是加载期行为，不是 Preload 预载这条路径，见 §4.2/§4.4）* | ⚠️ M0 最核心发现 |
 | 3 | **蓝本许可证已变更**：上游 2026-01 从公共领域（PDS）改为 GPLv3；我们实测的 1.0.1.1 是 GPLv3 → 已定：蓝本锁 `v1.0.0.3`(PDS)、本项目用 MIT | ✅ D1 已落定 |
 | 4 | ReactOS 热键两议题（CORE-19455 / 20799）仍 Unresolved，无 Fix Version → M3 必须保留备用切换键方案 | ℹ️ 上游核查 |
 
@@ -65,7 +65,10 @@ M0 原目标是「mzimeja 在 ReactOS 上原样跑通，取得『什么能跑』
 ### 4.2 安装 mzimeja → 首次重启 BSOD
 
 - **STOP 0x000000F4 — CRITICAL_OBJECT_TERMINATION**，挂在 ntoskrnl.exe：关键用户进程（csrss/winlogon 级）意外退出。
-- **解释**：ReactOS 的 IMM32 服务端位于 csrss；登录路径加载已注册的 .ime DLL，DLL 或其依赖在 ReactOS 上不兼容时连带杀死 csrss → 整机蓝屏。这与立项时预判的头号风险完全吻合，现由「预测」升级为「实证」。
+- **解释（2026-11-18 修正）**：立项时的读法是「ReactOS 的 IMM32 服务端位于 csrss；登录路径加载已注册的 .ime DLL，不兼容时连带杀死 csrss → 整机蓝屏」，并由此得出「Preload 预载 = 确定性崩溃」。**该读法已被推翻**：
+  - 实际加载链是 `userinit!wWinMain → SetUserSettings → UpdatePerUserSystemParameters → IntLoadPreloadKeyboardLayouts → LoadKeyboardLayoutW`（ReactOS 0.4.16 源码），**加载者不是 csrss**；`0xF4` 要求进程调用过 `RtlSetProcessIsCritical`，userinit 没有，因此「userinit 死 → 0xF4」这条因果本身还需另一环解释（`M0-REDLINE-REVIEW.md` §9.3 记作待解）；
+  - 同一个 `mzimeja.ime`（587,072 B，配置与词典齐全）此后一直留在 `Preload` 第 3 项，本盘连续多次启动**再未出现 0xF4**；我们自己的二进制在 6 次对照启动（含设为默认输入语言）中也全活。
+  - 所以「安装即蓝屏」只能说明**那次安装后的加载期行为**出了问题，不能作为「Preload 有害」的证据。
 - **恢复**：`system_reset` 后系统正常进桌面；`reg query` 显示 `E010` 布局键与 Preload 均为空，仅剩孤儿 `system32\mzimeja.ime`（曾误查 HKLM 路径，正确路径是 `HKCU\Keyboard Layout\Preload`）。推测注册表被回滚（LastKnownGood 类机制）或安装器注册未完全落盘。
 - **二次观察**：复活后用户报告「任务栏点 EN 可切换，但输入无效」，随后更新为**输入法实际可用、可输入日文**。说明 IME 引擎本身能在 ReactOS 跑通，崩溃集中在**注册/预载路径与登录初始化时序**。
 
@@ -73,19 +76,22 @@ M0 原目标是「mzimeja 在 ReactOS 上原样跑通，取得『什么能跑』
 
 - 数据流格式：`zlb\x1a` + RAW LZMA1（`dict_size=0x00800000, lc=3, lp=0, pb=2`，偏移 9 起），全量解出 `inno-full.bin`。
 - 文件：`mzimeja.ime`（x86/x64）、`ime_setup32/64.exe`、`imepad.exe`、`verinfo.exe`、五套词典（basic/name/postal/kanji/radical）。
-- **注册链**（`ime_setup32.exe` 字符串）：`ImmInstallIMEW` → 写 `HKLM\SYSTEM\...\Keyboard Layouts\<HKL>`（IME File / Layout Text=MZ-IME / Layout Display Name）→ 写 **`Keyboard Layout\Preload`**（把第三方 DLL 推进登录路径，即蓝屏嫌疑最大的一步）→ 写 `SOFTWARE\Katayama Hirofumi MZ\mzimeja`（词典路径）。
+- **注册链**（`ime_setup32.exe` 字符串）：`ImmInstallIMEW` → 写 `HKLM\SYSTEM\...\Keyboard Layouts\<HKL>`（IME File / Layout Text=MZ-IME / Layout Display Name）→ 写 **`Keyboard Layout\Preload`** → 写 `SOFTWARE\Katayama Hirofumi MZ\mzimeja`（词典路径）。
+  - **2026-11-18 修正**：原文在此处注「把第三方 DLL 推进登录路径，即蓝屏嫌疑最大的一步」，该判断已被推翻。写 `Preload` 这一步**不是安装器自己做的**：ReactOS 0.4.16 `imm32/install.c` 的 `Imm32WriteImeLayout()` 在 `ImmInstallIMEW` 内部就写了，安装器只是调用了它。加载者是 `userinit` 而非 csrss，且同一个 `.ime` 留在 `Preload` 里可以一直开机（见 §4.4、`M0-REDLINE-REVIEW.md` §13）。
 - **HKL 由系统动态生成**（`%08X` 格式化输出），**不是固定常量** → 原 README 的 D3「硬编码 0xE0100804」需修正为「让 `ImmInstallIME` 分配，记录返回值」。
 
 ### 4.4 对 M1 的设计红线（已写入 README 第 9 节）
 
-> **2026-11-18 重判**：下列四条提出的依据（一次 0xF4 观测）在半年后被重新取证——崩溃时被注册的 .ime
-> 在 `DLL_PROCESS_ATTACH` 里做注册表/词典/原子表/窗口类初始化，且忽略初始化返回值。即致伤机制是
-> **"在 csrss 里做加载期 UI 初始化 + 失败被吞"**，Preload 只是投递手段。红线的处置见
-> `M0-REDLINE-REVIEW.md` §9–§11（实验为三组对照：负对照 / 拒绝路径 / 处理组）。
+> **2026-11-18 定判（19:56）**：致伤机制不是 Preload 的投递，而是被杀进程在 `DLL_PROCESS_ATTACH` 里做
+> 注册表/词典/原子表/窗口类初始化、**且忽略初始化返回值**（`return TRUE` 吞掉失败）。当日完成两组对照，
+> 各 3 次启动、均用发版二进制 940,601：**N 组（在 `Preload` 里但非首项）3/3 活；N′ 组（首项 = 默认输入语言，
+> 走 `KLF_ACTIVATE` → `ImeSelect` → 建 UI）3/3 活**。→ 投递与登录期激活都不致命。
+> **因此下列第 2 条红线已降级为部署偏好**，其保留的实质内容改写为「登录路径上不做任何可能失败的事」。
+> 完整证据、判据与处置见 `M0-REDLINE-REVIEW.md` §13，实验记录见 `m0/vm/PRELOAD-PROBE.md`。
 
 1. IME DLL 先在 Windows 参照机验证「纯 LoadLibrary 无害」后再进 ReactOS；
-2. **绝不注册为默认 IME / Preload 第一项**，只作可切换布局追加；
-3. 安装器自带 Uninstall + 安全模式救援文档；
+2. ~~**绝不注册为默认 IME / Preload 第一项**~~ → **降级为部署偏好**（N/N′ 6 次启动均活；且写 `Preload` 的是平台 `ImmInstallIMEW` 自己，见 `M0-REDLINE-REVIEW.md` §12）。保留：`DllMain` 零工作 + `ImeInquire` 失败必须 `return FALSE`；
+3. 安装器自带 Uninstall + 安全模式救援文档，**并按「布局键 `Ime File` 指向 `rospinyin*.ime`」扫全表清理悬空项**（本盘实测存在历史遗留项）；
 4. 注册逐键分步验证（每次只加一键并重启确认），避免一次全量注册后无法定位崩溃点。
 
 ---
@@ -151,7 +157,7 @@ M0 原目标是「mzimeja 在 ReactOS 上原样跑通，取得『什么能跑』
 
 1. ~~先定 D1~~ **D1 已定**：蓝本 `v1.0.0.3`（PDS，只读参考）+ 本项目代码 MIT；蓝本源码已落地 `vendor/mzimeja-ref/`（本地，不入库），可用 `vendor/fetch-vendor.sh` 复现。
 2. 按 2.1 建立仓库骨架（`engine/` `ime/` `ui/` `tools/` `tests/`，CMake 双构建目标，GitHub Actions 骨架），蓝本源码作为 `vendor/mzimeja-ref/` **只读参考**入库并注明来源 tag 与许可证。
-3. 严格按第 4.4 节四条红线实现 2.3 中文注册与 2.4 空输入法直通，在现有 `reactos.qcow2` 上验证（勿再用证据盘）。
+3. 严格按第 4.4 节四条红线实现 2.3 中文注册与 2.4 空输入法直通，在现有 `reactos.qcow2` 上验证（勿再用证据盘）。**（2026-11-18 注：第 2 条已降级为部署偏好，实际执行口径以 §4.4 的定判框为准。）**
 
 ---
 
