@@ -90,26 +90,46 @@ void CompositionWindow::on_paint(HDC dc, const RECT& client) {
 
     const HGDIOBJ old_font = font_ != nullptr ? SelectObject(dc, font_) : nullptr;
     SetBkMode(dc, TRANSPARENT);
-    SetTextColor(dc, RGB(0, 0, 0));
-    TextOutW(dc, 4, 3, text_.c_str(), static_cast<int>(text_.size()));
 
-    // Underline each recognized syllable so the user can see where the engine
-    // split the stream (e.g. [zhong][guo]).
+    // The engine converts left to right: the first syllable is the one the
+    // candidate window is currently offering (recompute() looks up
+    // syllables().front()), everything after it is still pending. Drawing the
+    // pending part grey is what makes that legible — before this, "zhongguo"
+    // looked like one live 8-letter choice while the candidates silently
+    // belonged to the last two letters.
+    const bool has_segments = !syllable_ends_.empty();
+    const std::size_t active_end =
+        has_segments ? syllable_ends_.front() : text_.size();
+
+    const int underline_y = 4 + (client.bottom - client.top) - 7;
+
+    // Walk the segments; x always comes from a prefix measurement so the
+    // letters never overlap even if one GetTextExtentPoint32W call fails.
     std::size_t begin = 0;
-    for (const std::size_t end : syllable_ends_) {
+    for (std::size_t i = 0; i <= syllable_ends_.size(); ++i) {
+        const bool last = i == syllable_ends_.size();
+        const std::size_t end = last ? text_.size() : syllable_ends_[i];
         if (end <= begin || end > text_.size()) continue;
-        SIZE head{};
-        SIZE full{};
-        GetTextExtentPoint32W(dc, text_.c_str(), static_cast<int>(begin), &head);
-        GetTextExtentPoint32W(dc, text_.c_str(), static_cast<int>(end), &full);
-        RECT line{};
-        line.left = 4 + head.cx;
-        line.right = 4 + full.cx;
-        line.top = 4 + (client.bottom - client.top) - 7;
-        line.bottom = line.top + 1;
-        if (line.right > line.left) {
+
+        SIZE from{};
+        SIZE to{};
+        GetTextExtentPoint32W(dc, text_.c_str(), static_cast<int>(begin), &from);
+        GetTextExtentPoint32W(dc, text_.c_str(), static_cast<int>(end), &to);
+
+        const bool active = begin < active_end;
+        SetTextColor(dc, active ? RGB(0, 0, 0) : RGB(130, 130, 130));
+        TextOutW(dc, 4 + from.cx, 3, text_.c_str() + begin,
+                 static_cast<int>(end - begin));
+
+        if (has_segments && to.cx > from.cx) {
+            RECT line{};
+            line.left = 4 + from.cx;
+            line.right = 4 + to.cx;
+            line.top = underline_y;
+            line.bottom = underline_y + 1;
             FillRect(dc, &line,
-                     reinterpret_cast<HBRUSH>(GetStockObject(BLACK_BRUSH)));
+                     reinterpret_cast<HBRUSH>(GetStockObject(
+                         active ? BLACK_BRUSH : LTGRAY_BRUSH)));
         }
         begin = end;
     }

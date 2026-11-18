@@ -26,6 +26,13 @@ struct ImeSessionState {
     bool composing = false;  // true while there is an active composition
     std::string composition;             // last engine composition
     std::vector<std::string> segments;    // last engine segmentation
+    // Set on VK_SHIFT down and cleared by any other key, so only a *lone*
+    // Shift toggles Chinese/English (Shift+A must stay a capital A).
+    bool shift_latched = false;
+    // The OS-side fOpen was set once for this session (see AlignOpenStatus).
+    // After that the flag belongs to the user: re-aligning would undo an
+    // English toggle on the next focus change.
+    bool open_initialized = false;
 };
 
 // Get or create the state for hIMC. Never returns nullptr. Thread-safe;

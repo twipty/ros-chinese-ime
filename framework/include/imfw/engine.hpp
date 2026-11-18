@@ -47,6 +47,19 @@ public:
     virtual Result feed(char32_t codepoint) = 0;
     virtual Result backspace() = 0;
     virtual Result cancel() = 0;
+    // Commit a candidate the caller picked from a *filtered* copy of the
+    // candidate list (the host drops entries the font cannot draw, so its
+    // indices no longer match feed()'s digits). A stateless engine just
+    // returns Commit with that text; a stateful one may also keep part of the
+    // composition alive (pinyin converts left to right: committing 中 out of
+    // "zhongguo" leaves "guo" to convert next).
+    virtual Result commit_text(const std::u32string& text) {
+        Result result;
+        if (text.empty()) return result;
+        result.action = Action::Commit;
+        result.commit_text = text;
+        return result;
+    }
     // Called on ImeSelect / ImeSetActiveContext. Implementations must be
     // idempotent: IMM32 issues these repeatedly during layout switches.
     virtual void on_select(bool selected) = 0;

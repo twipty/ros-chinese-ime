@@ -84,13 +84,23 @@ UiStore& store() {
     return instance;
 }
 
+// Written by place_windows(), read by the host trace (UiLastGeometry).
+UiGeometry g_last_geometry = {};
+int g_anchor_from_caret = 0;
+
 POINT caret_anchor() {
     POINT pt{};
     const HWND focus = GetFocus();
     if (focus != nullptr && GetCaretPos(&pt)) {
         ClientToScreen(focus, &pt);
+        g_anchor_from_caret = 1;
         return pt;
     }
+    // No focus or no caret: fall back to the mouse. Recorded because this is
+    // the only way the popup can end up somewhere unrelated to the input
+    // field, and a trace that cannot tell the two apart is useless when the
+    // user reports "the box jumped".
+    g_anchor_from_caret = 0;
     pt.x = 0;
     pt.y = 0;
     GetCursorPos(&pt);
@@ -122,6 +132,18 @@ void place_windows(UiContext& ctx, const POINT& anchor) {
     }
     ctx.candidates.apply_geometry(x, y, ctx.candidates.width(),
                                   ctx.candidates.height());
+
+    g_last_geometry.comp_x = x;
+    g_last_geometry.comp_y = anchor.y + 20;
+    g_last_geometry.comp_w = ctx.composition.width();
+    g_last_geometry.comp_h = ctx.composition.height();
+    g_last_geometry.cand_x = x;
+    g_last_geometry.cand_y = y;
+    g_last_geometry.cand_w = ctx.candidates.width();
+    g_last_geometry.cand_h = ctx.candidates.height();
+    g_last_geometry.anchor_x = anchor.x;
+    g_last_geometry.anchor_y = anchor.y;
+    g_last_geometry.anchor_from_caret = g_anchor_from_caret;
 }
 
 }  // namespace
@@ -170,6 +192,8 @@ UiCounters UiCountersSnapshot() {
     return UiCounters{s.place_calls, s.place_changes, s.show_real,
                       s.invalidates};
 }
+
+UiGeometry UiLastGeometry() { return g_last_geometry; }
 
 namespace {
 

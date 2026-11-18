@@ -49,6 +49,20 @@ struct UiCounters {
 };
 UiCounters UiCountersSnapshot();
 
+// Last geometry handed to the two popup windows, for the diagnostic trace.
+// "The popup moved while I was paging" cannot be answered from key counters:
+// it needs the rectangle the windows ended up with and the anchor it was
+// computed from. anchor_from_caret is 0 when GetCaretPos() failed and the
+// mouse position was used as a fallback -- the one case where a stray mouse
+// position can drag the popup somewhere else.
+struct UiGeometry {
+    int comp_x, comp_y, comp_w, comp_h;
+    int cand_x, cand_y, cand_w, cand_h;
+    int anchor_x, anchor_y;
+    int anchor_from_caret;
+};
+UiGeometry UiLastGeometry();
+
 // P1-2: can the candidate font actually draw this code point? Uses
 // GetGlyphIndicesW against the same font the candidate window paints with,
 // cached per process. Fails OPEN (returns true) when GDI cannot answer, so a

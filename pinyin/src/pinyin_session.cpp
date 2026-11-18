@@ -116,7 +116,12 @@ void PinyinSession::recompute() {
     candidates_.clear();
     if (syllables_.empty()) return;
 
-    const auto entries = table_->lookup(syllables_.back());
+    // Left to right: the candidate window offers the *first* syllable that has
+    // not been converted yet. Typing "zhongguo" therefore shows 中 first; after
+    // it is committed the composition shrinks to "guo" and 国 is offered. The
+    // alternative (converting the last syllable first) reads right to left and
+    // silently throws away everything typed before it.
+    const auto entries = table_->lookup(syllables_.front());
     candidates_.reserve(entries.size());
     // Two passes: ranked characters first, then (only if that left nothing to
     // pick) the Unihan-only ones. Rare characters are not dropped from the
@@ -139,13 +144,45 @@ void PinyinSession::recompute() {
 }
 
 Result PinyinSession::commit(std::size_t index) {
+    if (index >= candidates_.size()) return Result{};
+    return commit_text(candidates_[index].text);
+}
+
+// Commit one syllable's character and keep whatever is left of the composition
+// alive. zhongguo -> 中 + "guo" -> 国 gives 中国 in typed order; clearing the
+// whole buffer after the first pick would have dropped "zhong" instead.
+Result PinyinSession::commit_text(const std::u32string& text) {
     Result result;
-    if (index >= candidates_.size()) return result;
+    if (text.empty()) return result;
     result.action = Action::Commit;
-    result.commit_text = candidates_[index].text;
-    composition_.clear();
-    candidates_.clear();
-    syllables_.clear();
+    result.commit_text = text;
+
+    if (syllables_.empty()) {
+        composition_.clear();
+    } else {
+        const std::size_t taken = syllables_.front().size();
+        if (taken >= composition_.size()) {
+            composition_.clear();
+        } else {
+            composition_.erase(0, taken);
+            // "xi'an" -> after committing 西 the buffer must not start with the
+            // separator, or segmentation rejects the leading quote.
+            if (!composition_.empty() && composition_[0] == '\'') {
+                composition_.erase(0, 1);
+            }
+        }
+    }
+
+    if (composition_.empty()) {
+        candidates_.clear();
+        syllables_.clear();
+        return result;
+    }
+
+    recompute();
+    result.composition = composition_;
+    result.candidates = candidates_;
+    result.segments = syllables_;
     return result;
 }
 

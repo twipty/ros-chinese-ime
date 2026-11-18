@@ -141,14 +141,26 @@ int main() {
     check(escaped.action == Action::Absorb && session.composition().empty(),
           "Esc must cancel the composition");
 
-    // Continuous typing across a syllable boundary: zhongguo -> 中国.
+    // Continuous typing across a syllable boundary: zhongguo -> 中国, converted
+    // left to right. The candidate list belongs to the syllable at the front of
+    // the buffer; committing it leaves the rest to convert next.
     session.cancel();
     feed_string(session, "zhongguo");
     check_equal(session.composition(), "zhongguo", "continuous input kept");
     check(session.syllables().size() == 2,
           "continuous input splits into two syllables");
+    check(!session.candidates().empty() && session.candidates()[0].text == U"中",
+          "first syllable zhong yields 中 first");
+    const Result first_char = session.feed(U' ');
+    check(first_char.commit_text == U"中", "space commits 中, the first syllable");
+    check_equal(session.composition(), "guo",
+                "the unconverted tail stays in the composition");
     check(!session.candidates().empty() && session.candidates()[0].text == U"国",
-          "last syllable guo yields 国 first");
+          "the remaining syllable guo yields 国 next");
+    const Result second_char = session.feed(U' ');
+    check(second_char.commit_text == U"国", "space commits 国 next");
+    check(session.composition().empty(),
+          "composition is empty once every syllable is committed");
 
     // Deselect resets state (IMM32 can select repeatedly).
     session.cancel();
@@ -180,8 +192,11 @@ int main() {
         check_equal(session.syllables()[0], "xi", "xi'an first syllable");
         check_equal(session.syllables()[1], "an", "xi'an second syllable");
     }
-    check(!session.candidates().empty() && session.candidates()[0].text == U"安",
-          "xi'an candidates come from the last syllable an");
+    check(!session.candidates().empty() && session.candidates()[0].text == U"西",
+          "xi'an candidates come from the first syllable xi");
+    const Result xi_commit = session.commit_text(U"西");
+    check_equal(session.composition(), "an",
+                "committing 西 drops the separator with the syllable");
 
     // A separator may end the buffer mid-typing ("xi'" waits for the next
     // syllable), but the tail after it must still be a legal pinyin prefix.

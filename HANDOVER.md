@@ -976,10 +976,38 @@ M2 没有 UI 入口，需要时改 `pinyin/src/pinyin_session.cpp` 的默认值�
 默认关闭是有意的：打开后 `shi` 这类音节会从 95 条涨到数百条，且多数在子集外
 （会被 P1-2 的过滤器挡掉，等于白翻页）。M3 再给语言栏菜单项。
 
+### 11.14 Shift 切中英：`open` 从"观测值"变成"IME 自己的状态"（2026-11-18 12:2x）
+
+真机反馈："Shift 无法切换中英文"。trace 里其实**有** `processkey vk=0x10 ... -> 0` ——
+键到得了我们手上，是我们什么都不做：imm32 只把 `fOpen` 存着，激活路径不回置，
+也没给 VK_SHIFT 注册热键；IME 自己不认领，Shift 就落给应用当普通修饰键。
+
+修法（`imm_entry.cpp`）：
+- `ImeProcessKey` 先处理 `VK_SHIFT`：按下置 `shift_latched`，**其它任何键清 latch**，
+  抬起时若仍是 lone Shift 才调 `set_ime_open()`。这样 `Shift+A` 仍是大写 A，
+  不会变成"切到英文再打 a"。
+- `set_ime_open()` 是唯一开关出口：`ImmSetOpenStatus` + 若正在组合则
+  `finish_composition()`（不取消会留下一个永远不更新的组合窗）。
+- `should_consume_key()` 第一行 `if (!ime_is_open(hIMC)) return false;` ——
+  关闭态下所有键归应用，这才是"英文输入"。
+- **P0-2 的结论要反过来读**：当时说"`open` 只能观测、不能当门禁"，前提是**没人设置它**；
+  现在 `AlignOpenStatus()` 每次会话对齐一次、Shift 可切换，它就是可信状态。
+  `AlignOpenStatus()` 也从"每次激活"改成"每会话一次"——否则切到英文后点一下别的窗口
+  再回来就被悄悄改回中文。
+- 契约闸门同步改写：`open` 必须"激活时对齐一次 + 只在 `set_ime_open` 里写 +
+  只在 `ime_is_open()` 里读且门禁走它"（check_m1 57 项）。
+
+另外加 `uigeom` trace（`refresh_ui`，仅几何变化时打印）：
+`uigeom comp=x,y,w,h cand=x,y,w,h anchor=x,y caret=0/1`。
+"翻页时输入框位移"这种报告光靠 `wmove/wrep` 计数答不了——计数只说"有 SetWindowPos"，
+不说**哪个窗、从哪到哪**；`caret=0` 还能量化"锚点退化成鼠标位置"这条路径
+（`caret_anchor()` 里 `GetFocus()`/`GetCaretPos()` 失败时的兜底）。
+
 ### 11.2 其他待办
 
 - ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。
-- M3：中文标点、全角/半角、Shift 临时英文；
+- M3：中文标点、全角/半角；~~Shift 临时英文~~（已做，见 §11.14：lone Shift 切中英，
+  暂未实现"按住 Shift 临时英文、松开恢复"的瞬时模式）；
 - M4：词组与词频（数据结构需扩展 `rospinyin.dat`，注意版本号与向后兼容）；
 - 语言栏菜单项（属性/关于）留待 M6；
 - `xingma/` W1 编码（`ShapeScheme`/`ShapeStore`/`ShapeDatLoader`）尚未开始，框架侧缺口已全部关闭，可直接复用宿主层；

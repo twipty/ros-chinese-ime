@@ -172,7 +172,8 @@ def run(root: Path) -> int:
     c.check("M2 commits text through WM_IME_CHAR TRANSMESSAGEs",
             "WM_IME_CHAR" in entry and "emit_text" in entry)
     c.check("G1: commit path handles multi-codepoint text (words)",
-            "emit_text(lpTransMsgList, commit_text)" in entry and
+            "apply_commit" in entry and
+            "emit_text(lpTransMsgList, text)" in entry and
             "chosen->text[0]" not in entry)
     # Audit 2026-11-17 §2.1 (P0): ImeToAsciiEx takes a TRANSMSGLIST whose
     # uMsgCount header is pre-filled with the capacity; messages live at
@@ -383,15 +384,23 @@ def run(root: Path) -> int:
             installer_code.count("kDatFileName") >= 3 and
             "kDatFileName" in installer_code.split("int uninstall()")[1])
 
-    # P0-2: the OS-side open flag is aligned at activation and never used as a
-    # key gate (ReactOS hands keys to ImeProcessKey whatever fOpen says, so
-    # gating would disable the IME whenever the flag is stale).
+    # P0-2 / M2 Shift toggle: `open` is now a state the IME owns. It is aligned
+    # at every activation (AlignOpenStatus), toggled by VK_SHIFT via exactly one
+    # helper (set_ime_open), and read through exactly one helper (ime_is_open).
+    # Before the toggle existed, gating on it was forbidden precisely because
+    # nothing ever set the flag; that is no longer true, so the gate is back --
+    # but only through the helper, so no call site can invent its own meaning.
     entry_code = strip_cpp_comments(entry)
     gate = function_body(entry_code, r"bool should_consume_key\([^)]*\)")
-    c.check("open status is aligned once, never used as a key gate",
+    toggle = function_body(entry_code, r"void set_ime_open\([^)]*\)")
+    c.check("open status is owned by the IME: aligned, toggled on lone Shift, "
+            "read through one helper",
             "AlignOpenStatus(" in entry_code and
-            gate is not None and "OpenStatus" not in gate,
-            "should_consume_key not found" if gate is None else "")
+            toggle is not None and "ImmSetOpenStatus(" in toggle and
+            "VK_SHIFT" in entry_code and
+            gate is not None and "ime_is_open(" in gate,
+            "should_consume_key/set_ime_open not found"
+            if gate is None or toggle is None else "")
 
     return c.summary()
 

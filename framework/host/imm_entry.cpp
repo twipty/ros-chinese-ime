@@ -246,13 +246,51 @@ void refresh_ui(rpimm::InputContext hIMC, ImeSessionState& state) {
     // in the composition window, not just ASCII codes).
     const std::wstring text = imfw::utf8_to_wide(state.composition);
     imfw::UiShow(hIMC, text.c_str(), state.segments, state.pager);
+#if defined(ROSPINYIN_TRACE)
+    // Where the two popups ended up, and what the anchor was. The key counters
+    // cannot answer "the box moved while I was paging": they only say that a
+    // SetWindowPos happened, not which window or from/to where. Printed only
+    // when the geometry changed, so a page-flip that moves nothing is silent
+    // and a page-flip that moves something is one obvious line.
+    const imfw::UiGeometry g = imfw::UiLastGeometry();
+    static imfw::UiGeometry last = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+    const bool changed = g.comp_x != last.comp_x || g.comp_y != last.comp_y ||
+                         g.comp_w != last.comp_w || g.comp_h != last.comp_h ||
+                         g.cand_x != last.cand_x || g.cand_y != last.cand_y ||
+                         g.cand_w != last.cand_w || g.cand_h != last.cand_h;
+    if (changed) {
+        last = g;
+        IMFW_TRACE("uigeom comp=").d(g.comp_x).s(",").d(g.comp_y).s(",")
+            .d(g.comp_w).s(",").d(g.comp_h)
+            .s(" cand=").d(g.cand_x).s(",").d(g.cand_y).s(",")
+            .d(g.cand_w).s(",").d(g.cand_h)
+            .s(" anchor=").d(g.anchor_x).s(",").d(g.anchor_y)
+            .s(" caret=").d(g.anchor_from_caret);
+    }
+#endif
+}
+
+// Chinese/English state, owned by the IME.
+//
+// History matters here because P0-2 concluded the opposite: at the time,
+// `open` read 0 while the IME worked, so gating on it would have disabled the
+// IME outright. The missing half was that nothing ever *set* it — imm32 creates
+// the IMC with fOpen = FALSE and the activation path does not touch it. Now
+// AlignOpenStatus() sets it at every activation and VK_SHIFT toggles it, so the
+// flag is a state this IME owns and can trust; IMM32 only stores it.
+bool ime_is_open(rpimm::InputContext hIMC) {
+    return ImmGetOpenStatus(reinterpret_cast<HIMC>(hIMC)) != FALSE;
 }
 
 // Decide whether the IME should consume this key. Called by IMM32 before
 // ImeToAsciiEx; keeping it side-effect free is important.
-bool should_consume_key(ImeSessionState* state, UINT vk,
-                        const BYTE* lpbKeyState) {
+bool should_consume_key(rpimm::InputContext hIMC, ImeSessionState* state,
+                        UINT vk, const BYTE* lpbKeyState) {
     if (state == nullptr) return false;
+    // Closed = English: every key belongs to the application. This is the whole
+    // point of the Shift toggle; without it "switching to English" would leave
+    // the IME swallowing letters and inserting Chinese.
+    if (!ime_is_open(hIMC)) return false;
     if (modifier_down(lpbKeyState, KeyIndex::Control, kCtrlBit) ||
         modifier_down(lpbKeyState, KeyIndex::Alt, kAltBit)) {
         return false;
@@ -282,6 +320,19 @@ void finish_composition(rpimm::InputContext hIMC, ImeSessionState& state) {
     state.composition.clear();
     state.segments.clear();
     imfw::UiHide(hIMC);
+}
+
+// Chinese <-> English. Called only from the Shift gesture in ImeProcessKey.
+//
+// Closing must drop an in-flight composition: leaving the letters on screen
+// while every following key goes to the application produces a popup that
+// never updates (the exact "frozen composition window" symptom).
+void set_ime_open(rpimm::InputContext hIMC, ImeSessionState& state,
+                  bool open) {
+    if (open == ime_is_open(hIMC)) return;
+    ImmSetOpenStatus(reinterpret_cast<HIMC>(hIMC), open ? TRUE : FALSE);
+    if (!open && state.composing) finish_composition(hIMC, state);
+    IMFW_TRACE("opentoggle -> ").d(open ? 1 : 0);
 }
 
 // Track the last engine output so paging/refresh need no engine call.
@@ -330,6 +381,31 @@ std::vector<imfw::Candidate> renderable_candidates(
     return kept;
 }
 
+// Emit one picked character and either keep composing or close the session.
+//
+// The pinyin engine converts left to right, so committing 中 out of
+// "zhongguo" leaves "guo" in the composition (Result::composition, candidates
+// and segments are all filled in). Dropping that remainder — what an
+// unconditional finish_composition() used to do — threw away everything the
+// user had typed after the first syllable. A stateless engine returns an empty
+// composition here, so this branch is the plain "commit and close" path.
+UINT apply_commit(rpimm::InputContext hIMC, ImeSessionState& state,
+                  const imfw::Result& result,
+                  rpimm::TransMsgList* lpTransMsgList) {
+    if (result.commit_text.empty()) return 0;
+    const std::u32string text = result.commit_text;
+
+    if (result.composition.empty()) {
+        finish_composition(hIMC, state);
+    } else {
+        adopt_result(state, result);
+        state.pager.reset(renderable_candidates(result.candidates));
+        state.composing = true;
+        refresh_ui(hIMC, state);
+    }
+    return emit_text(lpTransMsgList, text);
+}
+
 UINT process_key(rpimm::InputContext hIMC, UINT vk, const BYTE* lpbKeyState,
                  rpimm::TransMsgList* lpTransMsgList) {
     ImeSessionState* state = imfw::acquire_session(hIMC);
@@ -349,9 +425,13 @@ UINT process_key(rpimm::InputContext hIMC, UINT vk, const BYTE* lpbKeyState,
         }
         const imfw::Candidate* chosen = state->pager.select(digit);
         if (chosen == nullptr || chosen->text.empty()) return 0;
-        const std::u32string commit_text = chosen->text;
-        finish_composition(hIMC, *state);
-        return emit_text(lpTransMsgList, commit_text);
+        // The pager holds a *filtered* copy of the candidate list (P1-2 drops
+        // characters the font cannot draw), so its index means nothing to the
+        // engine — hand the text back instead and let the engine decide what
+        // is left to convert.
+        return apply_commit(hIMC, *state,
+                            state->engine->commit_text(chosen->text),
+                            lpTransMsgList);
     }
 
     // Paging direction is likewise the Scheme's policy (G4).
@@ -405,12 +485,7 @@ UINT process_key(rpimm::InputContext hIMC, UINT vk, const BYTE* lpbKeyState,
     }
     switch (result.action) {
     case imfw::Action::Commit:
-        if (!result.commit_text.empty()) {
-            const std::u32string commit_text = result.commit_text;
-            finish_composition(hIMC, *state);
-            return emit_text(lpTransMsgList, commit_text);
-        }
-        break;
+        return apply_commit(hIMC, *state, result, lpTransMsgList);
     case imfw::Action::Absorb:
         adopt_result(*state, result);
         state->pager.reset(renderable_candidates(result.candidates));
@@ -524,18 +599,25 @@ namespace {
 //     called with ALPHANUMERIC);
 //   * the next Ctrl+Space takes imm32_keymsg.c!Imm32CImeNonImeToggle's
 //     "closed" branch, so it opens instead of switching to the EN layout.
-// Setting it once per activation makes ImmGetOpenStatus agree with what the
-// user sees and gives M3's Shift temporary-English a well-defined baseline.
-// Deliberately not a gate: key routing never depends on this value, because
-// ReactOS hands keys to ImeProcessKey whatever fOpen says.
-void AlignOpenStatus(rpimm::InputContext hIMC) {
+// Setting it once per session makes ImmGetOpenStatus agree with what the
+// user sees, and gives the Shift toggle a well-defined starting point.
+//
+// "Once per session", not "once per activation": re-aligning on every
+// activation would silently undo an English toggle the moment the user clicks
+// into another window and back, which is exactly what a Chinese/English switch
+// must survive.
+void AlignOpenStatus(rpimm::InputContext hIMC, ImeSessionState& state) {
     HIMC imc = reinterpret_cast<HIMC>(hIMC);
     const int before = ImmGetOpenStatus(imc) ? 1 : 0;
     int after = before;
-    if (before == 0 && ImmSetOpenStatus(imc, TRUE)) {
-        after = ImmGetOpenStatus(imc) ? 1 : 0;
+    if (!state.open_initialized) {
+        state.open_initialized = true;
+        if (before == 0 && ImmSetOpenStatus(imc, TRUE)) {
+            after = ImmGetOpenStatus(imc) ? 1 : 0;
+        }
     }
-    IMFW_TRACE("openalign before=").d(before).s(" after=").d(after);
+    IMFW_TRACE("openalign before=").d(before).s(" after=").d(after)
+        .s(" once=").d(state.open_initialized ? 1 : 0);
 }
 
 }  // namespace
@@ -546,10 +628,10 @@ BOOL WINAPI ImeSetActiveContext(rpimm::InputContext hIMC, BOOL fFlag) {
             reinterpret_cast<std::uintptr_t>(hIMC)));
     if (hIMC == nullptr) return TRUE;
     if (fFlag) {
-        AlignOpenStatus(hIMC);
         // Some IMM32 implementations only deliver ImeSetActiveContext for a
         // newly focused HIMC; activating here as well is idempotent.
         ImeSessionState* state = imfw::acquire_session(hIMC);
+        if (state != nullptr) AlignOpenStatus(hIMC, *state);
         if (state != nullptr && state->engine != nullptr) {
             state->engine->on_select(true);
         }
@@ -563,6 +645,34 @@ BOOL WINAPI ImeSetActiveContext(rpimm::InputContext hIMC, BOOL fFlag) {
 
 BOOL WINAPI ImeProcessKey(rpimm::InputContext hIMC, UINT uVirtKey, LPARAM lParam,
                           const BYTE* lpbKeyState) {
+    // Shift owns Chinese/English. ReactOS gives us every key message, including
+    // VK_SHIFT (verified in the trace: `processkey vk=0x10 -> 0`), so the IME
+    // has to implement the toggle itself -- imm32 only stores fOpen and no
+    // hot key is registered for Shift.
+    //
+    // Lone-Shift semantics: a latch cleared by any other key means Shift+A is
+    // still a capital A rather than "switch to English, then type a". The
+    // switch happens on key-UP, which is where a user expects it.
+    if (uVirtKey == VK_SHIFT) {
+        const bool up = (static_cast<unsigned long>(lParam) & kKeyUpBit) != 0;
+        ImeSessionState* state = imfw::acquire_session(hIMC);
+        if (state != nullptr) {
+            if (!up) {
+                state->shift_latched = true;
+            } else {
+                const bool lone = state->shift_latched;
+                state->shift_latched = false;
+                if (lone) set_ime_open(hIMC, *state, !ime_is_open(hIMC));
+            }
+        }
+        IMFW_TRACE("processkey vk=").h(uVirtKey)
+            .s(up ? " shift-up" : " shift-down")
+            .s(" lone=").d(state != nullptr && state->shift_latched ? 1 : 0)
+            .s(" open=").d(ime_is_open(hIMC) ? 1 : 0)
+            .s(" -> 0");
+        return FALSE;
+    }
+
     // A key-UP must never be claimed. This is the only place the decision can
     // be made: ReactOS routes every key message through IntImmProcessKey
     // (co_IntProcessKeyboardMessage sets bKeyUpDown for WM_KEYUP as well) and
@@ -581,13 +691,14 @@ BOOL WINAPI ImeProcessKey(rpimm::InputContext hIMC, UINT uVirtKey, LPARAM lParam
     }
 
     ImeSessionState* state = imfw::acquire_session(hIMC);
-    const bool consume = should_consume_key(state, uVirtKey, lpbKeyState);
+    if (state != nullptr) state->shift_latched = false;  // Shift was a modifier
+    const bool consume = should_consume_key(hIMC, state, uVirtKey, lpbKeyState);
 #if defined(ROSPINYIN_TRACE)
-    // open= is an observation, never a gate. After AlignOpenStatus() ran in
-    // ImeSetActiveContext it should read 1; a persistent 0 means the
-    // activation callback never fired for this HIMC (see P0-2 in
-    // m2/M2-REMAINING.md for the full derivation from the ReactOS sources).
-    const int open = ImmGetOpenStatus(reinterpret_cast<HIMC>(hIMC)) ? 1 : 0;
+    // open= is now the gate itself (Chinese/English), so a persistent 0 here
+    // means "closed", not "IMM32 is broken". The earlier P0-2 reading -- open
+    // is an observation, never a gate -- was only valid while nothing set the
+    // flag; see AlignOpenStatus() and set_ime_open().
+    const int open = ime_is_open(hIMC) ? 1 : 0;
     IMFW_TRACE("processkey vk=").h(uVirtKey)
         .s(" state=").d(state != nullptr)
         .s(" open=").d(open)

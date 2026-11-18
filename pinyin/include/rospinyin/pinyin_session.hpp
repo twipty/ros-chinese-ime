@@ -42,6 +42,7 @@ public:
     imfw::Result feed(char32_t codepoint) override;
     imfw::Result backspace() override;
     imfw::Result cancel() override;
+    imfw::Result commit_text(const std::u32string& text) override;
     void on_select(bool selected) override;
 
     const std::string& composition() const noexcept { return composition_; }
