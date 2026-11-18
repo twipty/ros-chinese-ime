@@ -1617,6 +1617,7 @@ GDI32/IMM32/KERNEL32/msvcrt/USER32）+ **行为由宿主测试钉住**。
 | 玩具版 `.ime` | 874,682 B（同一份框架，验证玩具方案没被落下） |
 | trace 版 `.ime` | 971,995 B，`-DROSPINYIN_TRACE=ON` 构建通过 |
 | `imm_entry.cpp` | 783 → **609** 行；策略移到 254 行的 `host_key.cpp` |
+| CI | run `44333478437`：Linux 测试、MinGW i686 构建、产物发布三个 job 全 success（`host-key` 在 ctest 里一起跑） |
 
 **变异验证 8 次，全部变红。** 策略 6 次：不拦 key-up、关态仍吞键、Shift 闩不清、翻页无效也
 刷 UI、丢弃过半不兜底、退格后永远 composing —— 每条都报出对应的那句断言。门禁 2 次：给
