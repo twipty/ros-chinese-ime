@@ -50,6 +50,13 @@ N 组的被测对象与 `alpha0.0.2` 发版资产**同一个文件**，这样结
 
 ## 2. N 组步骤（人手，约 10 分钟 + 最多 2 次重启）
 
+> **2026-11-18 修订（两次实测教训）**
+> 1. `m0/share/install-rospinyin.exe` 是 **11-16 的 M1 构建**，`/step1` 只拷 `.ime`、
+>    `/status` 只打 `present` 不打字节数，payload 校验与 `.dat` 都是 `0bdee19` 之后才有的。
+>    已换成当次构建（**245,224 B** `5dd2ad84…`），共享目录同步更新。
+> 2. **`/step2` 会由平台替我们写 Preload**，所以「手工往 Preload 里加一项」这一步是错的，
+>    见 §2.2。
+
 ### 2.1 先把被测二进制装进去
 
 0. 进桌面后开 **Command Prompt**，进一个干净目录（例：`md C:\probe` / `cd C:\probe`）。
@@ -60,33 +67,61 @@ N 组的被测对象与 `alpha0.0.2` 发版资产**同一个文件**，这样结
    wget http://10.0.2.2:8000/probe-N/rospinyin.dat
    dir
    ```
-   `dir` 要看到 `940601 rospinyin.ime` / `902776 rospinyin.dat` / `89394 install-rospinyin.exe`。
-   **字节数不对就别往下走**（下载截断比失败更危险）。
-2. 拷贝并校验：
+   `dir` 要看到 `940601 rospinyin.ime` / `902776 rospinyin.dat` / **`245224 install-rospinyin.exe`**。
+   **字节数不对就别往下走**（下载截断比失败更危险）。旧 exe 是 `89394`，见到它就说明没覆盖成功。
+2. 拷贝并校验（`.ime` + `.dat` 两份，逐个报字节数）：
    ```
    install-rospinyin.exe /step1
    ```
-   正常输出 `[step1] rospinyin.ime verified (940601 bytes)`。
+   正常输出两行 `[step1] ... verified (N bytes)`：`rospinyin.ime` 940601、`rospinyin.dat` 902776。
    若提示 `stale payload ... .old exists` 或 `reboot, then rerun /step1`：
    **重启一次，再跑一遍 `/step1`** —— 说明旧文件还被运行中的 IME 映射着，属预期。
-3. 确认落位与注册信息：
+3. 注册布局，拿 HKL：
+   ```
+   install-rospinyin.exe /step2
+   ```
+   输出 `[step2] ImmInstallIMEW returned HKL=XXXXXXXX`。**这一步就是投递**，它同时做三件事：
+   写 `HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layouts\<HKL>`、
+   写 `HKCU\Keyboard Layout\Preload`（平台自己写，不是我们）、返回动态 HKL。
+   `/step2` 是幂等的：同 `LANGID` 会复用已有 HKL，Preload 里同值也不会重复追加。
+4. 核对：
    ```
    install-rospinyin.exe /status
    ```
-   必须看到 `rospinyin.ime : present (940601 bytes)` 和 `recorded HKL : XXXXXXXX`。
-   **以 `/status` 输出为准**，不要照抄 `e0210804`（动态分配）。
-   若 `recorded HKL : (none)` 或 `layout key : missing`，说明这套盘上还没注册过，
-   补 `/step2` `/step3` `/step4` 各一次，再回来。
+   必须看到 `rospinyin.ime : present (940601 bytes)`、`rospinyin.dat : present (902776 bytes)`、
+   `recorded HKL : XXXXXXXX`、`layout key : present`。
 
-### 2.2 写 Preload，然后三次启动
+### 2.2 确认 Preload 里已经有我们（只读，不要手写）
 
-4. 打开 `regedit`，定位 `HKEY_CURRENT_USER\Keyboard Layout\Preload`，**截图存证**现有键值。
-5. 新建**字符串值**：名称 `2`，数据为第 3 步拿到的 HKL（8 位十六进制，如 `e0210804`）。
-   **只追加到末尾**：不插首位、不改 `1` 号项 —— 这是最小崩溃面。
-6. **截图存证**写完后的整份 Preload。
-7. **正常关机**（开始菜单 → 关机；不要直接断电，hive 需要落地）。
-8. 启动 #1 → 能进桌面？能输入？（开记事本敲 `nihao` 出候选即可）
-9. 启动 #2、#3 重复。**登录路径的问题常常第一次不出现**，三次都要。
+5. 打开 `regedit` → `HKEY_CURRENT_USER\Keyboard Layout\Preload`，**截图**。
+   预期能看到 `1 = 00000409` 和一条**值为第 3 步那个 HKL** 的项（序号由平台挑，不一定是 `2`）。
+   - **已经有了** → 什么都不用做，直接进 6。**不要再手工加一项**：同值加两遍没有意义，
+     不同值等于凭空多注册一个 IME，会把对照搞脏。
+   - **没有** → 说明 `/step2` 没走到写 Preload 那一支（或这套盘上布局早已存在、平台跳过了）。
+     这时才手工追加一项，值为那个 HKL，**只追加到末尾**，并在记录表里注明「手工」。
+6. **正常关机**（开始菜单 → 关机；不要直接断电，hive 需要落地）。
+7. 启动 #1 → 能进桌面？能输入？（开记事本敲 `nihao` 出候选即可）
+8. 启动 #2、#3 重复。**登录路径的问题常常第一次不出现**，三次都要。
+
+### 2.3 为什么「写 Preload」这一步从本组的动作里删掉了
+
+不是省事，是**写不写不由我们决定**。ReactOS 0.4.16 的源码里两处写死在平台上：
+
+- **写**：`win32ss/user/imm32/install.c` 的 `Imm32WriteImeLayout()`（L256–341）
+  在写完 `HKLM\...\Keyboard Layouts\<HKL>` 之后，直接
+  `RegCreateKeyW(HKEY_CURRENT_USER, L"Keyboard Layout\\Preload", ...)`，
+  再 `RegSetValueExW(hkeyPreload, szPreloadNumber, ...)` 追加 `szImeKey`。
+  入口就是 `ImmInstallIMEW` —— 我们 `/step2` 调的正是它。
+- **读**：`win32ss/user/user32/windows/input.c` 的 `IntLoadPreloadKeyboardLayouts()`（L145 起）
+  遍历 `HKCU\Keyboard Layout\Preload` 的 `1..1000`，逐项 `LoadKeyboardLayoutW(szValue, uFlags)`，
+  首项带 `KLF_ACTIVATE`。调用点 `win32ss/user/user32/misc/logon.c`
+  的 `UpdatePerUserSystemParameters()`（L104–111）。
+
+所以红线 #2「部署过程不得写 Preload」在 ReactOS 上**从来没有被真正做到过**：
+`check_m1` 第 7 项扫的是我们自己的源码，平台替我们写的那次不在扫描范围内。
+这也意味着 N 组的条件很可能**在过去两天的每一次开机里都已经成立过**——
+若第 5 步截图证实 Preload 里早就有我们的 HKL，那么 N 组要补的就只是
+"换成发版二进制之后，再确认 3 次"。
 
 ### 记录表（复制到 issue 或直接填这里）
 

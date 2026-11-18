@@ -192,12 +192,14 @@ int step1_copy_payload() {
         }
         if (a != b) {
             std::fwprintf(stderr,
-                          L"[error] %ls: source %llu bytes, installed %llu "
+                          L"[error] %ls: source %lu bytes, installed %lu "
                           L"bytes\n",
-                          name, a, b);
+                          name, static_cast<unsigned long>(a),
+                          static_cast<unsigned long>(b));
             return kVerifyFailed;
         }
-        std::fwprintf(stdout, L"[step1] %ls verified (%llu bytes)\n", name, a);
+        std::fwprintf(stdout, L"[step1] %ls verified (%lu bytes)\n", name,
+                      static_cast<unsigned long>(a));
     }
     return kOk;
 }
@@ -331,7 +333,11 @@ void report_payload(const wchar_t* name) {
     }
     unsigned long long size = 0;
     if (file_size(dst, &size)) {
-        std::fwprintf(stdout, L"%-14ls : present (%llu bytes)\n", name, size);
+        // %lu, not %llu: this exe links msvcrt.dll (not MinGW's ANSI stdio),
+        // and the "ll" length modifier is not portable across msvcrt builds.
+        // A payload is never anywhere near 4 GiB, so the cast is lossless.
+        std::fwprintf(stdout, L"%-14ls : present (%lu bytes)\n", name,
+                      static_cast<unsigned long>(size));
     } else {
         std::fwprintf(stdout, L"%-14ls : MISSING\n", name);
     }

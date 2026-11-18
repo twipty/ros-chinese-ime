@@ -345,6 +345,55 @@ A1 与 A1b 是**一对**：前者让失败不可能发生，后者让失败可�
 
 ---
 
+## 12. ReactOS 侧证据：红线 #2 从第一天起就不可能被执行（2026-11-18 17:00）
+
+§8 用 liberNT 的 `imm32/install.c` 论证「写不写 Preload 不由我们控制」。做 N 组准备时把
+ReactOS 0.4.16 的同一段读了，结论**一样，而且更糟**：不需要移植，现在就已经是这样。
+
+### 12.1 两个写死的点
+
+| 方向 | 位置 | 行为 |
+|---|---|---|
+| 写 | `win32ss/user/imm32/install.c` → `Imm32WriteImeLayout()`（L256–341） | 写完 `HKLM\...\Keyboard Layouts\<HKL>` 后 `RegCreateKeyW(HKCU, L"Keyboard Layout\\Preload")` 并 `RegSetValueExW` 追加 `szImeKey`；入口是 `ImmInstallIMEW` |
+| 读 | `win32ss/user/user32/windows/input.c` → `IntLoadPreloadKeyboardLayouts()`（L145） | 遍历 `1..1000`，逐项 `LoadKeyboardLayoutW(szValue, uFlags)`；首项 `KLF_SUBSTITUTE_OK\|KLF_ACTIVATE\|KLF_RESET`，其余 `\|KLF_NOTELLSHELL\|KLF_REPLACELANG` |
+| 调用点 | `win32ss/user/user32/misc/logon.c` → `UpdatePerUserSystemParameters()`（L104–111） | 登录/应用用户参数时先 `UpdatePerUserImmEnabling()`，再 `IntLoadPreloadKeyboardLayouts()` |
+
+补充两条与本项目直接相关的细节：
+
+- `ImmInstallIMEW` 对**同 `LANGID`** 会复用已有 HKL（`if (wLangID != LOWORD(pLayouts[iLayout].hKL)) continue;`），
+  所以 `/step2` 重复跑是幂等的；写 Preload 前也比对过同值，不会重复追加。
+- 装载 `.ime` 的动作发生在 `LoadKeyboardLayoutW` → `co_UserImmLoadLayout` → `imm32!ImmLoadLayout`
+  → `LoadLibrary`，也就是**在调用 `UpdatePerUserSystemParameters` 的那个进程里**完成，
+  不是另起一个线程。这一点决定 N 组观察到的"活"能说明什么。
+
+### 12.2 三个后果
+
+1. **`check_m1` 第 7 项自始至终是空转。** 它扫的是 `tools/install-rospinyin/install.cpp`
+   里有没有 `Preload` 这个字符串；平台写的那次不经过我们的源码。**绿灯 ≠ 保护**，
+   §8 说"失效的度量比没有度量更危险"，现在可以确认失效状态**已经在运行**。
+2. **本项目的每一次 `/step2` 都写过 Preload。** M1 的注册、M2 验收期间的多次重启，
+   只要 HKCU 里还留着那条 HKL，条件（Preload 指向我们 + 登录路径 `LoadKeyboardLayoutW`）
+   就成立过。**这些都要靠 N 组第 5 步的截图确认，不能推论**。如果确认了，
+   "两天没有 0xF4"就和"Preload 里有我们"是同一件事的两种说法——
+   那时 N 组真正要复核的就不是"手工加一项再试"，而是"换成发版二进制再来 3 次"。
+3. **红线 #2 的措辞与事实冲突。** README §9 写"部署过程不写 Preload"，
+   而部署过程必然调用 `ImmInstallIMEW`（D3 决策：HKL 只能由它分配）。
+   精确的表述只能是 §8 的 B′：**约束二进制在登录路径被加载时不做可能失败的事**。
+
+### 12.3 对实验的影响（已写进 `PRELOAD-PROBE.md` §2）
+
+"手工往 Preload 加一项"这一步**删掉**，改为**只读核对**：`/step2` 之后再截图，
+确认那条 HKL 已经在 Preload 里；已经有就不动，没有才手工补并标注。
+
+顺带修掉一个会误导判断的坑：`m0/share/install-rospinyin.exe` 是 11-16 的 M1 构建，
+`/status` 只打 `present` 不打字节数（实测 `/status` 少字节就是这个原因），
+payload 校验是 `0bdee19` 才加的。已换成当次构建 **245,224 B** `5dd2ad84…`，
+并把三处 `%llu` 改成 `%lu` + 显式窄化——该 exe 直连 `msvcrt.dll`（不是 MinGW 的 ANSI stdio），
+`ll` 长度修饰符在 msvcrt 上不保证支持，而 payload 不可能接近 4 GiB。
+
+---
+
 *§1–§7 的事实来自 `m0/vm/logs/bsod-ocr.txt`、`README.md` §9、`M0-REPORT.md` §4.4、`M1-REPORT.md`、`tools/check_m1.py`（第 6/7 项）、`framework/host/dllmain.cpp`、`tools/install-rospinyin/install.cpp`。
 §8 的事实来自 `libernt/PORTABILITY-ASSESSMENT.md` §2.2 对 `imm32/install.c` 的逐行核对。
-§9–§11 的事实来自 `m0/extract/pe_0_0x76ff5a.bin`（`objdump -p`/`-h`）、`vendor/mzimeja-ref/ime/main.cpp` 与 `config.cpp`、`build-win-trace/ime/rospinyin.ime` 的导入表、`m0/vm/logs/rosdbg.log`（0 字节）。*
+§9–§11 的事实来自 `m0/extract/pe_0_0x76ff5a.bin`（`objdump -p`/`-h`）、`vendor/mzimeja-ref/ime/main.cpp` 与 `config.cpp`、`build-win-trace/ime/rospinyin.ime` 的导入表、`m0/vm/logs/rosdbg.log`（0 字节）。
+§12 的事实来自 ReactOS 0.4.16 标签下的 `win32ss/user/imm32/install.c`、`win32ss/user/user32/windows/input.c`、`win32ss/user/user32/misc/logon.c`（经 GitHub contents API 取原文，已落在 `/home/twipty/.workbuddy/tmp/ros416_*.c`）。*
