@@ -1147,7 +1147,13 @@ RENZHI [BACK] ICHU 1{人} 1{之} 4{初} XINGBENSHAN 2{性} 1{本} 2{善} [RETURN
 4. `.dat` 没变（`f28b2606…`），与验收、与 `alpha0.0.1` 都是同一份——数据层这一版没有改动。
 5. 发版脚本路径同样受限：`git push` 与 `git push --tags` 都走不通（见 §12），
    tag 与 release 全部用 API 建（`POST /git/tags` + `POST /git/refs` + `POST /releases`，
-   资产走 `uploads.github.com`，这个域名是通的）。
+   资产走 `uploads.github.com`，这个域名是通的）。整理成 `tools/make_release.py`；
+   **注意**：`alpha0.0.2` 实际是一次性脚本跑的，`tools/make_release.py` 是按它整理的通用版，
+   尚未实战——下次发版先核对资产过滤器（它会跳过 `.md`/`.py`）与 tagger 日期。
+6. 发布说明正文同时入库：`releases/<tag>.md`，与 GitHub release body 完全一致。
+7. 回验：从 `https://gh-proxy.com/https://github.com/.../releases/download/alpha0.0.2/*` 下载，
+   三个文件字节数与 sha256 与本地一致；GitHub 自己算的 `digest` 字段也与之相同
+   （`sha256:c9dc17c0…` / `f28b2606…`），这是"发出去的就是验收的那份代码"的最强证据。
 
 ### 11.2 其他待办
 
