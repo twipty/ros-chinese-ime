@@ -10,6 +10,7 @@ add_library(imfw-engine STATIC
     src/code_table.cpp
     src/candidate_pager.cpp
     src/emit_text.cpp
+    src/host_key.cpp
     src/scheme_registry.cpp
     src/utf8.cpp)
 

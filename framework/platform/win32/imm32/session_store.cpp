@@ -11,6 +11,8 @@
 
 #include "session_store.hpp"
 
+#include <imfw/scheme.hpp>
+
 #include <windows.h>
 
 #include <map>

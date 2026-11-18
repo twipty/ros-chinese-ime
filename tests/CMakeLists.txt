@@ -48,6 +48,13 @@ target_include_directories(rospinyin-toy-scheme PRIVATE
 target_link_libraries(rospinyin-toy-scheme PRIVATE imfw-engine)
 add_test(NAME toy-scheme COMMAND rospinyin-toy-scheme)
 
+# X2-a: the key policy, compiled without <windows.h>. Before this target the
+# IME's busiest branch (which key means what) had no host-side coverage at all;
+# the fake engine/host here are also the base X2-b extends.
+add_executable(rospinyin-host-key host_key_test.cpp)
+target_link_libraries(rospinyin-host-key PRIVATE imfw-engine)
+add_test(NAME host-key COMMAND rospinyin-host-key)
+
 # G1 regression: multi-codepoint commits (WM_IME_CHAR per UTF-16 unit).
 add_executable(rospinyin-emit-text emit_text_test.cpp)
 target_link_libraries(rospinyin-emit-text PRIVATE imfw-engine)

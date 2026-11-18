@@ -10,30 +10,12 @@
 
 #include "imm32_abi.h"
 
-#include <imfw/candidate_pager.hpp>
-#include <imfw/engine.hpp>
-#include <imfw/scheme.hpp>
-
-#include <memory>
-#include <string>
-#include <vector>
+#include <imfw/session_state.hpp>
 
 namespace imfw {
 
-struct ImeSessionState {
-    std::unique_ptr<Engine> engine;
-    CandidatePager pager;
-    bool composing = false;  // true while there is an active composition
-    std::string composition;             // last engine composition
-    std::vector<std::string> segments;    // last engine segmentation
-    // Set on VK_SHIFT down and cleared by any other key, so only a *lone*
-    // Shift toggles Chinese/English (Shift+A must stay a capital A).
-    bool shift_latched = false;
-    // The OS-side fOpen was set once for this session (see AlignOpenStatus).
-    // After that the flag belongs to the user: re-aligning would undo an
-    // English toggle on the next focus change.
-    bool open_initialized = false;
-};
+// The state itself is portable (imfw/session_state.hpp) because the key policy
+// reads and writes it on the host; only the per-HIMC store below is IMM32-side.
 
 // Get or create the state for hIMC. Never returns nullptr. Thread-safe;
 // callers must not hold the returned pointer across a release_session()
@@ -48,7 +30,7 @@ void release_session(rpimm::InputContext hIMC);
 // sessions (used after a successful ImeConfigure — a configuration tool may
 // have swapped packs or rewritten a data file). Thread-safe, never called
 // from DllMain. Same hazard note as release_session(): a thread already
-// inside process_key keeps its engine until the key completes; IMM32
+// inside handle_key keeps its engine until the key completes; IMM32
 // serializes calls per input context, so only a cross-HIMC reload can race,
 // in which case the next key for that context transparently rebuilds its
 // session.

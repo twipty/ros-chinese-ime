@@ -232,14 +232,27 @@ def run(root: Path) -> int:
     # M1 shipped an inert passthrough IME (WBS 2.4.1) where ImeProcessKey
     # always returned FALSE and ImeToAsciiEx returned 0. M2 replaces that
     # behaviour with real pinyin key handling: ImeProcessKey decides key
-    # ownership via should_consume_key(), and ImeToAsciiEx dispatches to
-    # process_key() which emits WM_IME_CHAR TRANSMESSAGEs on commit. The
-    # historical M1 snapshot is no longer the shipping behaviour, so assert
-    # the live M2 wiring instead of the obsolete unconditional returns.
+    # ownership through imfw::wants_key() and ImeToAsciiEx dispatches to
+    # imfw::handle_key(), which emits WM_IME_CHAR TRANSMESSAGEs on commit.
+    # Since X2-a both policy functions live in framework/src/host_key.cpp, so
+    # the assertions below are split: the entry file must only *translate*, the
+    # policy file must *decide*. The historical M1 snapshot is not the shipping
+    # behaviour either way.
+    policy = read(root, "framework/src/host_key.cpp")
     process_body = function_body(entry, r"BOOL\s+WINAPI\s+ImeProcessKey\s*\([^)]*\)")
     ascii_body = function_body(entry, r"UINT\s+WINAPI\s+ImeToAsciiEx\s*\([^)]*\)")
-    c.check("ImeProcessKey delegates key ownership to should_consume_key",
-            process_body is not None and "should_consume_key" in process_body)
+    c.check("ImeProcessKey delegates key ownership to wants_key (host-tested)",
+            process_body is not None and
+            "const bool consume = state != nullptr && imfw::wants_key(*state, event, host);"
+            in process_body)
+    # Both call sites, pinned individually: the shift branch answers "not ours"
+    # but still has to run the lone-Shift latch, so a substring test that only
+    # asks "is wants_key mentioned" passes while one of the two is deleted --
+    # observed while writing this assertion.
+    c.check("Shift reaches the same policy from the ownership path",
+            process_body is not None and
+            "if (state != nullptr) imfw::wants_key(*state, event, host);"
+            in process_body)
     # The M1 stub was "return FALSE;" and nothing else. Detect that shape
     # precisely: the live function must return the decision, not a constant.
     c.check("ImeProcessKey no longer unconditionally returns FALSE",
@@ -247,17 +260,22 @@ def run(root: Path) -> int:
     # Key-up must be declined here and nowhere else: ReactOS routes WM_KEYUP
     # through IntImmProcessKey too, and ImeToAsciiEx gets no lParam, so a
     # claimed key-up feeds every keystroke to the engine twice (doubled or
-    # missing characters). See HANDOVER §11.4.
+    # missing characters). See HANDOVER §11.4. X2-a split this into "the
+    # adapter carries the bit" + "the policy refuses it"; both halves are
+    # required, so both are asserted.
     c.check("ImeProcessKey declines key-up (ImeToAsciiEx cannot see lParam)",
-            process_body is not None and "kKeyUpBit" in process_body)
-    c.check("ImeToAsciiEx dispatches key processing to process_key",
-            ascii_body is not None and "process_key" in ascii_body)
+            "kKeyUpBit" in entry and
+            process_body is not None and "event.key_up" in process_body and
+            "if (event.key_up) return false;" in policy)
+    c.check("ImeToAsciiEx dispatches key processing to handle_key",
+            ascii_body is not None and "imfw::handle_key(" in ascii_body)
     c.check("M2 commits text through WM_IME_CHAR TRANSMESSAGEs",
             "WM_IME_CHAR" in entry and "emit_text" in entry)
     c.check("G1: commit path handles multi-codepoint text (words)",
-            "apply_commit" in entry and
-            "emit_text(lpTransMsgList, text)" in entry and
-            "chosen->text[0]" not in entry)
+            "emit_text(lpTransMsgList, result.commit)" in entry and
+            "apply_commit" in policy and
+            "chosen->text[0]" not in entry and
+            "chosen->text[0]" not in policy)
     # Audit 2026-11-17 §2.1 (P0): ImeToAsciiEx takes a TRANSMSGLIST whose
     # uMsgCount header is pre-filled with the capacity; messages live at
     # ->TransMsg[0]. Writing at offset 0 clobbers the header and shifts
@@ -289,9 +307,11 @@ def run(root: Path) -> int:
             "reload_sessions()" in configure_body and
             "return TRUE" in configure_body)
     c.check("G4: selection/page key policy comes from the Scheme",
-            "scheme.is_selection_key(ch)" in entry and
-            "scheme.page_key(ch)" in entry and
-            "bool is_page_key" not in entry)
+            "#include <imfw/host.hpp>" in policy and
+            "scheme.is_selection_key(ch)" in policy and
+            "scheme.page_key(ch)" in policy and
+            "bool is_page_key" not in policy and
+            "is_selection_key" not in entry)
     store_hpp = read(root, "framework/platform/win32/imm32/session_store.hpp")
     c.check("G2: sessions reload at runtime via reload_sessions",
             "void reload_sessions()" in store_hpp)
@@ -501,6 +521,18 @@ def run(root: Path) -> int:
             "Scheme* scheme_factory()" in scheme_reg_toy and
             "ToyScheme" in scheme_reg_toy and
             "ROSPINYIN_SCHEME" in read(root, "ime/CMakeLists.txt"))
+    # X2-a: the key policy must stay portable. The entire point of moving it out
+    # of imm_entry.cpp is that tests/host_key_test.cpp links it on the build
+    # host; one <windows.h> in this layer and that test stops being possible --
+    # which is exactly how the policy ended up with zero coverage before.
+    c.check("X2-a: the key policy and its state stay Windows-free",
+            (root / "framework/src/host_key.cpp").is_file() and
+            (root / "framework/include/imfw/host.hpp").is_file() and
+            (root / "framework/include/imfw/session_state.hpp").is_file() and
+            "#include <windows.h>" not in policy and
+            "#include <windows.h>" not in read(root, "framework/include/imfw/host.hpp") and
+            "#include <windows.h>" not in read(root, "framework/include/imfw/session_state.hpp") and
+            "src/host_key.cpp" in read(root, "framework/CMakeLists.txt"))
     # The layout's language (which "keyboard" ImmInstallIMEW files it under)
     # comes solely from the first VarFileInfo\Translation entry, so it is a
     # build-time fact, not a runtime one. A Simplified Chinese IME must ship as
@@ -553,21 +585,25 @@ def run(root: Path) -> int:
 
     # P0-2 / M2 Shift toggle: `open` is now a state the IME owns. It is aligned
     # at every activation (AlignOpenStatus), toggled by VK_SHIFT via exactly one
-    # helper (set_ime_open), and read through exactly one helper (ime_is_open).
+    # helper (set_ime_open), and read through exactly one query (host.is_open()).
     # Before the toggle existed, gating on it was forbidden precisely because
     # nothing ever set the flag; that is no longer true, so the gate is back --
-    # but only through the helper, so no call site can invent its own meaning.
+    # but only through the helpers, so no call site can invent its own meaning.
+    # X2-a split the helpers across the boundary: set_ime_open() (policy) calls
+    # Host::set_open(), and the one ImmSetOpenStatus lives in the adapter.
     entry_code = strip_cpp_comments(entry)
-    gate = function_body(entry_code, r"bool should_consume_key\([^)]*\)")
-    toggle = function_body(entry_code, r"void set_ime_open\([^)]*\)")
+    gate = function_body(policy, r"bool wants_key\([^)]*\)")
+    toggle = function_body(policy, r"void set_ime_open\([^)]*\)")
+    open_writer = function_body(entry_code, r"void set_open\(bool open\)[^{]*")
     c.check("open status is owned by the IME: aligned, toggled on lone Shift, "
             "read through one helper",
             "AlignOpenStatus(" in entry_code and
-            toggle is not None and "ImmSetOpenStatus(" in toggle and
             "VK_SHIFT" in entry_code and
-            gate is not None and "ime_is_open(" in gate,
-            "should_consume_key/set_ime_open not found"
-            if gate is None or toggle is None else "")
+            toggle is not None and "host.set_open(" in toggle and
+            open_writer is not None and "ImmSetOpenStatus(" in open_writer and
+            gate is not None and "host.is_open()" in gate,
+            "wants_key/set_ime_open/set_open not found"
+            if gate is None or toggle is None or open_writer is None else "")
 
     # U1 (2026-11-18 真机): the alignment must hang off BOTH entry points.
     # ReactOS can deliver ImeSelect without a preceding ImeSetActiveContext;

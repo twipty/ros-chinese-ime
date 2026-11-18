@@ -11,7 +11,11 @@
 //   * the scheme owns the input alphabet, the key policy and the engine.
 //
 // Design notes:
-//   * ImeProcessKey only decides ownership; ImeToAsciiEx does the work.
+//   * ImeProcessKey only decides ownership; ImeToAsciiEx does the work. Since
+//     X2-a neither decision lives here: they are imfw::wants_key() and
+//     imfw::handle_key() in framework/src/host_key.cpp, compiled and tested on
+//     the build host. This file translates a native message into an
+//     imfw::KeyEvent and the answer back into TRANSMSGLIST messages.
 //   * Modifiers (Ctrl/Alt) are never consumed, so application shortcuts work.
 //   * Committed text is emitted as WM_IME_CHAR TRANSMESSAGEs. Candidate and
 //     composition display is handled by our own UI windows (framework/platform/win32/ui),
@@ -31,6 +35,7 @@
 
 #include <imfw/candidate_pager.hpp>
 #include <imfw/emit_text.hpp>
+#include <imfw/host.hpp>
 #include <imfw/scheme.hpp>
 #include <imfw/utf8.hpp>
 
@@ -39,6 +44,7 @@
 #include <cstdint>
 #include <cwchar>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -241,234 +247,61 @@ UINT emit_text(rpimm::TransMsgList* lpTransMsgList, const std::u32string& text) 
         capacity, text);
 }
 
-void refresh_ui(rpimm::InputContext hIMC, ImeSessionState& state) {
-    // Composition is UTF-8 (G4 connected conclusion: engines may show CJK
-    // in the composition window, not just ASCII codes).
-    const std::wstring text = imfw::utf8_to_wide(state.composition);
-    imfw::UiShow(hIMC, text.c_str(), state.segments, state.pager);
+// ---- host adapter (X2-a) ------------------------------------------------
+// The whole platform vocabulary of the key policy lives in the two pieces
+// below: key_event_from() turns one native message into an imfw::KeyEvent, and
+// Win32Host supplies the four things the policy cannot do by itself. The
+// decisions themselves are in imfw-key (framework/src/host_key.cpp), which is
+// compiled and tested on the build host — this file no longer contains a single
+// `if` that decides what a key means.
+class Win32Host final : public imfw::Host {
+public:
+    explicit Win32Host(rpimm::InputContext hIMC) : hIMC_(hIMC) {}
+
+    // Chinese/English state, owned by the IME (see AlignOpenStatus).
+    bool is_open() override {
+        return ImmGetOpenStatus(reinterpret_cast<HIMC>(hIMC_)) != FALSE;
+    }
+    void set_open(bool open) override {
+        ImmSetOpenStatus(reinterpret_cast<HIMC>(hIMC_), open ? TRUE : FALSE);
+        IMFW_TRACE("opentoggle -> ").d(open ? 1 : 0);
+    }
+
+    void show(const std::string& composition,
+              const std::vector<std::string>& segments,
+              const imfw::CandidatePager& pager) override {
+        const std::wstring text = imfw::utf8_to_wide(composition);
+        imfw::UiShow(hIMC_, text.c_str(), segments, pager);
 #if defined(ROSPINYIN_TRACE)
-    // Where the two popups ended up, and what the anchor was. The key counters
-    // cannot answer "the box moved while I was paging": they only say that a
-    // SetWindowPos happened, not which window or from/to where. Printed only
-    // when the geometry changed, so a page-flip that moves nothing is silent
-    // and a page-flip that moves something is one obvious line.
-    const imfw::UiGeometry g = imfw::UiLastGeometry();
-    static imfw::UiGeometry last = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
-    const bool changed = g.comp_x != last.comp_x || g.comp_y != last.comp_y ||
-                         g.comp_w != last.comp_w || g.comp_h != last.comp_h ||
-                         g.cand_x != last.cand_x || g.cand_y != last.cand_y ||
-                         g.cand_w != last.cand_w || g.cand_h != last.cand_h;
-    if (changed) {
-        last = g;
-        IMFW_TRACE("uigeom comp=").d(g.comp_x).s(",").d(g.comp_y).s(",")
-            .d(g.comp_w).s(",").d(g.comp_h)
-            .s(" cand=").d(g.cand_x).s(",").d(g.cand_y).s(",")
-            .d(g.cand_w).s(",").d(g.cand_h)
-            .s(" anchor=").d(g.anchor_x).s(",").d(g.anchor_y)
-            .s(" caret=").d(g.anchor_from_caret);
-    }
+        // Where the two popups ended up, and what the anchor was. The key
+        // counters cannot answer "the box moved while I was paging": they only
+        // say that a SetWindowPos happened, not which window or from/to where.
+        // Printed only when the geometry changed, so a page-flip that moves
+        // nothing is silent and a page-flip that moves something is one
+        // obvious line.
+        const imfw::UiGeometry g = imfw::UiLastGeometry();
+        static imfw::UiGeometry last = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+        const bool changed = g.comp_x != last.comp_x || g.comp_y != last.comp_y ||
+                             g.comp_w != last.comp_w || g.comp_h != last.comp_h ||
+                             g.cand_x != last.cand_x || g.cand_y != last.cand_y ||
+                             g.cand_w != last.cand_w || g.cand_h != last.cand_h;
+        if (changed) {
+            last = g;
+            IMFW_TRACE("uigeom comp=").d(g.comp_x).s(",").d(g.comp_y).s(",")
+                .d(g.comp_w).s(",").d(g.comp_h)
+                .s(" cand=").d(g.cand_x).s(",").d(g.cand_y).s(",")
+                .d(g.cand_w).s(",").d(g.cand_h)
+                .s(" anchor=").d(g.anchor_x).s(",").d(g.anchor_y)
+                .s(" caret=").d(g.anchor_from_caret);
+        }
 #endif
-}
-
-// Chinese/English state, owned by the IME.
-//
-// History matters here because P0-2 concluded the opposite: at the time,
-// `open` read 0 while the IME worked, so gating on it would have disabled the
-// IME outright. The missing half was that nothing ever *set* it — imm32 creates
-// the IMC with fOpen = FALSE and the activation path does not touch it. Now
-// AlignOpenStatus() sets it at every activation and VK_SHIFT toggles it, so the
-// flag is a state this IME owns and can trust; IMM32 only stores it.
-bool ime_is_open(rpimm::InputContext hIMC) {
-    return ImmGetOpenStatus(reinterpret_cast<HIMC>(hIMC)) != FALSE;
-}
-
-// Decide whether the IME should consume this key. Called by IMM32 before
-// ImeToAsciiEx; keeping it side-effect free is important.
-bool should_consume_key(rpimm::InputContext hIMC, ImeSessionState* state,
-                        UINT vk, const BYTE* lpbKeyState) {
-    if (state == nullptr) return false;
-    // Closed = English: every key belongs to the application. This is the whole
-    // point of the Shift toggle; without it "switching to English" would leave
-    // the IME swallowing letters and inserting Chinese.
-    if (!ime_is_open(hIMC)) return false;
-    if (modifier_down(lpbKeyState, KeyIndex::Control, kCtrlBit) ||
-        modifier_down(lpbKeyState, KeyIndex::Alt, kAltBit)) {
-        return false;
+    }
+    void hide() override { imfw::UiHide(hIMC_); }
+    bool can_render(char32_t codepoint) override {
+        return imfw::UiCanRender(codepoint);
     }
 
-    const imfw::Scheme& scheme = imfw::scheme_instance();
-    const char32_t input = scheme.input_char(vk);
-    if (input != 0 && scheme.is_input_char(input)) return true;
-
-    const char32_t ch = framework_key_char(vk);
-    if (ch == 0) {
-        return vk == VK_BACK || vk == VK_ESCAPE ? state->composing : false;
-    }
-    // Selection and paging keys (policy owned by the Scheme, G4) are only
-    // meaningful mid-composition with candidates on screen; otherwise they
-    // pass through to the application (e.g. space in an empty editor).
-    if (scheme.is_selection_key(ch) || scheme.page_key(ch) != 0) {
-        return state->composing && !state->pager.empty();
-    }
-    return false;
-}
-
-void finish_composition(rpimm::InputContext hIMC, ImeSessionState& state) {
-    state.engine->cancel();
-    state.pager.reset({});
-    state.composing = false;
-    state.composition.clear();
-    state.segments.clear();
-    imfw::UiHide(hIMC);
-}
-
-// Chinese <-> English. Called only from the Shift gesture in ImeProcessKey.
-//
-// Closing must drop an in-flight composition: leaving the letters on screen
-// while every following key goes to the application produces a popup that
-// never updates (the exact "frozen composition window" symptom).
-void set_ime_open(rpimm::InputContext hIMC, ImeSessionState& state,
-                  bool open) {
-    if (open == ime_is_open(hIMC)) return;
-    ImmSetOpenStatus(reinterpret_cast<HIMC>(hIMC), open ? TRUE : FALSE);
-    if (!open && state.composing) finish_composition(hIMC, state);
-    IMFW_TRACE("opentoggle -> ").d(open ? 1 : 0);
-}
-
-// Track the last engine output so paging/refresh need no engine call.
-void adopt_result(ImeSessionState& state, const imfw::Result& result) {
-    state.composition = result.composition;
-    state.segments = result.segments;
-}
-
-// P1-2: keep only candidates the candidate font can draw. Without this,
-// `shi` offered a ranked extension-A character that painted as a tofu box and
-// inserted a box into the document when picked.
-//
-// Two guards make a wrong font harmless:
-//   * everything dropped (or more than half) means the font has no CJK at all
-//     — that is a font problem, not a candidate problem, so keep the list;
-//   * the probe fails open (see UiCanRender), so a GDI without
-//     GetGlyphIndicesW behaves exactly as before.
-std::vector<imfw::Candidate> renderable_candidates(
-    const std::vector<imfw::Candidate>& input) {
-    if (input.empty()) return input;
-
-    std::vector<imfw::Candidate> kept;
-    kept.reserve(input.size());
-    for (const auto& candidate : input) {
-        bool drawable = true;
-        for (const char32_t codepoint : candidate.text) {
-            if (codepoint != 0 && !imfw::UiCanRender(codepoint)) {
-                drawable = false;
-                break;
-            }
-        }
-        if (drawable) kept.push_back(candidate);
-    }
-
-    const std::size_t dropped = input.size() - kept.size();
-    if (dropped == 0) return input;
-    if (kept.empty() || kept.size() * 2 < input.size()) {
-        IMFW_TRACE("cand-filter dropped ").d(static_cast<long long>(dropped))
-            .s(" of ").d(static_cast<long long>(input.size()))
-            .s(" -> font cannot draw CJK, keeping all");
-        return input;
-    }
-    IMFW_TRACE("cand-filter dropped ").d(static_cast<long long>(dropped))
-        .s(" of ").d(static_cast<long long>(input.size()))
-        .s(" (no glyph)");
-    return kept;
-}
-
-// Emit one picked character and either keep composing or close the session.
-//
-// The pinyin engine converts left to right, so committing 中 out of
-// "zhongguo" leaves "guo" in the composition (Result::composition, candidates
-// and segments are all filled in). Dropping that remainder — what an
-// unconditional finish_composition() used to do — threw away everything the
-// user had typed after the first syllable. A stateless engine returns an empty
-// composition here, so this branch is the plain "commit and close" path.
-UINT apply_commit(rpimm::InputContext hIMC, ImeSessionState& state,
-                  const imfw::Result& result,
-                  rpimm::TransMsgList* lpTransMsgList) {
-    if (result.commit_text.empty()) return 0;
-    const std::u32string text = result.commit_text;
-
-    if (result.composition.empty()) {
-        finish_composition(hIMC, state);
-    } else {
-        adopt_result(state, result);
-        state.pager.reset(renderable_candidates(result.candidates));
-        state.composing = true;
-        refresh_ui(hIMC, state);
-    }
-    return emit_text(lpTransMsgList, text);
-}
-
-UINT process_key(rpimm::InputContext hIMC, UINT vk, const BYTE* lpbKeyState,
-                 rpimm::TransMsgList* lpTransMsgList) {
-    ImeSessionState* state = imfw::acquire_session(hIMC);
-    if (state == nullptr || state->engine == nullptr) return 0;
-
-    const imfw::Scheme& scheme = imfw::scheme_instance();
-    const char32_t ch = framework_key_char(vk);
-
-    // Digit / space selection is resolved by the pager so page 2 digit 1
-    // selects candidate 10, not candidate 1. Which keys select is the
-    // Scheme's policy (G4); digits map to page-relative indices, any other
-    // selection key picks the first candidate.
-    if (ch != 0 && scheme.is_selection_key(ch)) {
-        std::size_t digit = 0;
-        if (ch >= U'1' && ch <= U'9') {
-            digit = static_cast<std::size_t>(ch - U'1');
-        }
-        const imfw::Candidate* chosen = state->pager.select(digit);
-        if (chosen == nullptr || chosen->text.empty()) return 0;
-        // The pager holds a *filtered* copy of the candidate list (P1-2 drops
-        // characters the font cannot draw), so its index means nothing to the
-        // engine — hand the text back instead and let the engine decide what
-        // is left to convert.
-        return apply_commit(hIMC, *state,
-                            state->engine->commit_text(chosen->text),
-                            lpTransMsgList);
-    }
-
-    // Paging direction is likewise the Scheme's policy (G4).
-    if (ch != 0) {
-        const int page = scheme.page_key(ch);
-        if (page != 0) {
-            const bool moved = page < 0 ? state->pager.prev_page()
-                                        : state->pager.next_page();
-            if (moved) refresh_ui(hIMC, *state);
-            return 0;
-        }
-    }
-
-    if (vk == VK_BACK) {
-        const imfw::Result result = state->engine->backspace();
-        adopt_result(*state, result);
-        state->pager.reset(renderable_candidates(result.candidates));
-        state->composing = !result.composition.empty();
-        if (state->composing) refresh_ui(hIMC, *state);
-        else imfw::UiHide(hIMC);
-        return 0;
-    }
-
-    if (vk == VK_ESCAPE) {
-        finish_composition(hIMC, *state);
-        return 0;
-    }
-
-    const char32_t input = scheme.input_char(vk);
-    if (input == 0 || !scheme.is_input_char(input)) return 0;
-
-    const imfw::Result result = state->engine->feed(input);
-    // One line per fed character. The composition string after each feed is
-    // the fastest way to separate "the key arrived twice" (letters doubled:
-    // `nn`, `aa`) from "the key arrived once and was rejected by can_extend"
-    // (composition unchanged). Without it both look like a wrong result.
-    {
+    void on_feed(char32_t input, const imfw::Result& result) override {
         // A local buffer, not std::string(1, c).c_str(): the temporary would be
         // destroyed before TraceLine's destructor writes the line.
         char shown[2] = {static_cast<char>(input < 0x80 ? input : '?'), '\0'};
@@ -483,20 +316,33 @@ UINT process_key(rpimm::InputContext hIMC, UINT vk, const BYTE* lpbKeyState,
             .s(" wmove=").d(static_cast<long long>(ui.place_changes))
             .s(" wrep=").d(static_cast<long long>(ui.invalidates));
     }
-    switch (result.action) {
-    case imfw::Action::Commit:
-        return apply_commit(hIMC, *state, result, lpTransMsgList);
-    case imfw::Action::Absorb:
-        adopt_result(*state, result);
-        state->pager.reset(renderable_candidates(result.candidates));
-        state->composing = !result.composition.empty();
-        refresh_ui(hIMC, *state);
-        break;
-    case imfw::Action::Passthrough:
-    default:
-        break;
+    void on_candidates_filtered(std::size_t dropped, std::size_t total,
+                                bool kept_all) override {
+        IMFW_TRACE("cand-filter dropped ").d(static_cast<long long>(dropped))
+            .s(" of ").d(static_cast<long long>(total))
+            .s(kept_all ? " -> font cannot draw CJK, keeping all"
+                        : " (no glyph)");
     }
-    return 0;
+
+private:
+    rpimm::InputContext hIMC_;
+};
+
+// One native message -> one KeyEvent. ImeToAsciiEx has no lParam (that is the
+// point of the key-up rule in wants_key), so it passes 0.
+imfw::KeyEvent key_event_from(UINT vk, unsigned long lParam,
+                              const BYTE* lpbKeyState) {
+    imfw::KeyEvent event;
+    event.vk = vk;
+    event.ch = framework_key_char(vk);
+    event.kind = vk == VK_BACK     ? imfw::KeyKind::Backspace
+                 : vk == VK_ESCAPE ? imfw::KeyKind::Escape
+                 : vk == VK_SHIFT  ? imfw::KeyKind::Shift
+                                   : imfw::KeyKind::Other;
+    event.key_up = (lParam & kKeyUpBit) != 0;
+    event.ctrl = modifier_down(lpbKeyState, KeyIndex::Control, kCtrlBit);
+    event.alt = modifier_down(lpbKeyState, KeyIndex::Alt, kAltBit);
+    return event;
 }
 
 }  // namespace
@@ -662,63 +508,40 @@ BOOL WINAPI ImeSetActiveContext(rpimm::InputContext hIMC, BOOL fFlag) {
 
 BOOL WINAPI ImeProcessKey(rpimm::InputContext hIMC, UINT uVirtKey, LPARAM lParam,
                           const BYTE* lpbKeyState) {
-    // Shift owns Chinese/English. ReactOS gives us every key message, including
-    // VK_SHIFT (verified in the trace: `processkey vk=0x10 -> 0`), so the IME
-    // has to implement the toggle itself -- imm32 only stores fOpen and no
-    // hot key is registered for Shift.
-    //
-    // Lone-Shift semantics: a latch cleared by any other key means Shift+A is
-    // still a capital A rather than "switch to English, then type a". The
-    // switch happens on key-UP, which is where a user expects it.
-    if (uVirtKey == VK_SHIFT) {
-        const bool up = (static_cast<unsigned long>(lParam) & kKeyUpBit) != 0;
-        ImeSessionState* state = imfw::acquire_session(hIMC);
-        if (state != nullptr) {
-            if (!up) {
-                state->shift_latched = true;
-            } else {
-                const bool lone = state->shift_latched;
-                state->shift_latched = false;
-                if (lone) set_ime_open(hIMC, *state, !ime_is_open(hIMC));
-            }
-        }
+    // Ownership question, not work: the policy is wants_key() (imfw-key).
+    // Everything platform-shaped is in the two lines that build the event —
+    // the decision itself is compiled and tested on the build host.
+    ImeSessionState* state = imfw::acquire_session(hIMC);
+    Win32Host host(hIMC);
+    const imfw::KeyEvent event =
+        key_event_from(uVirtKey, static_cast<unsigned long>(lParam), lpbKeyState);
+
+    if (event.kind == imfw::KeyKind::Shift) {
+        // Lone-Shift toggle: the transition bit is only visible here, and the
+        // answer is always "not ours" (see wants_key).
+        if (state != nullptr) imfw::wants_key(*state, event, host);
         IMFW_TRACE("processkey vk=").h(uVirtKey)
-            .s(up ? " shift-up" : " shift-down")
+            .s(event.key_up ? " shift-up" : " shift-down")
             .s(" lone=").d(state != nullptr && state->shift_latched ? 1 : 0)
-            .s(" open=").d(ime_is_open(hIMC) ? 1 : 0)
+            .s(" open=").d(host.is_open() ? 1 : 0)
             .s(" -> 0");
         return FALSE;
     }
 
-    // A key-UP must never be claimed. This is the only place the decision can
-    // be made: ReactOS routes every key message through IntImmProcessKey
-    // (co_IntProcessKeyboardMessage sets bKeyUpDown for WM_KEYUP as well) and
-    // imm32!ImmProcessKey ignores the transition bit. Claiming a key-up sets
-    // pIC->bNeedsTrans, and the following ImmGenerateMessage calls
-    // ImeToAsciiEx — which receives no lParam, so it cannot filter either.
-    //
-    // Symptom when it is wrong: every keystroke reaches the engine twice.
-    // "n" becomes "nn", "a" becomes "aa". Doubled letters that still form a
-    // legal pinyin prefix are kept (extra characters); the rest are rejected
-    // by can_extend() and vanish (missing characters). Both halves of the
-    // "extra / lost characters" report come from this one line.
-    if ((static_cast<unsigned long>(lParam) & kKeyUpBit) != 0) {
+    if (event.key_up) {
         IMFW_TRACE("processkey vk=").h(uVirtKey).s(" up -> 0");
         return FALSE;
     }
 
-    ImeSessionState* state = imfw::acquire_session(hIMC);
-    if (state != nullptr) state->shift_latched = false;  // Shift was a modifier
-    const bool consume = should_consume_key(hIMC, state, uVirtKey, lpbKeyState);
+    const bool consume = state != nullptr && imfw::wants_key(*state, event, host);
 #if defined(ROSPINYIN_TRACE)
     // open= is now the gate itself (Chinese/English), so a persistent 0 here
     // means "closed", not "IMM32 is broken". The earlier P0-2 reading -- open
     // is an observation, never a gate -- was only valid while nothing set the
-    // flag; see AlignOpenStatus() and set_ime_open().
-    const int open = ime_is_open(hIMC) ? 1 : 0;
+    // flag; see AlignOpenStatus() and set_open().
     IMFW_TRACE("processkey vk=").h(uVirtKey)
         .s(" state=").d(state != nullptr)
-        .s(" open=").d(open)
+        .s(" open=").d(host.is_open() ? 1 : 0)
         .s(" pf=").h(static_cast<unsigned long>(HIWORD(lParam)))
         .s(" -> ").d(consume ? 1 : 0);
 #endif
@@ -730,7 +553,14 @@ UINT WINAPI ImeToAsciiEx(UINT uVirtKey, UINT uScanCode, const BYTE* lpbKeyState,
                          rpimm::InputContext hIMC) {
     (void)uScanCode; (void)fuState;
     IMFW_TRACE("toascii vk=").h(uVirtKey);
-    return process_key(hIMC, uVirtKey, lpbKeyState, lpTransMsgList);
+    ImeSessionState* state = imfw::acquire_session(hIMC);
+    if (state == nullptr) return 0;
+    Win32Host host(hIMC);
+    // No lParam in this ABI: key_up is always false here, which is correct
+    // because ImeProcessKey never claims a key-up (see wants_key).
+    const imfw::KeyEvent event = key_event_from(uVirtKey, 0, lpbKeyState);
+    const imfw::KeyResult result = imfw::handle_key(*state, event, host);
+    return emit_text(lpTransMsgList, result.commit);
 }
 
 BOOL WINAPI NotifyIME(rpimm::InputContext hIMC, DWORD dwAction, DWORD dwIndex,

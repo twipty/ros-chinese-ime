@@ -8,9 +8,9 @@
 
 | 子目录 | 内容 | 平台 |
 |---|---|---|
-| `include/imfw/` | 引擎契约（`engine.hpp`：`Action/Candidate/Result/Engine`，`Result.segments` 携带切分视图，composition/segments 为 UTF-8）、通用码表**工具类**（`code_table.hpp` + `dat_format.hpp`，框架不实例化，供方案选用）、候选分页（`candidate_pager.hpp`）、**Scheme 插件接口**（`scheme.hpp`）、上屏发射（`emit_text.hpp`：每 UTF-16 码单元一条 `WM_IME_CHAR`）、UTF-8 解码（`utf8.hpp`）、直通会话（`session.hpp`）、框架版本 | 纯 C++，Linux 可测 |
-| `src/` | 引擎 build id、`CodeTable`（dat 读取 + key 索引，工具类）、`CandidatePager`、`emit_text`（G1 多码点上屏，含非 BMP 代理对）、`utf8`（G4 组合串 UTF-8 解码，坏字节按字节兜底） | 纯 C++，Linux 可测 |
-| `platform/win32/imm32/` | IMM32 16 导出（`imm_entry.cpp`，通用键处理：选字/翻页策略经 Scheme、退格/Esc/上屏、`ImeConfigure` 回调）、`dllmain`（M0 红线：只注册 UI 类）、UI server 窗口类、按 HIMC 的会话存储（含 `reload_sessions()` 热重载，重载前先调 `Scheme::reload_data()`） | Windows/ReactOS |
+| `include/imfw/` | 引擎契约（`engine.hpp`：`Action/Candidate/Result/Engine`，`Result.segments` 携带切分视图，composition/segments 为 UTF-8）、通用码表**工具类**（`code_table.hpp` + `dat_format.hpp`，框架不实例化，供方案选用）、候选分页（`candidate_pager.hpp`）、**Scheme 插件接口**（`scheme.hpp`）、**键策略契约**（`host.hpp`：`KeyEvent`/`KeyResult`/`Host`，见下）、会话状态（`session_state.hpp`）、上屏发射（`emit_text.hpp`：每 UTF-16 码单元一条 `WM_IME_CHAR`）、UTF-8 解码（`utf8.hpp`）、直通会话（`session.hpp`）、框架版本 | 纯 C++，Linux 可测 |
+| `src/` | 引擎 build id、`CodeTable`（dat 读取 + key 索引，工具类）、`CandidatePager`、`emit_text`（G1 多码点上屏，含非 BMP 代理对）、**`host_key`（键策略：`wants_key` 归属判定 + `handle_key` 选字/翻页/退格/Esc/喂键）**、`utf8`（G4 组合串 UTF-8 解码，坏字节按字节兜底） | 纯 C++，Linux 可测 |
+| `platform/win32/imm32/` | IMM32 16 导出（`imm_entry.cpp`：只把原生消息翻译成 `KeyEvent`、把 `KeyResult` 翻译回 `TRANSMSGLIST`，判定在 `host_key`；`ImeConfigure` 回调）、`dllmain`（M0 红线：只注册 UI 类）、UI server 窗口类、按 HIMC 的会话存储（含 `reload_sessions()` 热重载，重载前先调 `Scheme::reload_data()`） | Windows/ReactOS |
 | `platform/win32/ui/` | 窗口基类 + CJK 字体兜底链、组合串窗口（下划线按 UTF-8 切分宽度）、候选窗、**输入法工具条**（`toolbar.*`，右下角浮动、显示 Scheme 标签） | Windows/ReactOS |
 
 `platform/` 陈述事实而非意图：这部分代码就是 Win32 + IMM32，没有抽象层。
@@ -45,6 +45,21 @@ Scheme* imfw::scheme_factory();                  // 由装配模块定义（ime/
 - `install(Scheme*)` 是给测试/宿主用的注入点——塞假 scheme 不必改框架、也不必链接一个懂拼音的装配件。
 
 改造前"换个方案"只有两条路：换一个 `scheme_reg.cpp` 重编，或者改框架。现在换成 `-DROSPINYIN_SCHEME=toy`，`samples/toy-scheme/` 就是那个只加了一个文件夹的第二个方案（判据 G4）。
+
+**键策略与宿主分离（X2-a）**：`process_key()` 曾经把判定和四件平台事（读 `lpbKeyState`、
+`ImmGetOpenStatus`、开窗口、写 `TRANSMSGLIST`）混在一个 TU 里，结果是 IME 里执行最多的
+90 行**宿主侧零覆盖**。现在：
+
+| 层 | 位置 | 职责 |
+|---|---|---|
+| 契约 | `include/imfw/host.hpp` | `KeyEvent`（vk / ch / kind / key_up / ctrl / alt）、`KeyResult`（commit）、`Host`（open 读写、show/hide、can_render、2 个默认空诊断钩子） |
+| 策略 | `src/host_key.cpp` | `wants_key()` 回答"这个键归不归我"，`handle_key()` 执行选字/翻页/退格/Esc/喂键 |
+| 适配器 | `platform/win32/imm32/imm_entry.cpp` | `key_event_from()` 做 vk→`KeyKind`/字符翻译；`Win32Host` 实现 `Host` |
+
+`KeyKind` 的存在是为了让策略里**不出现任何 `VK_*` 常量**（`<windows.h>` 进不来），
+`wants_key` 收非 const 的会话是因为 lone-Shift 的闩必须在归属路径里翻——`ImeProcessKey`
+返回 `FALSE` 时 IMM32 不会调 `ImeToAsciiEx`，把切换挪进 `handle_key` 会让 Shift 永远不生效。
+`tests/host_key_test.cpp` 用假 engine + 假 host 跑全部判定分支，不需要 `<windows.h>`、不需要 GUI。
 
 框架拥有所有 IME 的公共行为：选字/翻页（键位策略由 Scheme 定义，默认数字/空格选字、`-`/`=`/`,`/`.` 翻页；仅在「组合中且有候选」时拦截，其余场合这些键直达应用）、退格、Esc 取消、`WM_IME_CHAR` 上屏（多码点、非 BMP 代理对）、组合串/候选窗渲染与插入符跟随、工具条生命周期。Scheme 回答「这个键是不是我的输入」「我的引擎是谁」，并**完全拥有自己的数据**——框架里没有码表对象。
 
