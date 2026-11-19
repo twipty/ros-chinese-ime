@@ -11,6 +11,8 @@
 |---|---|---|
 | `XINGMA-PLAN.md` | 实施计划（**正式版 1.1**，唯一实施依据；新增 P0 前置门禁，原 W0–W5 顺延为 P1–P6） | 现行 |
 | `docs/phase0/PHASE0-PLAN.md` | 第一阶段 P0 细化：框架门禁、注入缝、VM 词组上屏、红线新口径 | 现行 |
+| `docs/glyph-tier/GLYPH-TIER-PLAN.md` | 字形分级与全字形开关方案：重码评估、分级码表、开关、未覆盖提示（**评审稿，未实现**） | 待评审 |
+| `docs/glyph-tier/FRAMEWORK-REQ.md` | 对 framework 的需求：tier 字段、会话级 `[快]/[全]`（不存注册表）、探测链移除、接口草案与门禁 | 待框架方评审 |
 | `archive/` | 历史草案存档，仅作追溯，不作依据 | 存档 |
 | `docs/TABLE-LICENSE-RESEARCH.md` | 码表授权尽调：法律定性、13 个来源盘点、分发矩阵 | 已完成 |
 | `docs/TABLE-IMPORT-SPEC.md` | 导入格式规范：CSV/TSV/fcitx5/ibus 语法、嗅探、校验、反导出 | 已完成（v1.1） |
