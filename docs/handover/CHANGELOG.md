@@ -7,6 +7,19 @@
 
 ## 未发布
 
+### 宿主冒烟（X2-b）：一段固定键序 + 一列精确的宿主调用
+
+- **新增 `tests/host_smoke_test.cpp`**（463 行，`ctest` 15/15）：`zhongguo` → `2` → `Backspace`×2 →
+  `Esc` → 单独 `Shift`，断言 **13 条 host 调用逐字相等** + commit 序列 `["钟"]` + 引擎收到的操作序列。
+- 假件：`ScriptedEngine`（固定返回队列，空了即失败）、`RecordingHost`（一次调用一行日志）、
+  `SmokeScheme`（字母表 + 默认选字/翻页键）。驱动层复刻 IMM32 的门：`wants_key` 为真才调
+  `handle_key`。
+- 断言对象是**调用序列**而不是最终文本——X2-c/X2-d 的验收都是"序列不变"，只比文本查不出
+  重排 `show`/`hide`、漏刷 UI、多调引擎这三类回归。
+- `check_m1` 68/68：新增"冒烟文件必须存在**且**注册进 ctest"（只存在不注册的测试看起来像覆盖）。
+- 真机 Shift 复测：`abc` 直接上屏、`ni` 候选回来 → 切换生效；托盘红底「中」是 ReactOS 通知区的
+  布局指示器，不反映 `fOpen`，已记入待排期（让我们自己的工具栏显示 拼/En）。
+
 ### 键策略剥离（X2-a）：最忙的 90 行第一次有宿主测试
 
 - **新增 `framework/src/host_key.cpp`（进 `imfw-engine`）**：`handle_key()` 与 `wants_key()`

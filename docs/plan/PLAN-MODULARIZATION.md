@@ -249,6 +249,26 @@ artifact 从未上传，使 `publish-artifacts-branch` 永久失败。补全 `to
 键序固定为：`zhongguo` → `2`（选字）→ `Backspace`×2 → `Esc` → `Shift`（lone-Shift 切换）。
 断言：sink 调用序列逐项相等 + `commit` 文本序列。**约 120 行，是全天最值钱的一百行。**
 
+**✅ 执行记录（2026-11-19 11:0x）**
+
+| 项 | 计划 | 实际 |
+|---|---|---|
+| 文件 | `tests/host_smoke_test.cpp` | 同名，463 行（注释占一半）；断言的对象是**调用日志**，不是单个判定 |
+| 假件 | engine / sink / scheme / can_render | `ScriptedEngine`（每个操作从队列取一条固定 `Result`，队列空=失败）、`RecordingHost`（一次可观测调用一行）、`SmokeScheme`（字母表 + 默认选字/翻页键） |
+| 键序 | `zhongguo` → `2` → `Backspace`×2 → `Esc` → `Shift` | 一致；驱动层复刻 IMM32 的门——`wants_key` 为真才调 `handle_key` |
+| 断言 1 | sink 序列逐项相等 | 13 条日志逐字比对；失败时打印**第一处差异**（期望/实际两侧原文），而不是"序列不等" |
+| 断言 2 | commit 文本序列 | `["钟"]`；并额外钉住引擎收到的操作序列（`feed`×8、`commit:钟`、`backspace`×2、`cancel`×1） |
+| 额外 1 | — | 队列空即标记 `underrun`：宿主多喂一次/多退一次就红 |
+| 额外 2 | — | 关态或无组合时，键既不进引擎也不产生 host 调用（关掉 English 失效这类回归只能在这里现形） |
+| 额外 3 | — | P1-2 两条护栏各一例：丢 1/2 则保留其余；丢 2/3 则整表保留（字体问题不是候选问题） |
+| 门禁 | — | `ctest` **15/15**、`check_m1` **68/68**（+1）、`check_docs` 7/7 |
+| 变异 | — | 4 次全红：退格后一律 `hide` / 提交后不 `refresh_ui` / 关态不写 `fOpen` / 关态仍吞键 |
+
+**为什么断言"日志"而不是"最终文本"。** X2-c 与 X2-d 的验收都是"调用序列不变"。只断言最终
+文本的话，重排 `show`/`hide`、少刷一次 UI、多调一次引擎全都查不出来——而这三种恰恰就是
+"候选窗冻结""字母翻倍"那类 bug 的形状。日志还顺带把 `backspace` 到空组合时"仍 show 但候选为 0"
+这个状态钉住了：**那正是候选窗闪烁的机制**，见「待排期」。
+
 **X2-c `route_key` + `Intent`（0.5 天）**
 
 只搬判定（`imm_entry.cpp:421-464` 附近那 44 行），产出
@@ -389,7 +409,7 @@ Ctrl+Space 与备用热键——**全部改在 `process_key` 里**。先有冒�
 
 - [x] X2-a0 `SchemeRegistry` 注入缝 + toy scheme（审计 A-P0-2；达成 G4）— 2026-11-18，见 §3 X2-a0 执行记录
 - [x] X2-a `handle_key` 剥离 + `KeyEvent`/`KeyResult`（行为不变）— 2026-11-18，见 §3 X2-a 执行记录
-- [ ] X2-b `tests/host_smoke_test.cpp`（假 engine/scheme/sink/can_render，5 段键序）（审计 A-P0-1）
+- [x] X2-b `tests/host_smoke_test.cpp`（假 engine/scheme/sink/can_render，5 段键序）（审计 A-P0-1）— 2026-11-19，见 §3 X2-b 执行记录
 - [ ] X2-c `route_key` + `Intent` 单测；`host_smoke` 序列不变
 - [ ] X2-d `imm_entry` 按 6 类职责拆 TU + 合并两条激活路径 + 合并 trace 十进制转换（审计 A-P0-3、复核 N-1）
 - [ ] X2-e1 `platform/win32/{imm32,ui}` 库目标 + `ime` 只 link（审计 A-P1-4）
@@ -399,6 +419,16 @@ Ctrl+Space 与备用热键——**全部改在 `process_key` 里**。先有冒�
 - [ ] X2-e5 版本收敛到 `ime/version.h` 一处 + CI 断言（审计 A-P1-7 版本部分；达成 G7）
 - [ ] X2-e6 `dat_source_win.cpp` 不再引宿主私有头（复核 N / X1 表）
 - [ ] X2-f `tools/seams.py` + `check_m1` 新增 seam 上限项（含 `UiCanRender`）
+
+**待排期（不在 X1–X4 内，先记账）**
+
+- [ ] **候选窗稳定性**：`recompute()` 只给"已完成音节"发候选，否则每跨一个音节边界候选窗闪一次
+  （`nihao` 的候选数：`0,4,0,4,4` → 目标 `0,4,4,4,4`）。补丁已验证（ctest 14/14、变异 2 次全红、
+  i686 947,323 B），**未提交**，在 `git stash`（`candidate-window-stability`）。它是 M2 引擎语义
+  变更——旧行为被 `tests/pinyin_session_test.cpp` 的一条断言钉着，改它要连判据一起改。
+- [ ] **状态指示器**：托盘那个红底「中」是 ReactOS 通知区的**布局**指示器（跟 HKL 走，不跟 `fOpen` 走），
+  我们自己的灰底工具栏只显示静态「拼」。切换时用户没有可信的状态反馈 → 让工具栏显示 拼/En，
+  并随 `set_ime_open` 刷新（需要给 `Host` 加一个"工具栏状态"钩子）。
 
 **X3 — 可插拔验收**
 
