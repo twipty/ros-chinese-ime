@@ -11,9 +11,15 @@
 // The rule that makes this a move instead of a rewrite: **no decision was
 // touched.** Every `if` below existed in imm_entry.cpp with the same operands.
 // If a branch ever needs to change, it changes here, with a test.
+//
+// X2-c then took the routing half out of this file: handle_key() now asks
+// route_key() (key_route.cpp) what the key means and only decides what to do
+// about it. Same decisions, same order — the difference is that "what does '5'
+// mean" is answerable without an engine or a host.
 
 #include <imfw/host.hpp>
 
+#include <imfw/intent.hpp>
 #include <imfw/scheme.hpp>
 
 #include <vector>
@@ -177,19 +183,18 @@ bool wants_key(ImeSessionState& session, const KeyEvent& event, Host& host) {
 KeyResult handle_key(ImeSessionState& session, const KeyEvent& event, Host& host) {
     if (session.engine == nullptr) return {};
 
-    const Scheme& scheme = scheme_instance();
-    const char32_t ch = event.ch;
+    // X2-c: "which key is this" has one owner (route_key, key_route.cpp);
+    // "what to do about it" has another (the switch below). Note that this
+    // function no longer touches `scheme`: both policy questions it used to
+    // ask inline are asked once, in the router, where a test can answer them
+    // without an engine or a host.
+    const Intent intent = route_key(scheme_instance(), event);
 
-    // Digit / space selection is resolved by the pager so page 2 digit 1
-    // selects candidate 10, not candidate 1. Which keys select is the
-    // Scheme's policy (G4); digits map to page-relative indices, any other
-    // selection key picks the first candidate.
-    if (ch != 0 && scheme.is_selection_key(ch)) {
-        std::size_t digit = 0;
-        if (ch >= U'1' && ch <= U'9') {
-            digit = static_cast<std::size_t>(ch - U'1');
-        }
-        const Candidate* chosen = session.pager.select(digit);
+    switch (intent.kind) {
+    case IntentKind::Select: {
+        // The pager resolves selection page-relative, so page 2 digit 1 picks
+        // candidate 10 and space picks the first candidate of the page.
+        const Candidate* chosen = session.pager.select(intent.slot);
         if (chosen == nullptr || chosen->text.empty()) return {};
         // The pager holds a *filtered* copy of the candidate list (P1-2 drops
         // characters the font cannot draw), so its index means nothing to the
@@ -199,18 +204,16 @@ KeyResult handle_key(ImeSessionState& session, const KeyEvent& event, Host& host
                              session.engine->commit_text(chosen->text))};
     }
 
-    // Paging direction is likewise the Scheme's policy (G4).
-    if (ch != 0) {
-        const int page = scheme.page_key(ch);
-        if (page != 0) {
-            const bool moved = page < 0 ? session.pager.prev_page()
-                                        : session.pager.next_page();
-            if (moved) refresh_ui(host, session);
-            return {};
-        }
+    case IntentKind::PagePrev:
+    case IntentKind::PageNext: {
+        const bool moved = intent.kind == IntentKind::PagePrev
+                               ? session.pager.prev_page()
+                               : session.pager.next_page();
+        if (moved) refresh_ui(host, session);
+        return {};
     }
 
-    if (event.kind == KeyKind::Backspace) {
+    case IntentKind::Backspace: {
         const Result result = session.engine->backspace();
         adopt_result(session, result);
         session.pager.reset(renderable_candidates(host, result.candidates));
@@ -220,32 +223,36 @@ KeyResult handle_key(ImeSessionState& session, const KeyEvent& event, Host& host
         return {};
     }
 
-    if (event.kind == KeyKind::Escape) {
+    case IntentKind::Escape:
         finish_composition(host, session);
+        return {};
+
+    case IntentKind::Input: {
+        const Result result = session.engine->feed(intent.ch);
+        // One line per fed character. The composition string after each feed is
+        // the fastest way to separate "the key arrived twice" (letters doubled:
+        // `nn`, `aa`) from "the key arrived once and was rejected by
+        // can_extend" (composition unchanged). Without it both look like a
+        // wrong result. The host adds the window counters it owns.
+        host.on_feed(intent.ch, result);
+        switch (result.action) {
+        case Action::Commit:
+            return {apply_commit(host, session, result)};
+        case Action::Absorb:
+            adopt_result(session, result);
+            session.pager.reset(
+                renderable_candidates(host, result.candidates));
+            session.composing = !result.composition.empty();
+            refresh_ui(host, session);
+            break;
+        case Action::Passthrough:
+        default:
+            break;
+        }
         return {};
     }
 
-    const char32_t input = scheme.input_char(event.vk);
-    if (input == 0 || !scheme.is_input_char(input)) return {};
-
-    const Result result = session.engine->feed(input);
-    // One line per fed character. The composition string after each feed is
-    // the fastest way to separate "the key arrived twice" (letters doubled:
-    // `nn`, `aa`) from "the key arrived once and was rejected by can_extend"
-    // (composition unchanged). Without it both look like a wrong result.
-    // The host adds the window counters it owns (moves / repaints).
-    host.on_feed(input, result);
-    switch (result.action) {
-    case Action::Commit:
-        return {apply_commit(host, session, result)};
-    case Action::Absorb:
-        adopt_result(session, result);
-        session.pager.reset(renderable_candidates(host, result.candidates));
-        session.composing = !result.composition.empty();
-        refresh_ui(host, session);
-        break;
-    case Action::Passthrough:
-    default:
+    case IntentKind::None:
         break;
     }
     return {};

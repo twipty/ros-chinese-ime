@@ -7,6 +7,24 @@
 
 ## 未发布
 
+### 键路由提取为纯函数（X2-c）
+
+- **新增 `framework/include/imfw/intent.hpp`（75 行）+ `framework/src/key_route.cpp`（70 行）**：
+  `Intent route_key(const Scheme&, const KeyEvent&)` —— 一个键翻译成一个 `Intent`
+  （`None / Input{ch} / Select{slot} / PagePrev / PageNext / Backspace / Escape`），
+  不碰 session / engine / host，也不看 `key_up`/`ctrl`/`alt`/`fOpen`（那是归属判定，归 `wants_key`）。
+- **`handle_key` 变成 `switch (intent.kind)`**，并且不再触碰 `scheme`：两个策略问题只问一次，在路由里问。
+- **两处与计划不同**：`SelectDigit(n)` 改名 `Select{slot}`（空格不选数字却选第 1 个，旧名会让名字撒谎）；
+  `ToggleLang` **删除**（Shift 那条路在 `wants_key`，是归属判定；一个只有"永不 dispatch 的那一层"
+  才能产出的意图是陷阱）。
+- **新增 `tests/key_route_test.cpp`（22 条断言，`ctest` 16/16）**：每个 Intent + payload、
+  "键由方案决定"（`q`/`j`/`k` 的自定义方案，`1` 对它无意义）、分支顺序（同一键被两处声明时选择赢）。
+- **判据没动**：`host_smoke` 的 13 条日志一行未改——搬判定时最容易顺手改的就是分支顺序。
+- `check_m1` **71/71**（+3；G4 那条从 `host_key.cpp` 改指 `key_route.cpp`）；变异 6 次全红。
+  其中一次暴露了我自己新断言的假绿（`"scheme."` 匹配不到 `scheme_instance().`），
+  改成"不许有任何策略调用 + `scheme_instance()` 只许一次"。
+- 对外面：16 导出 / 5 依赖 / 各自导入函数集**逐个一致**；i686 `946,299 → 947,148 B`（+849）。
+
 ### 状态指示器：Shift 切状态，不切布局（2026-11-19）— **未合入，排队 X2-w1**
 
 > **状态：已实现并验证，`main` 上没有。** 在分支 `wip/status-indicator`；按用户"和候选窗补丁

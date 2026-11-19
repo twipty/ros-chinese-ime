@@ -8,8 +8,8 @@
 
 | 子目录 | 内容 | 平台 |
 |---|---|---|
-| `include/imfw/` | 引擎契约（`engine.hpp`：`Action/Candidate/Result/Engine`，`Result.segments` 携带切分视图，composition/segments 为 UTF-8）、通用码表**工具类**（`code_table.hpp` + `dat_format.hpp`，框架不实例化，供方案选用）、候选分页（`candidate_pager.hpp`）、**Scheme 插件接口**（`scheme.hpp`）、**键策略契约**（`host.hpp`：`KeyEvent`/`KeyResult`/`Host`，见下）、会话状态（`session_state.hpp`）、上屏发射（`emit_text.hpp`：每 UTF-16 码单元一条 `WM_IME_CHAR`）、UTF-8 解码（`utf8.hpp`）、直通会话（`session.hpp`）、框架版本 | 纯 C++，Linux 可测 |
-| `src/` | 引擎 build id、`CodeTable`（dat 读取 + key 索引，工具类）、`CandidatePager`、`emit_text`（G1 多码点上屏，含非 BMP 代理对）、**`host_key`（键策略：`wants_key` 归属判定 + `handle_key` 选字/翻页/退格/Esc/喂键）**、`utf8`（G4 组合串 UTF-8 解码，坏字节按字节兜底） | 纯 C++，Linux 可测 |
+| `include/imfw/` | 引擎契约（`engine.hpp`：`Action/Candidate/Result/Engine`，`Result.segments` 携带切分视图，composition/segments 为 UTF-8）、通用码表**工具类**（`code_table.hpp` + `dat_format.hpp`，框架不实例化，供方案选用）、候选分页（`candidate_pager.hpp`）、**Scheme 插件接口**（`scheme.hpp`）、**键策略契约**（`host.hpp`：`KeyEvent`/`KeyResult`/`Host`，见下）、**键意图词汇**（`intent.hpp`：`IntentKind`/`Intent` + `route_key()`，`status: draft`）、会话状态（`session_state.hpp`）、上屏发射（`emit_text.hpp`：每 UTF-16 码单元一条 `WM_IME_CHAR`）、UTF-8 解码（`utf8.hpp`）、直通会话（`session.hpp`）、框架版本 | 纯 C++，Linux 可测 |
+| `src/` | 引擎 build id、`CodeTable`（dat 读取 + key 索引，工具类）、`CandidatePager`、`emit_text`（G1 多码点上屏，含非 BMP 代理对）、**`host_key`（键策略：`wants_key` 归属判定 + `handle_key` 按 Intent 分派）**、**`key_route`（X2-c：`route_key()` —— 一个键 = 一个 `Intent`，纯函数，不问 session/engine/host）**、`utf8`（G4 组合串 UTF-8 解码，坏字节按字节兜底） | 纯 C++，Linux 可测 |
 | `platform/win32/imm32/` | IMM32 16 导出（`imm_entry.cpp`：只把原生消息翻译成 `KeyEvent`、把 `KeyResult` 翻译回 `TRANSMSGLIST`，判定在 `host_key`；`ImeConfigure` 回调）、`dllmain`（M0 红线：只注册 UI 类）、UI server 窗口类、按 HIMC 的会话存储（含 `reload_sessions()` 热重载，重载前先调 `Scheme::reload_data()`） | Windows/ReactOS |
 | `platform/win32/ui/` | 窗口基类 + CJK 字体兜底链、组合串窗口（下划线按 UTF-8 切分宽度）、候选窗、**输入法工具条**（`toolbar.*`，右下角浮动、显示 Scheme 标签） | Windows/ReactOS |
 

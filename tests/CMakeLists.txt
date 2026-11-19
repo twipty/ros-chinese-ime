@@ -55,6 +55,14 @@ add_executable(rospinyin-host-key host_key_test.cpp)
 target_link_libraries(rospinyin-host-key PRIVATE imfw-engine)
 add_test(NAME host-key COMMAND rospinyin-host-key)
 
+# X2-c: the routing decision alone. One key in, one Intent out — no engine, no
+# host, so every branch is asked directly instead of being inferred from a
+# smoke test's call log. This is what "M1 Intent 中间语言" buys: a vocabulary a
+# second frontend can consume without inheriting ours.
+add_executable(rospinyin-key-route key_route_test.cpp)
+target_link_libraries(rospinyin-key-route PRIVATE imfw-engine)
+add_test(NAME key-route COMMAND rospinyin-key-route)
+
 # X2-b: the same layers, but asserting the *sequence* instead of single
 # decisions. One fixed key run (zhongguo -> 2 -> Backspace x2 -> Esc -> lone
 # Shift), one exact host-call log. This is the net X2-c/X2-d must not move:

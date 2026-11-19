@@ -37,26 +37,28 @@
 - **不做 `.dat` 的 mmap/异步/预加载**（审计 A-P2-10）：属性能，归 M4/M5，与结构治理目标不同；
 - **不重做 `kBuiltin` 的生成管线**（审计 A-P1-7 的数据部分）：M4 扩码表必然重做，现在做是重复劳动。
 
-## 2. 现状基线（2026-11-19 11:3x 实测，状态指示器之后）
+## 2. 现状基线（2026-11-19 12:4x 实测，X2-c 之后，`main` 上）
 
-> **这批数字会失真**：上一版快照写 `ime/*.cpp = 57`，实测 19；`framework/host+ui` 上一版记 2584，
-> 实测 2697（+113，一天之内）。所以每项都附生成命令——**用命令，别引用本文的数字**。
+> **这批数字会失真**：上一版快照写 `ime/*.cpp = 57`，实测 19。而且**跨分支的数字不可比**——
+> 12:2x 那版（可移植层 1642）测的是 `wip/status-indicator` 的树，比 `main` 多一份工具栏状态改动。
+> 所以每项都附生成命令：**用命令，别引用本文的数字**。
 
 ```bash
-wc -l framework/src/*.cpp framework/include/imfw/*.hpp | tail -1   # 1642  可移植层（+66：toolbar_text + 状态标签）
-wc -l framework/platform/win32/imm32/* framework/platform/win32/ui/* | tail -1  # 2586  平台层（Win32）→ 0 测试
+wc -l framework/src/*.cpp framework/include/imfw/*.hpp | tail -1   # 1728  可移植层（X2-c：intent.hpp + key_route.cpp 进来，路由从 host_key 搬走）
+wc -l framework/platform/win32/imm32/* framework/platform/win32/ui/* | tail -1  # 2511  平台层（Win32）→ 0 测试
 wc -l ime/*.cpp                                       | tail -1   # 46    装配（含玩具装配件，不进产品构建）
-wc -l tests/*.cpp samples/toy-scheme/*.cpp | tail -1   # 2608  测试（全 host-side）
+wc -l tests/*.cpp samples/toy-scheme/*.cpp | tail -1   # 2737  测试（全 host-side）
 python3 tools/check_m1.py | tail -1                               # 71 项 契约断言（静态）
 (cd build && ctest -N | tail -1)                                  # 16 项 全在可移植层
 ```
 
 | 文件 | 行数 | 性质 |
 |---|---|---|
-| `framework/platform/win32/imm32/imm_entry.cpp` | 622 | IMM32 入口 + 宿主适配器（X2-a 从 783 降下来；状态指示器 +13，全是两处工具栏同步及其理由） |
-| `framework/platform/win32/ui/ime_ui.cpp` | 320 | 窗口编排、锚点、`GlyphProbe` 字形探针、工具栏状态（`UiToolbarSetOpen`） |
+| `framework/platform/win32/imm32/imm_entry.cpp` | 613 | IMM32 入口 + 宿主适配器（X2-a 从 783 降下来；X2-c 把路由搬走后只剩翻译与跳板） |
+| `framework/platform/win32/ui/ime_ui.cpp` | 300 | 窗口编排、锚点、`GlyphProbe` 字形探针 |
+| `framework/src/key_route.cpp` + `include/imfw/intent.hpp` | 70 + 75 | X2-c 的路由层：`route_key()` 纯函数 + `Intent` 词汇（`status: draft`） |
 | `framework/platform/win32/ui/ui_window.cpp` | — | 几何单一 owner；开头 28 处 `#ifndef` 重定义 Win32 常量 |
-| `framework/include/imfw/{engine,scheme}.hpp` | 72 / 131 | 可移植契约，**Win32 类型 0 处** |
+| `framework/include/imfw/{engine,scheme}.hpp` | 72 / 136 | 可移植契约，**Win32 类型 0 处** |
 
 **接缝现状（这是本计划的地基）**：`imm_entry.cpp` 对外部世界的依赖只有五项，数量都很小，
 所以抽象成本可控、但**现在不值得为它冻结接口**：
@@ -301,12 +303,28 @@ artifact 从未上传，使 `publish-artifacts-branch` 永久失败。补全 `to
 > 而 X2-d 要把这个文件按职责拆 TU。X2-d 拆完后，这两处要落到"键翻译/入口"那个新 TU 的同一位置——
 > 合 w1 时按当时的文件落位，不要照抄旧 hunk。
 
-**X2-c `route_key` + `Intent`（0.5 天）**
+**✅ X2-c `route_key` + `Intent`（2026-11-19 12:4x）**
 
-只搬判定（`imm_entry.cpp:421-464` 附近那 44 行），产出
-`enum class Intent { None, SelectDigit(n), PagePrev, PageNext, Backspace, Escape, InputChar(c), ToggleLang }`，
-`process_key` 保留副作用（改 pager、刷 UI、调引擎）。
-验收：`host_smoke` 在 X2-c 前后调用序列**逐字节一致**；`route_key` 的单测覆盖每个 Intent。
+计划：只搬判定，`handle_key` 保留副作用（改 pager、刷 UI、调引擎）。
+验收：`host_smoke` 调用序列逐字节一致；`route_key` 单测覆盖每个 Intent。
+
+| 项 | 计划 | 实际 |
+|---|---|---|
+| 放置 | 未定 | 新 TU `framework/src/key_route.cpp`（70 行）+ `include/imfw/intent.hpp`（75 行），进 `imfw-engine` → **可移植、可单测** |
+| 词汇 | `SelectDigit(n)` / `ToggleLang` | **`Select{slot}`**：空格不选数字却选第 1 个，叫 `SelectDigit` 是让名字撒谎；`slot` 仍是页内相对索引（第 2 页按 1 选第 10 个）<br>**删掉 `ToggleLang`**：Shift 那条路是**归属**判定（key-up 必须答"不是我的"），不是 dispatch。一个只有"承诺永不 dispatch 的那一层"才能产出的意图，是留给下一个读者的陷阱 |
+| 签名 | — | `Intent route_key(const Scheme&, const KeyEvent&)`，**纯函数**：不碰 session / engine / host，也不看 `key_up`/`ctrl`/`alt`/`fOpen`（那是归属问题，问两遍就会有两种答案） |
+| `handle_key` | 保留副作用 | 变成 `switch (intent.kind)`，并且**不再碰 `scheme`**（`check_m1` 钉住：`scheme_instance()` 只许出现 1 次，就是传给 `route_key` 的那次） |
+| 顺序 | — | 选择 → 翻页 → 文本，与搬之前逐条相同；`OverlapScheme`（同一键两处都声明）专门钉"选择仍然赢" |
+| 门禁 | — | `ctest` **16/16**（+`key-route`，22 条断言）、`check_m1` **71/71**（+3，且 G4 那条从 `host_key.cpp` 改指 `key_route.cpp`）、`check_docs` 7/7 |
+| 行为 | 序列逐字节一致 | `host_smoke` 13 条日志一行未改（`route_key` 的所有判定与原 `if` 链同序同操作数） |
+| 变异 | — | 6 次全红：slot 起点 0→1 / 翻页提到选择之前 / 去掉 `is_input_char` 守卫 / enum 加一个 kind 不给分支 / `route_key` 换签名 / `handle_key` 重新问 scheme（两种写法各一次） |
+| 对外面 | — | 16 导出名及顺序、5 个 DLL 依赖、每个 DLL 的导入函数集**逐个一致**；i686 `946,299 → 947,148 B`（+849），玩具版 `874,682 → 875,019 B`（+337） |
+
+**一次自己抓到的假绿。** 第二条新断言最初写的是"`handle_key` 里不许出现 `scheme.`"。做变异时我加的
+违规代码是 `scheme_instance().page_key(...)` —— 它**不含** `scheme.`（中间隔着下划线），71/71 全绿。
+这与 X2-a0 两次是同一个形状：**断言"某个词出现过/没出现过"就测不出"某处调用还在"**。改成
+"不许有任何策略调用（`page_key(` / `is_selection_key(` / `input_char(`）+ `scheme_instance()` 只许一次"，
+再用两种写法各变异一次，都红了。
 
 **X2-d 拆 god object（1–1.5 天）**
 
@@ -464,7 +482,7 @@ Ctrl+Space 与备用热键——**全部改在 `process_key` 里**。先有冒�
 - [x] X2-a0 `SchemeRegistry` 注入缝 + toy scheme（审计 A-P0-2；达成 G4）— 2026-11-18，见 §3 X2-a0 执行记录
 - [x] X2-a `handle_key` 剥离 + `KeyEvent`/`KeyResult`（行为不变）— 2026-11-18，见 §3 X2-a 执行记录
 - [x] X2-b `tests/host_smoke_test.cpp`（假 engine/scheme/sink/can_render，5 段键序）（审计 A-P0-1）— 2026-11-19，见 §3 X2-b 执行记录
-- [ ] X2-c `route_key` + `Intent` 单测；`host_smoke` 序列不变
+- [x] X2-c `route_key` + `Intent` 单测；`host_smoke` 序列不变 — 2026-11-19，见 §3 X2-c 执行记录
 - [ ] X2-d `imm_entry` 按 6 类职责拆 TU + 合并两条激活路径 + 合并 trace 十进制转换（审计 A-P0-3、复核 N-1）
 - [ ] X2-e1 `platform/win32/{imm32,ui}` 库目标 + `ime` 只 link（审计 A-P1-4）
 - [ ] X2-e2 `dat_source_win.cpp` 归 `rospinyin-engine` + 链接期符号断言（审计 A-P1-5）

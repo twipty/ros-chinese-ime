@@ -306,10 +306,13 @@ def run(root: Path) -> int:
             configure_body is not None and
             "reload_sessions()" in configure_body and
             "return TRUE" in configure_body)
+    # X2-c moved the two questions into the router (key_route.cpp); asking them
+    # again in handle_key() would let the two answers drift apart.
+    route_cpp = strip_cpp_comments(read(root, "framework/src/key_route.cpp"))
     c.check("G4: selection/page key policy comes from the Scheme",
             "#include <imfw/host.hpp>" in policy and
-            "scheme.is_selection_key(ch)" in policy and
-            "scheme.page_key(ch)" in policy and
+            "scheme.is_selection_key(ch)" in route_cpp and
+            "scheme.page_key(ch)" in route_cpp and
             "bool is_page_key" not in policy and
             "is_selection_key" not in entry)
     store_hpp = read(root, "framework/platform/win32/imm32/session_store.hpp")
@@ -545,6 +548,46 @@ def run(root: Path) -> int:
             "#include <windows.h>" not in read(root, "framework/include/imfw/host.hpp") and
             "#include <windows.h>" not in read(root, "framework/include/imfw/session_state.hpp") and
             "src/host_key.cpp" in read(root, "framework/CMakeLists.txt"))
+    # X2-c: "what does this key mean" has exactly one owner. Pinned in opposite
+    # directions on purpose -- the file that must answer (key_route.cpp) and the
+    # file that must no longer answer (handle_key). Checking only the first
+    # would stay green with both copies present, and two copies of a routing
+    # decision drift the moment one of them is edited: the same false-green
+    # shape as the two X2-a0 rewrites.
+    intent_hpp = read(root, "framework/include/imfw/intent.hpp")
+    handle_body = function_body(policy, r"KeyResult handle_key\([^)]*\)")
+    c.check("X2-c: key routing is a pure function of (scheme, key)",
+            "Intent route_key(const Scheme& scheme, const KeyEvent& event)"
+            in route_cpp and
+            "src/key_route.cpp" in read(root, "framework/CMakeLists.txt") and
+            "add_test(NAME key-route" in read(root, "tests/CMakeLists.txt") and
+            "#include <windows.h>" not in route_cpp and
+            "#include <windows.h>" not in intent_hpp)
+    # The forbidden half is spelled as "no policy call at all", not as
+    # "no `scheme.`": the first version of this check tested for the literal
+    # `scheme.`, and a re-added `scheme_instance().page_key(...)` stayed green
+    # because the underscore sits between the two -- the same false-green shape
+    # as the X2-a0 ones, this time caught by mutation rather than by review.
+    # One scheme_instance() is allowed here: the argument to route_key().
+    c.check("X2-c: handle_key dispatches on Intent and asks the scheme nothing",
+            handle_body is not None and "route_key(" in handle_body and
+            handle_body.count("scheme_instance()") == 1 and
+            "page_key(" not in handle_body and
+            "is_selection_key(" not in handle_body and
+            "input_char(" not in handle_body,
+            "handle_key not found" if handle_body is None else "")
+    # Every kind needs a branch: a missing one is a key that silently does
+    # nothing, and a switch over an enum only warns (no -Werror here).
+    kinds_block = re.search(r"enum class IntentKind[^{]*\{(.*?)\};",
+                            intent_hpp, re.S)
+    intent_kinds = (re.findall(r"(\w+)\s*(?:=[^,]*)?,", kinds_block.group(1))
+                    if kinds_block else [])
+    unhandled = [k for k in intent_kinds
+                 if f"case IntentKind::{k}:" not in policy]
+    c.check("X2-c: every Intent kind has a branch in handle_key",
+            bool(intent_kinds) and not unhandled,
+            ", ".join(unhandled) or "no IntentKind enum found")
+
     # The layout's language (which "keyboard" ImmInstallIMEW files it under)
     # comes solely from the first VarFileInfo\Translation entry, so it is a
     # build-time fact, not a runtime one. A Simplified Chinese IME must ship as

@@ -1738,6 +1738,44 @@ GDI32/IMM32/KERNEL32/msvcrt/USER32）+ **行为由宿主测试钉住**。
 这两个"一个变、一个不变"必须同框看见，单独看任一都不足以判定。
 
 
+### 11.28 键路由 = 一个纯函数（X2-c，2026-11-19 12:4x）
+
+X2-a 把键策略从 `imm_entry.cpp` 搬到了 `framework/src/host_key.cpp`，但 `handle_key()`
+仍是"边判定边干活"：选字分支一旦命中就直接 `commit_text`，翻页分支命中就直接动 pager。
+后果是**想问一个键是什么意思，必须先把引擎和宿主都造出来**——`host_key_test.cpp` 为此写了一个
+`FakeEngine` + `SpyHost`，`host_smoke_test.cpp` 更是整段键序。
+
+X2-c 把它劈成两半：
+
+| 文件 | 职责 | 依赖 |
+|---|---|---|
+| `framework/src/key_route.cpp` + `include/imfw/intent.hpp`（新） | `route_key(scheme, event) -> Intent`：这个键是什么 | 只有 `Scheme`。**不问 session / engine / host**，也不看 `key_up`/`ctrl`/`alt`/`fOpen` |
+| `framework/src/host_key.cpp` | `handle_key`：拿到 `Intent` 之后做什么 | 照旧（engine + host） |
+
+**词汇表**（`intent.hpp`，`status: draft`）：`None / Input{ch} / Select{slot} / PagePrev / PageNext /
+Backspace / Escape`。两处与计划不同，都是执行时发现计划的名字会撒谎：
+
+- `SelectDigit(n)` → `Select{slot}`：空格不是数字，但它选第 1 个。`slot` 仍是**页内相对**索引，
+  所以第 2 页按 `1` 选的是第 10 个——这条由 `CandidatePager` 保证，路由只负责把键翻译成槽位。
+- `ToggleLang` **删掉**：Shift 切中英确实是"意图"，但产生它的那条路在 `wants_key()`
+  （key-up 必须回答"不是我的"，闩只在那一层）。一个**只有"承诺永不 dispatch 的那一层"才能产出**的
+  意图，是留给下一个读者的陷阱。等真有第二个前端要"请求切换"，再加。
+
+**判据（这是 X2-c 的全部意义所在）**：`host_smoke` 的 13 条日志**一行未改**。搬判定时最容易犯的错
+是顺手把分支顺序调了（选择/翻页都声明同一键时，谁赢？），`tests/key_route_test.cpp` 里的
+`OverlapScheme` 专门钉这一条：`'5'` 被两处都声明 → 仍然是 `Select`。
+
+**一次自己抓到的假绿（第三次同类）**。新加的 `check_m1` 断言最初写"`handle_key` 里不许出现
+`scheme.`"。变异时我塞进去的违规代码是 `scheme_instance().page_key(...)`——它**不含** `scheme.`
+（中间隔着下划线），71/71 依然全绿。这与 §11.24 的两次是同一个形状：**凡"某词出现过/没出现过"
+的断言，都要问"另一种写法会不会绕过去"**。改法是不再匹配词，而是匹配"策略调用本身"：
+`page_key(` / `is_selection_key(` / `input_char(` 一个都不许有，且 `scheme_instance()` 只许出现一次
+（就是传给 `route_key` 的那次）。两种写法各变异一次，都红。
+
+**对外面**：16 个导出名及顺序、5 个 DLL 依赖、每个 DLL 的导入函数集**逐个一致**；
+i686 拼音版 `946,299 → 947,148 B`（+849），玩具版 `874,682 → 875,019 B`（+337）。
+新增的 849 字节全是"多一个 TU + 一次 switch"，没有任何新 Win32 API 调用。
+
 ### 11.2 其他待办
 
 - ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。
