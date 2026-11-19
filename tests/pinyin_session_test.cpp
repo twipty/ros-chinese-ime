@@ -200,14 +200,67 @@ int main() {
 
     // A separator may end the buffer mid-typing ("xi'" waits for the next
     // syllable), but the tail after it must still be a legal pinyin prefix.
+    //
+    // Typing the separator must not empty the list: everything before it is
+    // finished, so 西 stays on offer while the next syllable has no letters yet.
+    // Before the incomplete-tail fix the whole buffer failed to segment here and
+    // the candidate window blinked off for one keystroke.
     session.cancel();
     feed_string(session, "xi'");
     check_equal(session.composition(), "xi'", "trailing separator is accepted");
-    check(session.syllables().empty(), "trailing separator has no candidates");
+    check(session.syllables().size() == 1 && session.syllables()[0] == "xi",
+          "trailing separator keeps the finished syllable");
+    check(!session.candidates().empty() && session.candidates()[0].text == U"西",
+          "trailing separator keeps xi's candidates (no blink)");
     session.cancel();
     feed_string(session, "xi'b");
     check_equal(session.composition(), "xi'",
                 "illegal syllable after separator is rejected, separator kept");
+
+    // The candidate list must never go empty once a syllable is complete: a
+    // half-typed *next* syllable is a normal state ("zhongg" = [zhong] + "g"),
+    // not a reason to withdraw the offer for the finished one. This is the
+    // "候选窗一闪一闪" report expressed as a predicate: after the first
+    // candidate appears, no further letter may empty the list.
+    {
+        rospinyin::PinyinSession typing(make_shared_table());
+        typing.on_select(true);
+        bool seen = false;
+        bool blinked = false;
+        const char* sequence = "zhongguo";
+        for (const char* p = sequence; *p != '\0'; ++p) {
+            typing.feed(static_cast<char32_t>(static_cast<unsigned char>(*p)));
+            if (!typing.candidates().empty()) {
+                seen = true;
+            } else if (seen) {
+                blinked = true;
+            }
+        }
+        check(seen, "zhongguo reaches a state with candidates");
+        check(!blinked, "no candidate gap while typing zhongguo");
+        check(typing.syllables().size() == 2,
+              "a finished buffer still reports both syllables");
+    }
+
+    // ... and the unfinished tail is not reported as a segment, so the
+    // composition window can draw it grey instead of underlining a syllable
+    // that has no characters to choose from yet.
+    {
+        rospinyin::PinyinSession typing(make_shared_table());
+        typing.on_select(true);
+        feed_string(typing, "zhongg");
+        check(typing.syllables().size() == 1,
+              "an unfinished syllable is not a segment");
+        check(!typing.candidates().empty() &&
+                  typing.candidates()[0].text == U"中",
+              "zhong's candidates survive the half-typed g");
+        // Committing the finished syllable erases only it; "g" is still there.
+        const Result picked = typing.commit_text(U"中");
+        check_equal(picked.composition, "g",
+                    "the uncommitted tail survives the selection");
+        check(picked.candidates.empty(),
+              "a lone g has nothing to offer yet");
+    }
 
     // Invalid input is rejected without corrupting a valid in-flight prefix.
     session.cancel();

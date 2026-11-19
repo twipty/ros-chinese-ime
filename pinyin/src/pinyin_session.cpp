@@ -81,6 +81,46 @@ bool can_extend(const std::string& text, const imfw::CodeTable& table) {
     return false;
 }
 
+// The syllables that are *finished* in a buffer that may not be.
+//
+// One keystroke into a new syllable the buffer cannot be segmented as a whole:
+// "nih" is [ni] plus the leading "h" of the next syllable, "zhongg" is [zhong]
+// plus "g". can_extend() accepts those states (that is what makes continuous
+// typing work), but segment_syllables() rejects them, so recompute() used to
+// empty the candidate list and the candidate window blinked off for exactly one
+// keystroke at every syllable boundary.
+//
+// The unfinished tail is deliberately not returned. There is nothing to offer
+// for it yet, and leaving it out is what makes CompositionWindow draw it grey
+// as a pending syllable (its segment loop treats the text past the last end as
+// one more, non-active chunk).
+std::vector<std::string> completed_syllables(const std::string& text,
+                                             const imfw::CodeTable& table) {
+    if (text.empty()) return {};
+
+    // A whole-buffer segmentation is the historical behaviour and stays exact.
+    std::vector<std::string> whole = segment_syllables(text, table);
+    if (!whole.empty()) return whole;
+
+    // A trailing apostrophe is a boundary the user just typed: everything
+    // before it is complete by definition ("xi'" is [xi] plus a syllable that
+    // has no letters yet, which is a legal mid-typing state).
+    if (text.back() == '\'') {
+        return segment_syllables(text.substr(0, text.size() - 1), table);
+    }
+
+    // Otherwise: the longest complete head whose tail is still a viable prefix.
+    // Longest keeps the most already-typed syllables on screen and matches the
+    // split can_extend() finds for the same buffer.
+    for (std::size_t split = text.size() - 1; split > 0; --split) {
+        if (!table.is_prefix(text.substr(split))) continue;
+        std::vector<std::string> head =
+            segment_syllables(text.substr(0, split), table);
+        if (!head.empty()) return head;
+    }
+    return {};
+}
+
 }  // namespace
 
 std::vector<std::string> segment_syllables(const std::string& letters,
@@ -112,7 +152,11 @@ std::vector<std::string> segment_syllables(const std::string& letters,
 }
 
 void PinyinSession::recompute() {
-    syllables_ = segment_syllables(composition_, *table_);
+    // Only finished syllables: "nih" keeps [ni] alive instead of clearing the
+    // window until the next letter completes a syllable (see
+    // completed_syllables()). Commit still erases exactly the first syllable,
+    // so the unfinished tail survives a selection.
+    syllables_ = completed_syllables(composition_, *table_);
     candidates_.clear();
     if (syllables_.empty()) return;
 

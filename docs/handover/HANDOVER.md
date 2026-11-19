@@ -2239,6 +2239,36 @@ Linux 默认构建看不到它。
 
 ---
 
+### 11.37 X2-w2 合入：候选窗不再每跨音节闪一次（2026-11-19 18:0x）
+
+根因在 `PinyinSession::recompute()`：它要求整串 composition 可被 `segment_syllables()` 切分。
+敲到 `nih`（`[ni]` + 未完成的 `h`）或 `zhongg` 时整串切不开 → `syllables_` 清空 →
+候选归零 → `CandidateWindow::update` 命中 `pager.empty()` 后 `hide()`。于是每个音节边界
+都闪一次。
+
+修法是新增 `completed_syllables()`，只把**已完成**的音节交给候选：整串可切分就原样返回；
+末尾撇号单独处理（`xi'` 仍给 `[xi]`）；否则取"最长可完整切分的头 + 尾部仍是合法前缀"。
+未完成的尾巴不进入 `segments`，所以组合窗依旧把它画成灰色 pending。
+
+**这是产品决策变更**：旧的 `tests/pinyin_session_test.cpp` 有一条
+`trailing separator has no candidates` 把闪一下钉成"正确行为"。本次连断言一起改成
+"尾随分隔符保留已完成音节与候选"，并增加 `zhongguo` 全程无空档、`zhongg` 保留「中」、
+上屏后尾巴 `g` 留下三组判据。不说明这一点，看起来就像"测试改了才过"。
+
+| 项 | 结果 |
+|---|---|
+| 量化 | `nihao` 逐键候选数 `0,4,0,4,4` → **`0,4,4,4,4`**；`zhongguo` 在 `zhongg` / `zhonggu` 仍保留 2 条候选；`xi'` 保留「西」 |
+| 门禁 | `ctest` **17/17**、`check_m1` 107/107、`check_docs` 7/7 |
+| 变异 | 3 次全红：退回 `segment_syllables()` / 去掉撇号分支 / 去掉最长头搜索 |
+| 对外面 | 16 导出与 5 个 DLL 的导入函数集逐条同序不变；行为变了，`.ime` 951,461 → **952,485 B**，sha `0ac616f1…` → `1ced1364…` |
+| 真机 | **待用户操作**：连续输入 `nihao` 时候选列表不再消失再出现 |
+
+§11.26 曾写"将来改候选窗稳定性时，`host_smoke` 那行『退格到空仍 show、候选 0』日志会变"，
+这次实测**没有变**：`host_smoke` 注入的是假 engine，不经过 `PinyinSession`。那条日志仍然有效，
+但不再是 w2 的判据；判据是上面的 `pinyin-session` 测试与逐键候选数。
+
+---
+
 ### 11.2 其他待办
 
 - ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。
