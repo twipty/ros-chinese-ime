@@ -196,7 +196,7 @@ ros-pinyin/
 ├── ime/                        装配层：rospinyin.def（16 导出）、rospinyin_res.rc、scheme_reg.cpp、图标
 ├── tests/                      16 个宿主测试（ctest）
 ├── tools/
-│   ├── check_m1.py             契约静态检查（83 项，无第三方依赖）
+│   ├── check_m1.py             契约静态检查（87 项，无第三方依赖）
 │   ├── artifact_hashes.py      部署件对账：size + sha256，回答"我到底放出哪一版"
 │   ├── vm_clock.py             guest 时钟对齐：时区 .reg / 手敲 date+time 两个通道
 │   ├── mkdat/                  数据编译器 + fetch_data.py + fixtures
@@ -238,7 +238,7 @@ ros-pinyin/
 | 装配 | `ime/scheme_reg.cpp` | 定义 `imfw::scheme_instance()`（唯一的 Scheme 注入点） | Win |
 | 数据编译 | `tools/mkdat/mkdat.cpp` | Unihan + hanziDB → `rospinyin.dat`（确定性输出） | 宿主 |
 | 安装器 | `tools/install-rospinyin/install.cpp` | `/step1..4` 分步注册、动态 HKL 记录、`/i` 串行（仅 Windows 参照机） | Win |
-| 契约检查 | `tools/check_m1.py` | 83 项静态断言（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、ABI、reload 顺序…） | 宿主 |
+| 契约检查 | `tools/check_m1.py` | 87 项静态断言（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、ABI、reload 顺序…） | 宿主 |
 | 部署对账 | `tools/artifact_hashes.py` | 各构建产物与共享副本的 size/sha256 对照，标出"同字节数不同内容"与"共享目录不是这一版" | 宿主 |
 | guest 侧哈希 | `tools/rhash/rhash.c` | 自带 SHA-256 的小 exe：`rhash.exe [文件...]`，无参数时算 system32 的 `.ime`/`.dat`。只依赖 kernel32+msvcrt | Win |
 | guest 时钟 | `tools/vm_clock.py` | 诊断宿主/UTC/guest 显示差值；生成时区 `.reg` 或打印 `date`/`time` 命令（**只打印，不代敲**） | 宿主 |
@@ -257,7 +257,7 @@ cd ros-pinyin
 cmake -S . -B build -DROSPINYIN_BUILD_TESTS=ON
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure        # 11 个测试，应 100% 通过
-python3 tools/check_m1.py                          # 83 项契约检查，应 83/83
+python3 tools/check_m1.py                          # 87 项契约检查，应 87/87
 ```
 
 - 宿主构建**不编译** Windows 专有部分（`ime/`、安装器、`httpdl`、`framework/platform/win32/imm32`、`framework/platform/win32/ui`），只测纯 C++ 层。
@@ -498,7 +498,7 @@ VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
 | 门禁 | 命令 | 通过标准 |
 |---|---|---|
 | 宿单单测 | `ctest --test-dir build` | 11/11（smoke、session、pinyin、pinyin-session、candidate-pager、pinyin-scheme、emit-text、utf8、code-table、m1-contract、mkdat-e2e） |
-| 契约静态检查 | `python3 tools/check_m1.py` | 83/83（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
+| 契约静态检查 | `python3 tools/check_m1.py` | 87/87（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
 | Win32 语法检查 | CI 的第一步，见 §6.3 | 0 error（用 `tools/syntax_stub` 提供的 Windows 头） |
 | PE 导入表 | CI `objdump -p` | 不得出现 Vista+ 导出或非系统 DLL |
 | 真机验收 | `docs/milestones/m2/M2-ACCEPTANCE.md` | 15 项全绿 |
@@ -1982,6 +1982,61 @@ ld: cannot export ImeProcessKey: symbol not defined
 
 ---
 
+### 11.31 X2-e2 数据源归位：`load_system_table()` 缺席现在是链接错误（2026-11-19 15:1x）
+
+**这一步为什么值得单独做。** 从 M2 起，`pinyin/host/dat_source_win.cpp` 只是 `ime/CMakeLists.txt`
+那张源码清单里的一行。也就是说"拼音数据来自 system32 的 `.dat`"这件事，只由装配层的构建文件保证；
+而 `pinyin/src/dat_source.cpp` 里始终存在一个 weak 的 `load_system_table()` 兜底。两者一起构成了
+一个静默失败：把那一行删掉，链接照常成功，产物照样能装能用，只是候选变少、多音字消失。
+
+先量了一遍再动手：**改动之前**把 `../pinyin/host/dat_source_win.cpp` 从 `ime/CMakeLists.txt` 删掉，
+`cmake --build` **退出码 0**，产物 **942,989 B**（正常是 948,481 B）。这 5.5 KB 是两个世界之间唯一的
+证据，而没有任何东西会去读它。审计 A-P1-5 说的"插件自洽"就是这件事。
+
+**做法（两半，缺一半都没用）**
+
+| 位置 | 改动 |
+|---|---|
+| `pinyin/CMakeLists.txt` | `if(WIN32)` 里 `target_sources(rospinyin-engine PRIVATE host/dat_source_win.cpp)`，并 `target_compile_definitions(... ROSPINYIN_REQUIRE_SYSTEM_TABLE)` |
+| `pinyin/src/dat_source.cpp` | weak 兜底包进 `#if !defined(ROSPINYIN_REQUIRE_SYSTEM_TABLE)`；`load_pinyin_table()` 留在守卫外 |
+| `ime/CMakeLists.txt` | 删掉 `../pinyin/host/dat_source_win.cpp`、X2-e1 留下的那条临时 include 路径，以及 `if(ROSPINYIN_TRACE) target_compile_definitions(rospinyin-ime …)`——该目标里已经没有读这个宏的 TU |
+
+**判据：同一次删除，现在必须链接失败**（保留宏）：
+
+```
+ld: ../pinyin/librospinyin-engine.a(dat_source.cpp.obj):dat_source.cpp:(.text+0x68e):
+    undefined reference to `rospinyin::load_system_table()'
+make[3]: *** [ime/CMakeFiles/rospinyin-ime.dir/build.make:120: ime/rospinyin.ime] 错误 1
+```
+
+再把宏也去掉，链接又成功（942,989 B）——那就是改动前的世界，也是"为什么非要有这个宏"的证据。
+
+**对外面**：16 导出名及顺序、5 个 DLL、每 DLL 导入函数集逐条同序仍**完全一致**
+（GDI32 12 / IMM32 2 / KERNEL32 59 / msvcrt 43 / USER32 22）；函数符号集合两边各 1386 个，
+逐个相同，没有多也没有少。i686 拼音 948,481 → **947,820 B**（−661：`.text` −64、`.rdata` +32，
+其余是节对齐累积，不是代码增减）；trace 版 971,982 → 971,833 B（`dat …` 行仍在，
+`strings` 里 `dat MISSING` / `dat TRUNCATED` 仍命中）；玩具版 876,352 B 不变（玩具不链接 `rospinyin-engine`）。
+
+**一处跨层依赖没还，只是跟着文件搬了家**：`dat_source_win.cpp` 仍 `#include "trace_stamp.h"`，
+所以 `rospinyin-engine` 现在带着一条指向 `framework/platform/win32/imm32` 的 include 路径（Windows 分支）。
+这是 X2-e6 的活，CMake 注释里写明了。把它留在 `ime/` 等于同一个洞换个位置，不如跟着文件走、记在正在做的那一格上。
+
+**新增 4 条断言（83 → 87）**，都按"匹配调用、不匹配词"的规矩写：
+
+| 断言 | 钉法 |
+|---|---|
+| 数据源属于 engine | `target_sources(rospinyin-engine PRIVATE host/dat_source_win.cpp)` 这个**调用**必须在 `pinyin/CMakeLists.txt`；`ime/CMakeLists.txt`（剥注释）不许出现 `dat_source_win` |
+| Windows 必须有真实现 | `target_compile_definitions(rospinyin-engine PRIVATE ROSPINYIN_REQUIRE_SYSTEM_TABLE)` 必须存在（允许跨行） |
+| 守卫只包住兜底 | `#if !defined(…)` 与 `#endif` 之间必须有 `load_system_table`、不许有 `load_pinyin_table` |
+| 装配目标不再声明 trace | `ime/CMakeLists.txt`（剥注释）不许出现 `ROSPINYIN_TRACE` |
+
+变异 4 次全红：文件挪回 `ime/` 的清单 / REQUIRE 宏改成注释（词还在、调用没了）/ 去掉守卫 /
+把 trace define 加回装配目标。
+
+门禁：`ctest` 16/16、`check_m1` **87/87**、`check_docs` 7/7。
+
+---
+
 ### 11.2 其他待办
 
 - ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。
@@ -1999,7 +2054,7 @@ ld: cannot export ImeProcessKey: symbol not defined
 **改代码**
 
 1. `cmake --build build --parallel && ctest --test-dir build` → 16/16；
-2. `python3 tools/check_m1.py` → 83/83（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
+2. `python3 tools/check_m1.py` → 87/87（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
 3. 动了 `framework/platform/win32/imm32` 或 `framework/platform/win32/ui`：跑 CI 那步宿主语法检查（§6.3），确认 `-Wchanges-meaning` / ABI 断言不炸；
 4. 动了 ABI：本地用 zig 真实 MinGW 头编译一次 `framework/platform/win32/imm32/imm_entry.cpp`（`-target x86-windows-gnu -c`）。
 

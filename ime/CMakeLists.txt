@@ -19,8 +19,7 @@ set(ROSPINYIN_SCHEME "pinyin" CACHE STRING
 
 if(ROSPINYIN_SCHEME STREQUAL "pinyin")
     set(ROSPINYIN_SCHEME_SOURCES
-        scheme_reg.cpp
-        ../pinyin/host/dat_source_win.cpp)
+        scheme_reg.cpp)
     set(ROSPINYIN_SCHEME_INCLUDE "${PROJECT_SOURCE_DIR}/pinyin/include")
     # rospinyin-engine brings imfw-engine transitively (PUBLIC link).
     set(ROSPINYIN_SCHEME_LIBS rospinyin-engine)
@@ -64,11 +63,7 @@ add_library(rospinyin-ime SHARED
 
 target_include_directories(rospinyin-ime PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
-    "${ROSPINYIN_SCHEME_INCLUDE}"
-    # Temporary (X2-e1 → X2-e2): the pinyin scheme's Windows data source is
-    # still compiled here and includes the trace channel's timestamp header.
-    # X2-e2 moves that file into rospinyin-engine and takes this path with it.
-    "${PROJECT_SOURCE_DIR}/framework/platform/win32/imm32")
+    "${ROSPINYIN_SCHEME_INCLUDE}")
 
 # imfw-win32-imm32 brings imfw-win32-ui through the (static) dependency cycle;
 # both are named anyway so the link line states what the module contains.
@@ -90,9 +85,11 @@ set_target_properties(rospinyin-ime PROPERTIES
     SUFFIX ""
     OUTPUT_NAME "rospinyin.ime")
 
-if(ROSPINYIN_TRACE)
-    target_compile_definitions(rospinyin-ime PRIVATE ROSPINYIN_TRACE)
-endif()
+# No ROSPINYIN_TRACE here on purpose (X2-e2): nothing compiled into this target
+# reads the macro any more. The trace channel is a property of the host library
+# (framework/platform/win32/CMakeLists.txt) and of the pinyin data source
+# (pinyin/CMakeLists.txt), and each declares it where it is read. A define on
+# the assembly target would look like it worked while changing nothing.
 
 # Feed the language choice to windres (it honours -D). Only the MinGW build is
 # supported for the .ime, so COMPILE_OPTIONS on the .rc is enough.

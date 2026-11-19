@@ -106,7 +106,7 @@ framework/src/、framework/include/imfw/、pinyin/                         不�
 | 位置 | 处数 | 说明 |
 |---|---|---|
 | `ime/CMakeLists.txt` | 9 条源文件路径 + 3 条 include 目录 | 相对路径 `../framework/host|ui/` |
-| `pinyin/host/dat_source_win.cpp` | 1 条 include | 跨层引 `trace_stamp.h`（见 X2-e） |
+| `pinyin/host/dat_source_win.cpp` | 1 条 include | 跨层引 `trace_stamp.h`。X2-e2 把文件收进 `rospinyin-engine` 后，这条路径由 `pinyin/CMakeLists.txt` 的 Windows 分支声明，X2-e6 收掉 |
 | `tools/check_m1.py` | 15 处硬编码路径 | 含 `framework/ui/README.md` |
 | 文档 | 若干 | 只改路径，不改论述（`tools/check_docs.py` 会盯着链接） |
 
@@ -373,6 +373,24 @@ artifact 从未上传，使 `publish-artifacts-branch` 永久失败。补全 `to
 **顺带修的文档漂移**：HANDOVER §4 目录树里 `framework/host/`、`framework/ui/` 是 X1 之前的布局，
 X1 改了代码与 `check_m1` 的 15 处路径却漏了这棵树。
 
+**✅ X2-e2 数据源归位 + 链接期符号断言（2026-11-19 15:1x）**
+
+计划：`dat_source_win.cpp` 纳入 `rospinyin-engine` 的 Windows 配置；可执行文件加"链接期符号存在断言"
+（`load_system_table` 非 weak 版本）。验收：同一次删除必须**链接失败**。
+
+| 项 | 计划 | 实际 |
+|---|---|---|
+| 归属 | 进 `rospinyin-engine` | `pinyin/CMakeLists.txt` 的 `if(WIN32)` 里 `target_sources(rospinyin-engine PRIVATE host/dat_source_win.cpp)`；`ime/CMakeLists.txt` 一行平台/插件源码都不再列 |
+| 链接期断言 | 符号存在 | 不用额外断言，改成**结构上不可能**：Windows 下 `ROSPINYIN_REQUIRE_SYSTEM_TABLE` 把 weak 兜底编译掉，缺实现就是 `undefined reference to rospinyin::load_system_table()` |
+| 改动前实测 | — | 把该文件从 `ime/` 清单删掉，`cmake --build` **退出码 0**，产物 **942,989 B**（正常 948,481 B）——装上去只是候选变少、多音字消失，无任何提示。这就是 A-P1-5 说的"插件不自洽" |
+| 改动后实测 | — | 同一次删除 → `ld: undefined reference to 'rospinyin::load_system_table()'`，`make` 退出码 2；再把宏也去掉 → 又成功（942,989 B），证明宏就是那个把静默降级变成编译错误的开关 |
+| 顺带清理 | — | `ime/CMakeLists.txt` 删掉 X2-e1 的临时 include 路径，以及 `if(ROSPINYIN_TRACE) target_compile_definitions(rospinyin-ime …)`——该目标已无 TU 读这个宏，留着是"看起来生效"的死开关 |
+| 新增断言 | — | 4 条（83 → 87）：数据源归属（匹配 `target_sources(...)` **调用**，不匹配路径词）/ Windows 必须有 REQUIRE 宏（跨行匹配）/ 守卫只包住兜底（守卫内必须有 `load_system_table`、不许有 `load_pinyin_table`）/ 装配目标不许出现 `ROSPINYIN_TRACE` |
+| 变异 | — | 4 次全红：文件挪回 `ime/` 清单 / REQUIRE 宏改成注释（**词还在、调用没了**）/ 去掉守卫 / trace define 加回装配目标 |
+| 遗留 | 未列 | `dat_source_win.cpp` 仍引 `trace_stamp.h` → `rospinyin-engine` 带一条指向 `framework/platform/win32/imm32` 的 include 路径，交 X2-e6 |
+| 门禁 | — | `ctest` 16/16、`check_m1` **87/87**（+4）、`check_docs` 7/7 |
+| 对外面 | 逐个一致 | 16 导出名及顺序、5 个 DLL、每 DLL 导入函数集逐条同序**完全一致**；函数符号 1386 个两边逐个相同。i686 拼音 `948,481 → 947,820 B`（−661，`.text` −64 / `.rdata` +32，其余为节对齐）、trace 版 `971,982 → 971,833 B`、玩具 `876,352 B` 不变 |
+
 **X2-e 构建收敛（1.5–2 天）**
 
 | 子项 | 出处 | 做法 |
@@ -519,7 +537,7 @@ Ctrl+Space 与备用热键——**全部改在 `process_key` 里**。先有冒�
 - [x] X2-c `route_key` + `Intent` 单测；`host_smoke` 序列不变 — 2026-11-19，见 §3 X2-c 执行记录
 - [x] X2-d `imm_entry` 按职责拆 TU（实际 4 个，候选过滤在 X2-a 已走）+ 合并两条激活路径 + 合并 trace 十进制转换（审计 A-P0-3、复核 N-1）
 - [x] X2-e1 `platform/win32/{imm32,ui}` 库目标 + `ime` 只 link（审计 A-P1-4）— 2026-11-19，见 §3 X2-e1 执行记录
-- [ ] X2-e2 `dat_source_win.cpp` 归 `rospinyin-engine` + 链接期符号断言（审计 A-P1-5）
+- [x] X2-e2 `dat_source_win.cpp` 归 `rospinyin-engine` + 链接期符号断言（审计 A-P1-5）— 见 §3「X2-e2」
 - [ ] X2-e3 `CMakePresets.json` + `EXISTS` 硬失败 + 统一根变量 + C 标准 + 静态策略收敛（审计 A-P1-6）
 - [ ] X2-e4 28 处 `#ifndef` 平台补丁归位（审计 A-P2-11）
 - [ ] X2-e5 版本收敛到 `ime/version.h` 一处 + CI 断言（审计 A-P1-7 版本部分；达成 G7）

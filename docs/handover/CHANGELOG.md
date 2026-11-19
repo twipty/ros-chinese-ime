@@ -7,6 +7,25 @@
 
 ## 未发布
 
+### 数据源归位，缺席即链接错误（X2-e2）
+
+- **`pinyin/host/dat_source_win.cpp` 归 `rospinyin-engine`**（Windows 分支），不再由 `ime/CMakeLists.txt`
+  列出来编译。它是拼音方案自己的数据来源，不是装配层的细节。
+- **weak 兜底在 Windows 上被编译掉**（`ROSPINYIN_REQUIRE_SYSTEM_TABLE`）：`pinyin/src/dat_source.cpp`
+  里那个 `return nullptr` 的 `load_system_table()` 只保留给 Linux 与宿主测试。于是"忘了编真实数据源"
+  从**静默降级**变成**链接失败**——实测改动前删掉那一行仍能编出 942,989 B 的 `.ime`（正常 948,481 B），
+  装上去只是候选变少、多音字消失，没有任何提示。
+- **`ime/CMakeLists.txt` 清理**：连同 X2-e1 留下的临时 include 路径、以及 `if(ROSPINYIN_TRACE)
+  target_compile_definitions(rospinyin-ime …)` 一并删除——该目标里已没有读这个宏的 TU，
+  留着就是"看起来生效、实际没改一个字节"的开关。
+- **`check_m1` 83 → 87 项**：数据源归属（匹配 `target_sources(...)` 这个调用，不匹配路径词）/
+  Windows 必须有 `ROSPINYIN_REQUIRE_SYSTEM_TABLE` / 守卫只包住兜底 / 装配目标不再声明 trace。
+  变异 4 次全红（含"把宏改成注释"——词还在、调用没了）。
+- 对外面：16 导出名及顺序、5 个 DLL、每 DLL 导入函数集逐条同序仍完全一致；函数符号 1386 个两边逐个相同。
+  i686 拼音 `948,481 → 947,820 B`（−661，全在节对齐）、trace 版 `971,982 → 971,833 B`、玩具不变。
+- 遗留：`dat_source_win.cpp` 仍引 `trace_stamp.h`，`rospinyin-engine` 因此带一条指向
+  `framework/platform/win32/imm32` 的 include 路径；由 X2-e6 收掉。
+
 ### 平台层成为两个库（X2-e1）
 
 - **`framework/platform/win32/CMakeLists.txt`（新）**：`imfw-win32-imm32`（宿主 7 个 TU）与

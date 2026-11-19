@@ -823,6 +823,54 @@ def run(root: Path) -> int:
             "--no-insert-timestamp" in ime_cmake,
             "ld stamps link time into the header; hashes stop identifying a build")
 
+    # X2-e2 (audit A-P1-5): the plug-in owns its data end to end, so the Win32
+    # half of the .dat read belongs to rospinyin-engine and not to the assembly.
+    # The failure this has to catch is the one measured before the move: with
+    # the file dropped from the source list, ld resolved load_system_table() to
+    # the always-present weak stub and produced a 942,989 B .ime that silently
+    # ran on the built-in table (the real one is 948,481 B, and nothing said so).
+    #
+    # Matched as a *call* (`target_sources(rospinyin-engine PRIVATE ...)`), not
+    # as a path: the comment above the block names the same file, and an
+    # assertion that matches words has already gone green on a mutant three
+    # times in this project.
+    pinyin_cmake = strip_cmake_comments(read(root, "pinyin/CMakeLists.txt"))
+    c.check("X2-e2: the pinyin data source is a rospinyin-engine source",
+            re.search(r"target_sources\(\s*rospinyin-engine\s+PRIVATE\s+"
+                      r"host/dat_source_win\.cpp\s*\)", pinyin_cmake) is not None and
+            "dat_source_win" not in strip_cmake_comments(ime_cmake),
+            "dat_source_win.cpp must be added by pinyin/CMakeLists.txt and not "
+            "re-listed by ime/CMakeLists.txt")
+
+    # ...and the Windows build must be unable to do without it. The macro is
+    # what removes the stub; without it the stub is present everywhere and the
+    # link above succeeds again.
+    c.check("X2-e2: Windows builds require a real load_system_table()",
+            re.search(r"target_compile_definitions\(\s*rospinyin-engine\s+PRIVATE\s+"
+                      r"ROSPINYIN_REQUIRE_SYSTEM_TABLE\s*\)",
+                      pinyin_cmake, re.S) is not None,
+            "without ROSPINYIN_REQUIRE_SYSTEM_TABLE a missing data source links "
+            "cleanly and ships the built-in table")
+
+    # The guard has to cover the stub and nothing else: load_pinyin_table is the
+    # Linux/host-test path and must survive.
+    src_dat = read(root, "pinyin/src/dat_source.cpp")
+    stub_guard = re.search(
+        r"#if\s+!defined\(ROSPINYIN_REQUIRE_SYSTEM_TABLE\)(.*?)#endif",
+        src_dat, re.S)
+    c.check("X2-e2: the guard removes the weak stub only",
+            stub_guard is not None and
+            "load_system_table" in stub_guard.group(1) and
+            "load_pinyin_table" not in stub_guard.group(1))
+
+    # Nothing compiled into the .ime reads the macro any more, so a define here
+    # would be the kind of flag that looks applied and changes no byte. It is
+    # declared by the two targets that do read it (platform host, pinyin data
+    # source) -- see the ROSPINYIN_TRACE checks above.
+    c.check("X2-e2: ROSPINYIN_TRACE is not re-declared on the assembly target",
+            "ROSPINYIN_TRACE" not in strip_cmake_comments(ime_cmake),
+            "ime/CMakeLists.txt defines a macro nothing in it reads")
+
     return c.summary()
 
 

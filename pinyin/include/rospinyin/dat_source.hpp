@@ -13,10 +13,10 @@
 //                               parses it through the generic imfw::CodeTable.
 //                               The file read needs Win32, so the
 //                               Windows-only implementation lives in
-//                               pinyin/host/dat_source_win.cpp (compiled into
-//                               the assembled .ime); host tests and any
-//                               non-Windows build fall back to the weak
-//                               definition below in pinyin/src/dat_source.cpp.
+//                               pinyin/host/dat_source_win.cpp and is a member
+//                               of rospinyin-engine on Windows (X2-e2); host
+//                               tests and any non-Windows build get the weak
+//                               stub in pinyin/src/dat_source.cpp instead.
 //
 // Loading strategy: prefer the .dat; if it is missing or corrupt, fall back
 // to the built-in table so the IME stays usable on a bare installation.
@@ -39,7 +39,9 @@ void load_builtin_table(imfw::CodeTable& out);
 
 // Try the system-directory .dat (Windows implementation in
 // pinyin/host/dat_source_win.cpp). Returns nullptr when the file is missing,
-// unreadable or invalid.
+// unreadable or invalid. On Windows the stub does not exist at all
+// (ROSPINYIN_REQUIRE_SYSTEM_TABLE), so a build without the real implementation
+// does not link.
 TablePtr load_system_table();
 
 // The scheme's load path: .dat first, builtin fallback otherwise.

@@ -3,9 +3,9 @@
 //
 // Windows half of the scheme-owned data source: read
 // <SystemDirectory>\rospinyin.dat and parse it through the generic
-// imfw::CodeTable. Compiled into the assembled rospinyin.ime only (see
-// ime/CMakeLists.txt); host tests link the weak fallback in
-// pinyin/src/dat_source.cpp instead.
+// imfw::CodeTable. A member of rospinyin-engine on Windows (pinyin/CMakeLists.txt,
+// X2-e2), which is also where ROSPINYIN_REQUIRE_SYSTEM_TABLE compiles out the
+// weak stub that host tests link instead.
 
 #include <rospinyin/dat_source.hpp>
 
