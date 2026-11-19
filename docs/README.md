@@ -66,7 +66,7 @@
 
 | 文件 | 内容 |
 | --- | --- |
-| [FONT-PLAN-REVIEW.md](font/FONT-PLAN-REVIEW.md) | **裁决**：全量字形（A）与最少字体（B）的取舍，B 取代 A 作实施依据；含待决策点 D-F1 |
+| [FONT-PLAN-REVIEW.md](font/FONT-PLAN-REVIEW.md) | **裁决**：全量字形（A）与最少字体（B）的取舍，B 取代 A 作实施依据；含待决策点 D-F1。（2026-11-19：F 里程碑改为分级码表+全字形开关，本文阶段表作废，见 plan/ROADMAP.md §F） |
 | [MINIMAL-FONT-SET-PLAN.md](font/MINIMAL-FONT-SET-PLAN.md) | 方案 B（实施依据）：最小字体集、实测覆盖率与体积 |
 | [FULL-GLYPH-COVERAGE-PLAN.md](font/FULL-GLYPH-COVERAGE-PLAN.md) | 方案 A（已被取代）：全量字形覆盖推算；§6 非 BMP 渲染退路仍有效 |
 | [FONT-BUNDLING-ASSESSMENT.md](font/FONT-BUNDLING-ASSESSMENT.md) | 是否捆绑字体的早期评估：体积、授权、P1/P2 风险清单 |

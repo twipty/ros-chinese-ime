@@ -78,10 +78,15 @@
 `UiCanRender()` 用候选窗同一 HFONT 调 `GetGlyphIndicesW`（按码点缓存），
 在进分页器**之前**剔除，避免数字键与行号错位；探针不可用或过半被剔时整体放行。
 
+> **2026-11-19 后续**：F 里程碑改为构建期分级码表 + 全字形开关
+> （`docs/plan/ROADMAP.md` §F）后，本项的运行时探测将被退役，由 tier 分级取代——
+> 关闭态候选 ⊆ tier 1（构建期保证），原被过滤的扩展 A 字改由全字形开关开放。
+> 详见 `docs/plan/PLAN.md` §12.2 的行为变更点记录。
+
 ### ✅ P1-3 生僻字可发现性（已完成 2026-11-17）
 
 `set_show_rare(true)` 的语义与代价写进 `HANDOVER.md` §11.13：默认关闭，打开后候选会暴涨
-且多数落在子集外（被 P1-2 过滤）。M3 再给语言栏菜单项。
+且多数落在子集外（被 P1-2 过滤）。2026-11-19 后续：该入口由 F 计划变更的全字形开关（快/全指示器）取代语言栏菜单方案，见 `docs/plan/ROADMAP.md` §F。
 
 ---
 
@@ -229,6 +234,6 @@ P0-1 已全绿（15/15），`alpha0.0.2` 已于 2026-11-18 发布（`ROSPINYIN_T
 2. ~~**P2-1**（CI 产出 release 资产）~~ **已完成**：tag 即发版，release job 用本次运行产物，
    并校验 tag ↔ `ime/version.h` ↔ 产物 `FILEVERSION`；见 `HANDOVER.md` §11.20；
 3. 归档截图进 `m0/vm/evidence/m2-acceptance/`（日志已齐，缺图）；
-4. 进 M3：语言栏菜单、生僻字开关入口、冷僻字支持（见 `RARE-CHAR-AND-GLYPH-SOLUTION.md`）。
+4. 进 M3：语言栏菜单、生僻字开关入口、冷僻字支持（见 `RARE-CHAR-AND-GLYPH-SOLUTION.md`）。——2026-11-19 更新：开关入口已定型为全字形开关 + 快/全指示器，见 `docs/plan/ROADMAP.md` §F。
 
 U2 不进这个序列：它是平台侧，需要 N″ 对照才能坐实归因，做不做都不改我们的代码。
