@@ -7,6 +7,17 @@
 
 ## 未发布
 
+### 版本只有一个真值（X2-e5，达成 G7）
+
+- `CMakeLists.txt` 不再写死 `project(VERSION 0.0.1)`：配置时从 `ime/version.h` 读取
+  MAJOR/MINOR/PATCH 与版本字符串，`PROJECT_VERSION` 现在是 **0.0.2**。字符串与数字
+  不一致直接 configure 失败，不再静默回退。
+- `.ime` 资源原本就从 `version.h` 展开，未改；`check_release_version.py alpha0.0.2 --binary`
+  解析出的 FILEVERSION 与字符串均与 tag 一致。
+- `check_m1` 97 → 100：派生关系、禁止第二处 release tag / 裸 FILEVERSION、资源继续用宏。
+  4 次变异全红。Markdown 历史叙述与两个发版脚本中的示例字面量是显式白名单，不是漏扫。
+- 对外面零改动：交叉构建产物 sha256 仍为 `b0529131…`。
+
 ### 平台补丁归位：生产代码不再猜 Win32 常量（X2-e4）
 
 - 五个 UI TU 中 **47 处** `#ifndef <Win32常量> / #define ... / #endif` 全部删除（审计只点名了

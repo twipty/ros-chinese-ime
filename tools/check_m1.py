@@ -1021,6 +1021,79 @@ def run(root: Path) -> int:
             all(rel in ci_yml for rel in ui_tus),
             "the stub is only honest if the compiler checks it against the UI TUs")
 
+    # A-P1-7 (version part): PROJECT_VERSION used to be 0.0.1 while the .ime
+    # resource said 0,0,2. Nothing consumed the CMake value, so the drift was
+    # invisible until a tag was cut. There is one owner now, and three ways to
+    # notice if anything tries to become a second one.
+    version_h = read(root, "ime/version.h")
+    nums = {}
+    for part in ("MAJOR", "MINOR", "PATCH"):
+        m = re.search(r"#\s*define\s+ROSPINYIN_VERSION_" + part + r"\s+(\d+)",
+                      version_h)
+        nums[part] = m.group(1) if m else None
+    string_m = re.search(
+        r'#\s*define\s+ROSPINYIN_VERSION_STRING\s+"([^"]+)"', version_h)
+    version_string = string_m.group(1) if string_m else ""
+    # This check reads the raw file on purpose: strip_cmake_comments() treats
+    # the '#' inside our regex strings as a comment and would erase the very
+    # evidence we are looking for. The project-literal pattern is specific
+    # enough that an explanatory comment cannot satisfy it.
+    root_cmake_raw = read(root, "CMakeLists.txt")
+    derived_ok = (
+        "file(READ" in root_cmake_raw and
+        "ime/version.h" in root_cmake_raw and
+        "ROSPINYIN_VERSION_${_rpy_part}" in root_cmake_raw and
+        "foreach(_rpy_part MAJOR MINOR PATCH)" in root_cmake_raw and
+        "VERSION ${ROSPINYIN_PROJECT_VERSION}" in root_cmake_raw and
+        re.search(r"\bproject\s*\([^)]*\bVERSION\s+[0-9]", root_cmake_raw) is None and
+        all(v is not None for v in nums.values()) and
+        re.fullmatch(r"(?:alpha|beta)" + ".".join(re.escape(nums[p] or "")
+                                                  for p in ("MAJOR", "MINOR", "PATCH")),
+                     version_string) is not None
+    )
+    c.check("X2-e5: CMake version is derived from ime/version.h",
+            derived_ok,
+            "a literal project(VERSION) quietly names artifacts after a "
+            "version the binary does not carry")
+
+    # Only prose/history and the two release gates may quote a release tag.
+    # Match the two harmful shapes: a tag literal and a bare FILEVERSION tuple.
+    release_literal = re.compile(r"\b(?:alpha|beta)\d+\.\d+\.\d+\b")
+    comma4 = re.compile(r"(?<![\d.])\d,\d,\d,\d(?![\d.])")
+    version_exempt = {
+        "ime/version.h", "tools/check_release_version.py",
+        "tools/make_release.py",
+    }
+    code_suffixes = {".c", ".cpp", ".h", ".hpp", ".rc", ".def", ".cmake",
+                     ".py", ".yml", ".yaml", ".json", ".txt"}
+    skip_dirs = {".git", "vendor", "xingma", "docs"}
+    version_hits = []
+    for path in sorted(root.rglob("*")):
+        rel = path.relative_to(root).as_posix()
+        if not path.is_file() or rel in version_exempt:
+            continue
+        if any(part in skip_dirs or part.startswith("build")
+               for part in path.relative_to(root).parts):
+            continue
+        if path.suffix not in code_suffixes and path.name != "CMakeLists.txt":
+            continue
+        body = path.read_text(encoding="utf-8")
+        body = re.sub(r"/\*.*?\*/", "", body, flags=re.S)
+        body = re.sub(r"(?<![:\w])//[^\n]*", "", body)
+        body = re.sub(r"#[^\n]*", "", body)
+        for lineno, line in enumerate(body.splitlines(), 1):
+            if release_literal.search(line) or comma4.search(line):
+                version_hits.append(f"{rel}:{lineno}")
+    c.check("X2-e5: no second release-version literal in code or build files",
+            not version_hits, ", ".join(version_hits[:8]))
+
+    rc_text = read(root, "ime/rospinyin_res.rc")
+    c.check("X2-e5: version resource expands macros, not literals",
+            "#include \"version.h\"" in rc_text and
+            re.search(r"FILEVERSION\s+ROSPINYIN_VERSION_COMMA", rc_text) and
+            re.search(r"FILEVERSION\s+\d", rc_text) is None,
+            "the .ime must carry the same version.h truth, not a copy")
+
     return c.summary()
 
 

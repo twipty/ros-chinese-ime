@@ -1,7 +1,34 @@
 cmake_minimum_required(VERSION 3.16)
 # C is required for the fully-static HTTP download helper (tools/httpdl) and the
 # guest-side SHA-256 tool (tools/rhash).
-project(RosPinyin VERSION 0.0.1 LANGUAGES C CXX)
+#
+# X2-e5: the release version has one owner, ime/version.h, which is also what
+# the .ime resource reads. A literal here used to say 0.0.1 while the shipped
+# binary said 0,0,2; nothing consumed PROJECT_VERSION, so the lie was free.
+# Read the numbers instead and fail loudly if the header is inconsistent.
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/ime/version.h" _rpy_version_header)
+foreach(_rpy_part MAJOR MINOR PATCH)
+    string(REGEX MATCH
+        "#[ \t]*define[ \t]+ROSPINYIN_VERSION_${_rpy_part}[ \t]+([0-9]+)"
+        _rpy_match "${_rpy_version_header}")
+    set(_rpy_${_rpy_part} "${CMAKE_MATCH_1}")
+    if(NOT _rpy_${_rpy_part} MATCHES "^[0-9]+$")
+        message(FATAL_ERROR
+            "Cannot read ROSPINYIN_VERSION_${_rpy_part} from ime/version.h")
+    endif()
+endforeach()
+string(REGEX MATCH
+    "#[ \t]*define[ \t]+ROSPINYIN_VERSION_STRING[ \t]+\"([^\"]+)\""
+    _rpy_match "${_rpy_version_header}")
+set(_rpy_version_string "${CMAKE_MATCH_1}")
+if(NOT _rpy_version_string MATCHES
+        "^(alpha|beta)${_rpy_MAJOR}\\.${_rpy_MINOR}\\.${_rpy_PATCH}$")
+    message(FATAL_ERROR
+        "ime/version.h: ROSPINYIN_VERSION_STRING '${_rpy_version_string}' "
+        "does not match ${_rpy_MAJOR}.${_rpy_MINOR}.${_rpy_PATCH}")
+endif()
+set(ROSPINYIN_PROJECT_VERSION "${_rpy_MAJOR}.${_rpy_MINOR}.${_rpy_PATCH}")
+project(RosPinyin VERSION ${ROSPINYIN_PROJECT_VERSION} LANGUAGES C CXX)
 
 # Product form (decision D5): standalone installable package is the default.
 # ROSPINYIN_IN_TREE reserves the conditional path for a future ReactOS

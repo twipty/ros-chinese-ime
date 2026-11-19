@@ -27,7 +27,7 @@
 | G4 | 第二个方案"只加文件夹"接入 | `git diff --stat` 不出现 `framework/` 任何文件 |
 | G5 | 未来换前端时改动被限制在 seam 内 | seam 清单里的调用点数量有上限断言（`check_m1` 新增一项） |
 | G6 | 构建有单一入口 | `cmake --preset linux-ci` / `--preset win32-mingw` 两条路径，零手工 `-D` 即复现 CI 与发版 |
-| G7 | 版本只有一个真值 | 仓库内发版版本号只出现在 `ime/version.h`；其余位置出现即 CI 失败 |
+| G7 | 版本只有一个真值 | 仓库内发版版本号只出现在 `ime/version.h`；其余位置出现即 CI 失败（X2-e5 达成，白名单见 §3 执行记录） |
 
 **明确不做**
 
@@ -421,6 +421,18 @@ X1 改了代码与 `check_m1` 的 15 处路径却漏了这棵树。
 | 门禁 | — | `ctest` 16/16、`check_m1` **97/97**、`check_docs` 7/7；宿主 syntax check 17 个 TU 全过 |
 | 对外面 | 不变 | 交叉构建前后 sha256 同为 `b0529131…`（947,820 B），连字节都没变——这些 `#ifndef` 在真实 SDK 下从未生效 |
 
+**✅ X2-e5 版本收敛（2026-11-19 17:2x，达成 G7）**
+
+计划："只留 `ime/version.h`；`project(VERSION)` 改为无关值或从 `version.h` 读；断言其余位置不得出现四位版本号"。
+
+| 项 | 计划 | 实际 |
+|---|---|---|
+| CMake | 从 version.h 读 | `file(READ)` 读 MAJOR/MINOR/PATCH 与 `VERSION_STRING`；`PROJECT_VERSION` 由 `0.0.1` 变为 **0.0.2**；字符串与数字不一致直接 `FATAL_ERROR`。资源文件原本就引用 `version.h`，一行未改 |
+| 断言 | 其余位置再出现即失败 | 3 条（97 → 100）：CMake 派生且字符串自洽 / 代码与构建文件禁止 `alphaN.N.N` 与裸 `FILEVERSION` 元组 / `.rc` 仍展开宏。白名单只有真值与两个发版脚本；Markdown 历史叙述不扫 |
+| 变异 | — | 4 次全红：写回字面 `project(VERSION 0.0.1)` / 无关脚本写 `alpha0.0.2` / `.rc` 写裸 `0,0,2,0` / `version.h` 字符串改 `alpha0.0.3` 而数字不动 |
+| 门禁 | — | `ctest` 16/16、`check_m1` **100/100**、`check_docs` 7/7；`check_release_version.py alpha0.0.2 --binary` 全过 |
+| 对外面 | 不变 | 交叉构建前后 sha256 同为 `b0529131…`；资源解析 `FILEVERSION=0.0.2.0`、字符串 `alpha0.0.2`，与 tag 一致 |
+
 **X2-e 构建收敛（1.5–2 天）**
 
 | 子项 | 出处 | 做法 |
@@ -570,7 +582,7 @@ Ctrl+Space 与备用热键——**全部改在 `process_key` 里**。先有冒�
 - [x] X2-e2 `dat_source_win.cpp` 归 `rospinyin-engine` + 链接期符号断言（审计 A-P1-5）— 见 §3「X2-e2」
 - [x] X2-e3 `CMakePresets.json` + `EXISTS` 硬失败 + 统一根变量 + C 标准 + 静态策略收敛（审计 A-P1-6）— 2026-11-19，见 §3 X2-e3 执行记录
 - [x] X2-e4 28 处 `#ifndef` 平台补丁归位（审计 A-P2-11；实际 47 处 / 5 个 TU）— 2026-11-19，见 §3 X2-e4 执行记录
-- [ ] X2-e5 版本收敛到 `ime/version.h` 一处 + CI 断言（审计 A-P1-7 版本部分；达成 G7）
+- [x] X2-e5 版本收敛到 `ime/version.h` 一处 + CI 断言（审计 A-P1-7 版本部分；达成 G7）— 2026-11-19，见 §3 X2-e5 执行记录
 - [ ] X2-e6 `dat_source_win.cpp` 不再引宿主私有头（复核 N / X1 表）
 - [ ] X2-f `tools/seams.py` + `check_m1` 新增 seam 上限项（含 `UiCanRender`）
 - [ ] X2-w1/w2/w3 临时需求批（状态指示器 / 候选窗稳定性 / 翻页重置）— **排期在 X2 收口后、X3 之前**，见 §3「X2-w」；不阻塞 X2 收口
