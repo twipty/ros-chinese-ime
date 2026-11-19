@@ -364,9 +364,10 @@ artifact 从未上传，使 `publish-artifacts-branch` 永久失败。补全 `to
 | 链接 | — | 宿主库必须 `-Wl,--whole-archive`：ld 只为**未定义引用**拉档案成员，而 `.def` 里的 16 个名字是导出条目不是引用。第一次链接报 16 次 `cannot export …: symbol not defined`，这是实测不是推测 |
 | trace 宏 | — | `option(ROSPINYIN_TRACE)` 从 `ime/CMakeLists.txt` 上提到顶层：读它的是平台库，而 `framework/` 在 `ime/` 之前配置，留在原处会**静默变成只影响装配件** |
 | 临时妥协 | — | `dat_source_win.cpp` 仍由 `ime/` 编译（它 `#include "trace_stamp.h"`），所以 `ime/` 暂留一条 imm32 的 include 路径，注释写明 X2-e2 带走；该路径不进任何库目标 |
-| 新增断言 | — | 4 条（82/82）：每个 TU 只属一个库（双向 + 先剥 CMake 注释）/ `ime/` 不许出现 `../framework/platform/win32/` / whole-archive 紧贴宿主库 / trace 宏在根目录声明且 `ime/` 没有 |
+| 新增断言 | — | 5 条（83/83）：每个 TU 只属一个库（双向 + 先剥 CMake 注释）/ `ime/` 不许出现 `../framework/platform/win32/` / whole-archive 紧贴宿主库 / trace 宏在根目录声明且 `ime/` 没有 / `.ime` 可复现链接 |
 | 变异 | — | 4 次全红：TU 挪进另一个库 / 同一 TU 进两个库 / 删 whole-archive / trace 选项挪回 `ime/` |
-| 门禁 | — | `ctest` 16/16（可移植层一行未动）、`check_m1` **82/82**（+4）、`check_docs` 7/7 |
+| 可复现链接 | 未列 | 验收时发现两个构建目录的产物**同大小不同 sha256**（差 6 字节：`TimeDateStamp` + `Checksum` + 2 个镜像字节）。加 `-Wl,--no-insert-timestamp` 后逐字节相同（`134f7fd4…`）。不修的话哈希只能证明"同一个文件"，证明不了"同一次构建" |
+| 门禁 | — | `ctest` 16/16（可移植层一行未动）、`check_m1` **83/83**（+5）、`check_docs` 7/7 |
 | 对外面 | 逐个一致 | 16 导出名及顺序一致；5 个 DLL 依赖一致；每 DLL 导入函数集**逐条同序**一致（GDI32 12 / IMM32 2 / KERNEL32 59 / msvcrt 43 / USER32 22）。i686 拼音 `947,969 → 948,481 B`（+512 = 一个文件对齐块）、trace 版 `971,982 B` 不变、玩具 `875,019 → 876,352 B` |
 
 **顺带修的文档漂移**：HANDOVER §4 目录树里 `framework/host/`、`framework/ui/` 是 X1 之前的布局，

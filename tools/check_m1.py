@@ -815,6 +815,14 @@ def run(root: Path) -> int:
             "option(ROSPINYIN_TRACE" not in ime_cmake,
             "option lives in ime/CMakeLists.txt, i.e. after framework/platform/win32")
 
+    # ld's default PE timestamp makes two builds of identical sources differ in
+    # a handful of bytes, so "same sha256" stops being an answer to "is this the
+    # build I shipped". The whole deployment story (artifact_hashes.py, the
+    # guest-side rhash.exe) depends on that answer, hence the flag is pinned.
+    c.check("X2-e1: the .ime links reproducibly (no PE timestamp)",
+            "--no-insert-timestamp" in ime_cmake,
+            "ld stamps link time into the header; hashes stop identifying a build")
+
     return c.summary()
 
 

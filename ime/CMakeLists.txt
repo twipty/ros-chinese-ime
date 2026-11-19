@@ -119,4 +119,11 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     # PE then only imports system DLLs (kernel32/user32/gdi32/imm32).
     target_link_options(rospinyin-ime PRIVATE
         -static-libgcc -static-libstdc++ -static)
+    # No PE timestamp. ld stamps the link time into the header, so two builds of
+    # byte-identical sources differ in 4-6 bytes and every sha256 differs -- a
+    # trap for exactly the check tools/artifact_hashes.py and rhash.exe exist to
+    # support ("is this the build I meant?"). Measured: 0x88 TimeDateStamp,
+    # 0xd8 OptionalHeader.Checksum, plus 2 bytes that mirror the stamp.
+    # Nothing on ReactOS reads the stamp; the version resource does not either.
+    target_link_options(rospinyin-ime PRIVATE -Wl,--no-insert-timestamp)
 endif()

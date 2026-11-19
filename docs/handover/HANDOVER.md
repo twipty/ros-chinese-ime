@@ -196,7 +196,7 @@ ros-pinyin/
 ├── ime/                        装配层：rospinyin.def（16 导出）、rospinyin_res.rc、scheme_reg.cpp、图标
 ├── tests/                      16 个宿主测试（ctest）
 ├── tools/
-│   ├── check_m1.py             契约静态检查（82 项，无第三方依赖）
+│   ├── check_m1.py             契约静态检查（83 项，无第三方依赖）
 │   ├── artifact_hashes.py      部署件对账：size + sha256，回答"我到底放出哪一版"
 │   ├── vm_clock.py             guest 时钟对齐：时区 .reg / 手敲 date+time 两个通道
 │   ├── mkdat/                  数据编译器 + fetch_data.py + fixtures
@@ -238,7 +238,7 @@ ros-pinyin/
 | 装配 | `ime/scheme_reg.cpp` | 定义 `imfw::scheme_instance()`（唯一的 Scheme 注入点） | Win |
 | 数据编译 | `tools/mkdat/mkdat.cpp` | Unihan + hanziDB → `rospinyin.dat`（确定性输出） | 宿主 |
 | 安装器 | `tools/install-rospinyin/install.cpp` | `/step1..4` 分步注册、动态 HKL 记录、`/i` 串行（仅 Windows 参照机） | Win |
-| 契约检查 | `tools/check_m1.py` | 82 项静态断言（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、ABI、reload 顺序…） | 宿主 |
+| 契约检查 | `tools/check_m1.py` | 83 项静态断言（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、ABI、reload 顺序…） | 宿主 |
 | 部署对账 | `tools/artifact_hashes.py` | 各构建产物与共享副本的 size/sha256 对照，标出"同字节数不同内容"与"共享目录不是这一版" | 宿主 |
 | guest 侧哈希 | `tools/rhash/rhash.c` | 自带 SHA-256 的小 exe：`rhash.exe [文件...]`，无参数时算 system32 的 `.ime`/`.dat`。只依赖 kernel32+msvcrt | Win |
 | guest 时钟 | `tools/vm_clock.py` | 诊断宿主/UTC/guest 显示差值；生成时区 `.reg` 或打印 `date`/`time` 命令（**只打印，不代敲**） | 宿主 |
@@ -257,7 +257,7 @@ cd ros-pinyin
 cmake -S . -B build -DROSPINYIN_BUILD_TESTS=ON
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure        # 11 个测试，应 100% 通过
-python3 tools/check_m1.py                          # 82 项契约检查，应 82/82
+python3 tools/check_m1.py                          # 83 项契约检查，应 83/83
 ```
 
 - 宿主构建**不编译** Windows 专有部分（`ime/`、安装器、`httpdl`、`framework/platform/win32/imm32`、`framework/platform/win32/ui`），只测纯 C++ 层。
@@ -338,7 +338,13 @@ install-rospinyin.exe /step4      REM Layout Display Name
 要走安装器也行，但**别指望它能省掉"解除默认"这一步**。
 
 **装没装上的判据**（别只看时间戳）：`dir C:\ReactOS\system32\rospinyin.ime` 的字节数要和构建产物一致
-（X2-d 无 trace 版是 **947,969** B，trace 版 971,982 B）。`rospinyin.dat` 本轮未变（902,776 B）。
+（`main` 上的 X2-e1 版是 **948,481** B；X2-d 版 947,969 B，trace 版 971,982 B）。
+`rospinyin.dat` 本轮未变（902,776 B）。
+
+**sha256 现在可以用了**（X2-e1 起）：链接加了 `-Wl,--no-insert-timestamp`，同一份源码在两个不同构建目录
+编出来的 `.ime` 是**逐字节相同**的（实测 sha256 `134f7fd4…`，948,481 B）。在这之前 ld 会把链接时刻写进
+PE 头，两份产物只差 6 个字节、sha256 全不一样——那时哈希只能回答"是不是同一个文件"，
+回答不了"是不是同一次构建"。
 
 **版本对账**：`python3 tools/artifact_hashes.py --expect <构建产物的路径片段>` 会把仓库里所有 `.ime/.dat`
 和共享目录副本一起算 sha256，标出「共享目录那份是不是 ★」「哪些文件同字节数但内容不同」。
@@ -492,7 +498,7 @@ VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
 | 门禁 | 命令 | 通过标准 |
 |---|---|---|
 | 宿单单测 | `ctest --test-dir build` | 11/11（smoke、session、pinyin、pinyin-session、candidate-pager、pinyin-scheme、emit-text、utf8、code-table、m1-contract、mkdat-e2e） |
-| 契约静态检查 | `python3 tools/check_m1.py` | 82/82（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
+| 契约静态检查 | `python3 tools/check_m1.py` | 83/83（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
 | Win32 语法检查 | CI 的第一步，见 §6.3 | 0 error（用 `tools/syntax_stub` 提供的 Windows 头） |
 | PE 导入表 | CI `objdump -p` | 不得出现 Vista+ 导出或非系统 DLL |
 | 真机验收 | `docs/milestones/m2/M2-ACCEPTANCE.md` | 15 项全绿 |
@@ -1950,10 +1956,17 @@ ld: cannot export ImeProcessKey: symbol not defined
   （GDI32 12 / IMM32 2 / KERNEL32 59 / msvcrt 43 / USER32 22）。
 - i686 拼音版 `947,969 → 948,481 B`（+512，正好一个文件对齐块：对象顺序变了，节对齐跟着变）。
   trace 版 `971,982 B` 不变（同一量化块内），玩具版 `875,019 → 876,352 B`（+1,333）。
-- `ctest` 16/16（可移植层一行未动）、`check_m1` **82/82**（+4）、`check_docs` 7/7。
+- `ctest` 16/16（可移植层一行未动）、`check_m1` **83/83**（+5）、`check_docs` 7/7。
 - 变异 4 次全红：把一个 TU 挪进另一个库 / 同一个 TU 进两个库 / 删掉 whole-archive / 把 trace 选项挪回 `ime/`。
 
-**新增的 4 条断言（都按归属双向钉）**：
+**顺带加了一件本以为不属于这里的事：可复现链接。** 验收时用两个构建目录各编一次，产物**同为 948,481 B
+但 sha256 不同**——只差 6 个字节：`0x88` 的 `TimeDateStamp`、`0xd8` 的 `OptionalHeader.Checksum`，
+另两字节是同一时间戳的镜像。也就是说在这之前，"同一个哈希"只能回答"是不是同一个文件"，
+回答不了"是不是同一次构建"，而这恰恰是 `artifact_hashes.py` 和 `rhash.exe` 存在的理由。
+加上 `-Wl,--no-insert-timestamp` 后，两个目录编出的 `.ime` **逐字节相同**（`134f7fd4…`，948,481 B），
+并写了断言钉住（删掉即红）。ReactOS 不读这个字段，版本资源也不读。
+
+**新增的 5 条断言（前 4 条按归属双向钉）**：
 
 | 断言 | 双向钉法 |
 |---|---|
@@ -1961,6 +1974,7 @@ ld: cannot export ImeProcessKey: symbol not defined
 | `ime/` 只装配 | `ime/CMakeLists.txt` 里不许出现 `../framework/platform/win32/`，且必须同时链接两个库 |
 | `.def` 能把档案成员拉进来 | `--whole-archive` 必须紧贴 `imfw-win32-imm32`，且必须有配对的 `--no-whole-archive` |
 | trace 宏在读取它的库之前声明 | 顶层 `CMakeLists.txt` 必须有 `option(ROSPINYIN_TRACE`，且 `ime/CMakeLists.txt` 必须没有 |
+| `.ime` 可复现链接 | `ime/CMakeLists.txt` 必须有 `--no-insert-timestamp`（没有它，两个目录编出的同一份源码 sha256 不同） |
 
 **顺带修了一处文档漂移**：HANDOVER §4 的目录树里 `framework/host/` 与 `framework/ui/` 还是 X1 之前的布局
 （真实路径是 `framework/platform/win32/{imm32,ui}/`，从 X1 起就是）。X1 改了代码与 `check_m1` 的 15 处路径，
@@ -1985,7 +1999,7 @@ ld: cannot export ImeProcessKey: symbol not defined
 **改代码**
 
 1. `cmake --build build --parallel && ctest --test-dir build` → 16/16；
-2. `python3 tools/check_m1.py` → 82/82（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
+2. `python3 tools/check_m1.py` → 83/83（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
 3. 动了 `framework/platform/win32/imm32` 或 `framework/platform/win32/ui`：跑 CI 那步宿主语法检查（§6.3），确认 `-Wchanges-meaning` / ABI 断言不炸；
 4. 动了 ABI：本地用 zig 真实 MinGW 头编译一次 `framework/platform/win32/imm32/imm_entry.cpp`（`-target x86-windows-gnu -c`）。
 

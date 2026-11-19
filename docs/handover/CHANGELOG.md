@@ -21,8 +21,14 @@
   `-Wl,--whole-archive` / `--no-whole-archive`，并写成断言（删掉即红）。
 - **`option(ROSPINYIN_TRACE)` 上提到顶层 `CMakeLists.txt`**：读它的是平台库，而 `framework/`
   在 `ime/` 之前配置——留在原处会让 `-DROSPINYIN_TRACE=ON` 只影响装配件，且**无声**。
-- **`check_m1` 78 → 82 项**：每个平台 TU 只属一个库（双向 + 先剥 CMake 注释）/ `ime/` 不许出现
-  `../framework/platform/win32/` / whole-archive 紧贴宿主库 / trace 宏的声明位置。变异 4 次全红。
+- **`.ime` 现在可复现**：加 `-Wl,--no-insert-timestamp`。在此之前 ld 把链接时刻写进 PE 头，
+  两个构建目录编同一份源码得到**同为 948,481 B 但 sha256 不同**的产物（只差 6 字节：
+  `TimeDateStamp`、`OptionalHeader.Checksum` 及 2 个镜像字节）。"同一个哈希"因此只能回答
+  "是不是同一个文件"，回答不了"是不是同一次构建"——这正是 `artifact_hashes.py` / `rhash.exe` 要回答的。
+  现在两个目录的产物逐字节相同（`134f7fd4…`）。
+- **`check_m1` 78 → 83 项**：每个平台 TU 只属一个库（双向 + 先剥 CMake 注释）/ `ime/` 不许出现
+  `../framework/platform/win32/` / whole-archive 紧贴宿主库 / trace 宏的声明位置 / 可复现链接。
+  变异 4 次全红。
 - 对外面：16 导出名及顺序、5 个 DLL 依赖、每 DLL 导入函数集**逐条同序**一致。
   i686 拼音 `947,969 → 948,481 B`（+512，一个文件对齐块）；trace 版 `971,982 B` 不变；玩具 `+1,333 B`。
 - 顺带修 HANDOVER §4 目录树：`framework/host/`、`framework/ui/` 是 X1 之前的布局。
