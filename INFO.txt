@@ -1,2 +1,2 @@
-source commit: a36975e57db2eb5974d4cab6dae8766b31207353
-built: 2026-11-18T15:20:18Z
+source commit: 87f7f96b2d09992349dc24fffbc89948c34a4e8e
+built: 2026-11-19T03:00:26Z
