@@ -59,8 +59,24 @@ public:
     virtual const wchar_t* candidate_class() const = 0;
     virtual const wchar_t* toolbar_class() const = 0;
 
-    // Short label shown in the toolbar while this IME is active ("拼").
+    // Short label shown in the toolbar while this IME is active ("拼"). This
+    // names the *input method*, not its state: the state is the next virtual.
     virtual const wchar_t* toolbar_label() const = 0;
+
+    // Toolbar state text for an open/closed IME ("开" / "关"), painted after
+    // the label as "拼:开". Empty (the default) means "this scheme has no
+    // state to show" and the toolbar keeps the bare label.
+    //
+    // This split is the fix for a wrong mental model: Shift switches the IME's
+    // Chinese/English state, not the keyboard layout. The shell's own tray
+    // indicator follows the *layout* (a red 中 that must NOT change when Shift
+    // is pressed); the one thing that can show the state is our own toolbar,
+    // and it can only do so if the state text comes from the scheme that owns
+    // the language.
+    virtual const wchar_t* toolbar_state_label(bool open) const {
+        (void)open;
+        return nullptr;
+    }
 
     // ---- key policy --------------------------------------------------------
     // Framework gap G4: the framework used to hardcode selection and paging

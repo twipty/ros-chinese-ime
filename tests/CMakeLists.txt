@@ -72,6 +72,13 @@ add_executable(rospinyin-host-smoke host_smoke_test.cpp)
 target_link_libraries(rospinyin-host-smoke PRIVATE imfw-engine)
 add_test(NAME host-smoke COMMAND rospinyin-host-smoke)
 
+# 状态指示器: the toolbar caption carries fOpen ("拼:开" / "拼:关"). The window
+# needs GDI and cannot be tested here; the caption is composed in
+# imfw/toolbar_text.cpp and is exactly what this pins.
+add_executable(rospinyin-toolbar-text toolbar_text_test.cpp)
+target_link_libraries(rospinyin-toolbar-text PRIVATE rospinyin-engine)
+add_test(NAME toolbar-text COMMAND rospinyin-toolbar-text)
+
 # G1 regression: multi-codepoint commits (WM_IME_CHAR per UTF-16 unit).
 add_executable(rospinyin-emit-text emit_text_test.cpp)
 target_link_libraries(rospinyin-emit-text PRIVATE imfw-engine)

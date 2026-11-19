@@ -178,6 +178,10 @@ const wchar_t* PinyinScheme::toolbar_class() const {
 
 const wchar_t* PinyinScheme::toolbar_label() const { return L"拼"; }
 
+const wchar_t* PinyinScheme::toolbar_state_label(bool open) const {
+    return open ? L"开" : L"关";
+}
+
 // ---- key policy ---------------------------------------------------------
 
 // VK_OEM_7 (0xDE) is the apostrophe key on US layouts: a hard syllable

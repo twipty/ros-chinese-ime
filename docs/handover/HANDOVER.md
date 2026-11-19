@@ -194,9 +194,9 @@ ros-pinyin/
 │   ├── src/                    读音归一化、切分、会话、Scheme、宿主兜底数据源
 │   └── host/dat_source_win.cpp Win32 数据源（读 system32\rospinyin.dat）
 ├── ime/                        装配层：rospinyin.def（16 导出）、rospinyin_res.rc、scheme_reg.cpp、图标
-├── tests/                      16 个宿主测试（ctest）
+├── tests/                      17 个宿主测试（ctest）
 ├── tools/
-│   ├── check_m1.py             契约静态检查（104 项，无第三方依赖）
+│   ├── check_m1.py             契约静态检查（107 项，无第三方依赖）
 │   ├── artifact_hashes.py      部署件对账：size + sha256，回答"我到底放出哪一版"
 │   ├── vm_clock.py             guest 时钟对齐：时区 .reg / 手敲 date+time 两个通道
 │   ├── mkdat/                  数据编译器 + fetch_data.py + fixtures
@@ -238,7 +238,7 @@ ros-pinyin/
 | 装配 | `ime/scheme_reg.cpp` | 定义 `imfw::scheme_instance()`（唯一的 Scheme 注入点） | Win |
 | 数据编译 | `tools/mkdat/mkdat.cpp` | Unihan + hanziDB → `rospinyin.dat`（确定性输出） | 宿主 |
 | 安装器 | `tools/install-rospinyin/install.cpp` | `/step1..4` 分步注册、动态 HKL 记录、`/i` 串行（仅 Windows 参照机） | Win |
-| 契约检查 | `tools/check_m1.py` | 104 项静态断言（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、ABI、reload 顺序…） | 宿主 |
+| 契约检查 | `tools/check_m1.py` | 107 项静态断言（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、ABI、reload 顺序…） | 宿主 |
 | 部署对账 | `tools/artifact_hashes.py` | 各构建产物与共享副本的 size/sha256 对照，标出"同字节数不同内容"与"共享目录不是这一版" | 宿主 |
 | guest 侧哈希 | `tools/rhash/rhash.c` | 自带 SHA-256 的小 exe：`rhash.exe [文件...]`，无参数时算 system32 的 `.ime`/`.dat`。只依赖 kernel32+msvcrt | Win |
 | guest 时钟 | `tools/vm_clock.py` | 诊断宿主/UTC/guest 显示差值；生成时区 `.reg` 或打印 `date`/`time` 命令（**只打印，不代敲**） | 宿主 |
@@ -256,8 +256,8 @@ ros-pinyin/
 cd ros-pinyin
 cmake --preset linux-ci
 cmake --build --preset linux-ci --parallel
-ctest --preset linux-ci                           # 16 个测试，应 100% 通过
-python3 tools/check_m1.py                          # 104 项契约检查，应 104/104
+ctest --preset linux-ci                           # 17 个测试，应 100% 通过
+python3 tools/check_m1.py                          # 107 项契约检查，应 107/107
 ```
 
 `CMakePresets.json` 是构建配置的唯一出处（X2-e3）：CI、README 和本节的命令都走 preset，
@@ -510,8 +510,8 @@ VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
 
 | 门禁 | 命令 | 通过标准 |
 |---|---|---|
-| 宿单单测 | `ctest --preset linux-ci`（或 `ctest --test-dir build`） | 16/16（smoke、session、pinyin、pinyin-session、candidate-pager、pinyin-scheme、scheme-registry、toy-scheme、host-key、key-route、host-smoke、emit-text、utf8、code-table、m1-contract、mkdat-e2e） |
-| 契约静态检查 | `python3 tools/check_m1.py` | 104/104（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
+| 宿单单测 | `ctest --preset linux-ci`（或 `ctest --test-dir build`） | 17/17（smoke、session、pinyin、pinyin-session、candidate-pager、pinyin-scheme、scheme-registry、toy-scheme、host-key、key-route、host-smoke、toolbar-text、emit-text、utf8、code-table、m1-contract、mkdat-e2e） |
+| 契约静态检查 | `python3 tools/check_m1.py` | 107/107（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
 | Win32 语法检查 | CI 的第一步，见 §6.3 | 0 error（用 `tools/syntax_stub` 提供的 Windows 头） |
 | PE 导入表 | CI `objdump -p` | 不得出现 Vista+ 导出或非系统 DLL |
 | 真机验收 | `docs/milestones/m2/M2-ACCEPTANCE.md` | 15 项全绿 |
@@ -1744,7 +1744,7 @@ GDI32/IMM32/KERNEL32/msvcrt/USER32）+ **行为由宿主测试钉住**。
 
 也就是说：`set_ime_open()` 调了 `ImmSetOpenStatus`（`imm_entry.cpp:265`），OS 侧状态确实写了，
 但**我们没有任何一处 UI 把这件事显示出来**。这不是 X2-b 的缺陷，是一个独立的 UX 缺口
-（**已实现、未合入**：见 §11.27，排队 X2-w1。且托盘「中」本来就不该动——它跟键盘布局走，而 Shift 不切布局）。
+（**已合入 main**，见 §11.36；合入前记的「未合入」状态已过期。托盘「中」本来就不该动——它跟键盘布局走，而 Shift 不切布局）。
 
 **X2-b 做的事**：`tests/host_smoke_test.cpp`（463 行）。
 
@@ -1777,12 +1777,11 @@ GDI32/IMM32/KERNEL32/msvcrt/USER32）+ **行为由宿主测试钉住**。
 按空 pager 收起。这条日志现在被写进期望序列里，因为它就是"候选窗一闪一闪"的机制——将来改
 候选窗稳定性时，这行日志会变，改动会被迫显式面对它。
 
-### 11.27 状态指示器：Shift 切的是 IME 状态，不是键盘布局（2026-11-19 11:3x，**未合入**）
+### 11.27 状态指示器：Shift 切的是 IME 状态，不是键盘布局（2026-11-19 11:3x，**已合入 X2-w1**）
 
-> **入口状态**：本节说的是分支 `wip/status-indicator` 上的改动，`main` 上没有。按用户 2026-11-19 12:2x
-> 的决定（"和上次挂起的临时需求一起排期，先把 X2 做完"）排入 PLAN-MODULARIZATION §3「X2-w1」。
-> 因此下面这些判据（`ctest` 16/16、`check_m1` 71/71）**不是 `main` 的现状**——`main` 仍是 15/15、68/68。
-> 合入时要撞一次 X2-d：那份改动落在 `ImeProcessKey`，而 X2-d 会把这个文件拆成多个 TU。
+> **历史快照**：下面这组 `ctest` 16/16、`check_m1` 71/71 是当初在 `wip/status-indicator`
+> 分支上、尚未与 X2-d/e 合并时的判据，**不是现在的 `main`**。合入记录与当前判据见 §11.36
+> （`ctest` 17/17、`check_m1` 107/107）。保留原始数字是为了让"当时证明了什么"可追溯。
 
 §11.26 把"按 Shift 托盘不变"记成 UX 缺口，方向记错了一半。用户给的模型是：
 
@@ -2216,6 +2215,30 @@ Linux 默认构建看不到它。
 
 ---
 
+### 11.36 X2-w1 合入：工具栏显示 `拼:开` / `拼:关`（2026-11-19 17:5x）
+
+分支 `wip/status-indicator` 落后于 X2-c/d/e 的 main，cherry-pick 撞了 3 处：
+
+| 冲突 | 处理 |
+|---|---|
+| `framework/README.md` 模块地图 | 合并两边：保留 X2-c/d/e 的 `intent.hpp` / `key_route` / 两个平台库 / `trace_stamp.hpp`，补上 `toolbar_text` 与 `拼:开`/`拼:关` 描述 |
+| `imm_entry.cpp` 两条激活路径 | **保留 X2-d 的 `activate_session()`**，不回退成分支里两条重复代码；但把首次 `UiToolbarShow` 改成带 `fOpen` 的新签名——否则第一次绘制会显示旧静态标签 |
+| `toolbar.cpp` 宏补丁 | 删除分支里那 5 处 `#ifndef`；X2-e4 已把全部 SDK 常量归到 syntax_stub，产品代码不再猜值 |
+
+键路径上的两处 `UiToolbarSetOpen()`（每条消息一次、Shift 手势后立刻一次）随 cherry-pick
+自动合入，计数断言仍要求两处都在——`Ctrl+Space` 由 imm32 直接改 `fOpen`，不进我们的 DLL，
+所以只能"拉"不能"推"。`ActivateKeyboardLayout` / `LoadKeyboardLayout` 在框架、拼音和装配层
+仍为 0 处：托盘红底「中」跟布局走，必须不动。
+
+| 项 | 结果 |
+|---|---|
+| 门禁 | `ctest` **17/17**（新增 `toolbar-text`）、`check_m1` 104 → **107/107**、`check_docs` 7/7；17 个 TU 宿主语法检查全过 |
+| 变异 | 3 次全红：标题不带 `fOpen`（写死 `L"拼"`）/ 删掉一处键路径同步 / 在某 TU 插入 `ActivateKeyboardLayout` |
+| 对外面 | 16 导出名、5 个 DLL、每 DLL 导入函数集逐条同序**完全一致**（GDI32 12 / IMM32 2 / KERNEL32 59 / msvcrt 43 / USER32 22）。行为变了，字节必然变：`b0529131…` → `0ac616f1…`，947,820 → **951,461 B**；`compare_ime.py` 判 NOT equivalent 是预期的，不是回归 |
+| 真机 | **待用户操作**：同一屏里按 Shift，工具栏应 `拼:开` → `拼:关`，托盘红底「中」不动；不要代敲键鼠 |
+
+---
+
 ### 11.2 其他待办
 
 - ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。
@@ -2232,8 +2255,8 @@ Linux 默认构建看不到它。
 
 **改代码**
 
-1. `cmake --build build --parallel && ctest --test-dir build` → 16/16；
-2. `python3 tools/check_m1.py` → 104/104（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
+1. `cmake --build build --parallel && ctest --test-dir build` → 17/17；
+2. `python3 tools/check_m1.py` → 107/107（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
 3. 动了 `framework/platform/win32/imm32` 或 `framework/platform/win32/ui`：跑 CI 那步宿主语法检查（§6.3），确认 `-Wchanges-meaning` / ABI 断言不炸；
 4. 动了 ABI：本地用 zig 真实 MinGW 头编译一次 `framework/platform/win32/imm32/imm_entry.cpp`（`-target x86-windows-gnu -c`）。
 

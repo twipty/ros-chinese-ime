@@ -108,7 +108,12 @@ void activate_session(rpimm::InputContext hIMC) {
     if (state != nullptr && state->engine != nullptr) {
         state->engine->on_select(true);
     }
-    imfw::UiToolbarShow(hIMC);
+    // X2-w1: the first paint must already show the real state, not a constant
+    // "拼". fOpen can also be changed by imm32's Ctrl+Space without this DLL
+    // being involved, so every key path re-syncs it (see ImeProcessKey and
+    // ImeToAsciiEx below).
+    imfw::UiToolbarShow(hIMC,
+        ImmGetOpenStatus(reinterpret_cast<HIMC>(hIMC)) != FALSE);
 }
 
 }  // namespace
@@ -217,10 +222,21 @@ BOOL WINAPI ImeProcessKey(rpimm::InputContext hIMC, UINT uVirtKey, LPARAM lParam
     const imfw::KeyEvent event = imfw::win32::key_event_from(
         uVirtKey, static_cast<unsigned long>(lParam), lpbKeyState);
 
+    // fOpen moves without this DLL being told: imm32's Ctrl+Space sets it
+    // directly, and while the IME is closed none of the keys are ours, so
+    // ImeToAsciiEx never runs to notice. This is the one point every key
+    // passes through -- and the sync is a bool compare when nothing changed.
+    // hIMC is guarded because this is now the first thing every key touches,
+    // including messages for a context that was never selected.
+    if (hIMC != nullptr) imfw::UiToolbarSetOpen(hIMC, host.is_open());
+
     if (event.kind == imfw::KeyKind::Shift) {
         // Lone-Shift toggle: the transition bit is only visible here, and the
         // answer is always "not ours" (see wants_key).
         if (state != nullptr) imfw::wants_key(*state, event, host);
+        // Right after the gesture, not on the next key: the user is looking at
+        // the toolbar when they press Shift.
+        if (hIMC != nullptr) imfw::UiToolbarSetOpen(hIMC, host.is_open());
         IMFW_TRACE("processkey vk=").h(uVirtKey)
             .s(event.key_up ? " shift-up" : " shift-down")
             .s(" lone=").d(state != nullptr && state->shift_latched ? 1 : 0)

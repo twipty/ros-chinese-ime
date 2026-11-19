@@ -26,6 +26,10 @@ public:
     const wchar_t* candidate_class() const override;
     const wchar_t* toolbar_class() const override;
     const wchar_t* toolbar_label() const override;
+    // "开" / "关": the toolbar's Chinese/English indicator. The shell tray's
+    // red 中 belongs to the keyboard layout and must not move on Shift; this
+    // string is the state, and it is the only thing that does move.
+    const wchar_t* toolbar_state_label(bool open) const override;
 
     // ---- key policy ----
     char32_t input_char(std::uint32_t vk) const override;

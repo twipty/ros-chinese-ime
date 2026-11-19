@@ -571,6 +571,46 @@ def run(root: Path) -> int:
             "set_open(0)" in smoke_src and
             "feed:z" in smoke_src)
 
+    # 状态指示器 (2026-11-19): Shift switches the IME's Chinese/English state,
+    # *not* the keyboard layout. Both halves have a way to regress that no unit
+    # test can see, so they are pinned here:
+    #
+    #   * the caption must be composed from fOpen. This check is deliberately
+    #     two-sided: the new call must be there AND the old direct
+    #     scheme.toolbar_label() must be gone, because "toolbar_label appears
+    #     somewhere" was true both before and after the fix -- the same
+    #     false-green shape the X2-a0 check above was rewritten for.
+    #   * fOpen can move without this DLL being told (imm32's Ctrl+Space sets it
+    #     directly), so the toolbar is synced from the key path. Two call
+    #     sites: every message, plus right after the Shift gesture. Counted, so
+    #     deleting either one fails even though the other keeps compiling.
+    ime_ui_win32 = strip_cpp_comments(
+        read(root, "framework/platform/win32/ui/ime_ui.cpp"))
+    entry_win32 = strip_cpp_comments(
+        read(root, "framework/platform/win32/imm32/imm_entry.cpp"))
+    c.check("状态指示器: the toolbar caption carries fOpen (拼:开 / 拼:关)",
+            "imfw::toolbar_text(scheme, ime_open)" in ime_ui_win32 and
+            "scheme.toolbar_label()" not in ime_ui_win32 and
+            "add_test(NAME toolbar-text" in read(root, "tests/CMakeLists.txt"))
+    c.check("状态指示器: the key path syncs the toolbar (per message + after Shift)",
+            entry_win32.count("imfw::UiToolbarSetOpen(") >= 2,
+            f"call sites={entry_win32.count('imfw::UiToolbarSetOpen(')}")
+    # And the other half of the model: nothing may switch the layout. The
+    # shell's red 中 follows the layout, so any ActivateKeyboardLayout on the
+    # Shift path would move the tray indicator the user explicitly wants left
+    # alone. ImmInstallIMEW is fine -- that is the installer registering the
+    # layout once, not a runtime switch.
+    layout_switches = [
+        str(p.relative_to(root))
+        for d in ("framework", "pinyin", "ime")
+        for p in sorted((root / d).rglob("*"))
+        if p.is_file() and p.suffix in SOURCE_SUFFIXES
+        for word in ("ActivateKeyboardLayout", "LoadKeyboardLayout")
+        if word in strip_cpp_comments(p.read_text(encoding="utf-8", errors="ignore"))
+    ]
+    c.check("Shift never switches the keyboard layout (tray 中 must stay put)",
+            not layout_switches, ", ".join(layout_switches))
+
     # X2-a: the key policy must stay portable. The entire point of moving it out
     # of imm_entry.cpp is that tests/host_key_test.cpp links it on the build
     # host; one <windows.h> in this layer and that test stops being possible --

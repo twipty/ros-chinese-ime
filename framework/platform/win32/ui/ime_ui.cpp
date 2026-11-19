@@ -18,6 +18,7 @@
 #include <windows.h>
 
 #include <imfw/scheme.hpp>
+#include <imfw/toolbar_text.hpp>
 
 #include <map>
 #include <memory>
@@ -37,6 +38,12 @@ struct UiContext {
     POINT anchor = {0, 0};
     bool anchored = false;
     bool flip = false;  // caret too close to the bottom: draw above it
+    // What the toolbar is currently showing. The label carries fOpen and
+    // fOpen moves with no window message to tell us, so the painted value is
+    // remembered here: that is what makes the per-key sync a bool compare
+    // instead of a repaint.
+    bool toolbar_open = true;
+    bool toolbar_shown = false;
 };
 
 // Same locking rationale as host/session_store.cpp: CRITICAL_SECTION keeps
@@ -198,17 +205,30 @@ void UiDestroy(rpimm::InputContext hIMC) {
     store().erase(hIMC);
 }
 
-void UiToolbarShow(rpimm::InputContext hIMC) {
+void UiToolbarShow(rpimm::InputContext hIMC, bool ime_open) {
     UiContext* ctx = store().get(hIMC);
     if (ctx == nullptr) return;
     const Scheme& scheme = scheme_instance();
-    ctx->toolbar.update(g_hInst, scheme.toolbar_class(), scheme.toolbar_label());
+    // "拼:开" / "拼:关" -- composed in imfw/toolbar_text.cpp so the exact
+    // caption is pinned by a host test, not by a screenshot from the guest.
+    const std::wstring text = imfw::toolbar_text(scheme, ime_open);
+    ctx->toolbar_open = ime_open;
+    ctx->toolbar_shown = true;
+    ctx->toolbar.update(g_hInst, scheme.toolbar_class(), text.c_str());
+}
+
+void UiToolbarSetOpen(rpimm::InputContext hIMC, bool ime_open) {
+    UiContext* ctx = store().find(hIMC);
+    if (ctx == nullptr || !ctx->toolbar_shown) return;
+    if (ctx->toolbar_open == ime_open) return;
+    UiToolbarShow(hIMC, ime_open);
 }
 
 void UiToolbarHide(rpimm::InputContext hIMC) {
     UiContext* ctx = store().find(hIMC);
     if (ctx == nullptr) return;
     ctx->toolbar.hide();
+    ctx->toolbar_shown = false;
 }
 
 UiCounters UiCountersSnapshot() {

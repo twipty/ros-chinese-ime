@@ -32,8 +32,15 @@ void UiHide(rpimm::InputContext hIMC);
 void UiDestroy(rpimm::InputContext hIMC);
 
 // Show the floating toolbar (bottom-right of the screen) with the scheme's
-// label while this IME is selected.
-void UiToolbarShow(rpimm::InputContext hIMC);
+// label plus the IME state ("拼:开" / "拼:关"). `ime_open` is fOpen as the
+// IMM32 layer reads it -- the UI layer never queries IMM32 itself.
+void UiToolbarShow(rpimm::InputContext hIMC, bool ime_open);
+
+// Repaint the toolbar if `ime_open` differs from what it currently shows.
+// Cheap enough for a key path (one bool compare) and necessary there: fOpen
+// changes without any window message reaching us -- our own Shift gesture, and
+// imm32's Ctrl+Space which never enters this DLL.
+void UiToolbarSetOpen(rpimm::InputContext hIMC, bool ime_open);
 
 // Hide the toolbar (IME deselected / context deactivated).
 void UiToolbarHide(rpimm::InputContext hIMC);

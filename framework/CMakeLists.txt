@@ -13,6 +13,7 @@ add_library(imfw-engine STATIC
     src/host_key.cpp
     src/key_route.cpp
     src/scheme_registry.cpp
+    src/toolbar_text.cpp
     src/utf8.cpp)
 
 target_include_directories(imfw-engine PUBLIC

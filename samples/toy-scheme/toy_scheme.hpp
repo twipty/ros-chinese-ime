@@ -54,6 +54,11 @@ public:
     const wchar_t* candidate_class() const override { return L"ToyImeCand"; }
     const wchar_t* toolbar_class() const override { return L"ToyImeBar"; }
     const wchar_t* toolbar_label() const override { return L"toy"; }
+    // Non-CJK on purpose: the toolbar sizes itself from the measured text, and
+    // the smoke build is where a Latin label ("toy:off") proves that path too.
+    const wchar_t* toolbar_state_label(bool open) const override {
+        return open ? L"on" : L"off";
+    }
 
     char32_t input_char(std::uint32_t vk) const override;
     bool is_input_char(char32_t cp) const override {
