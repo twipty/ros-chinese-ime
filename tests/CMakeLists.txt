@@ -55,6 +55,15 @@ add_executable(rospinyin-host-key host_key_test.cpp)
 target_link_libraries(rospinyin-host-key PRIVATE imfw-engine)
 add_test(NAME host-key COMMAND rospinyin-host-key)
 
+# X2-b: the same layers, but asserting the *sequence* instead of single
+# decisions. One fixed key run (zhongguo -> 2 -> Backspace x2 -> Esc -> lone
+# Shift), one exact host-call log. This is the net X2-c/X2-d must not move:
+# both promise "the call sequence is unchanged", which is otherwise only
+# checkable by reading a diff.
+add_executable(rospinyin-host-smoke host_smoke_test.cpp)
+target_link_libraries(rospinyin-host-smoke PRIVATE imfw-engine)
+add_test(NAME host-smoke COMMAND rospinyin-host-smoke)
+
 # G1 regression: multi-codepoint commits (WM_IME_CHAR per UTF-16 unit).
 add_executable(rospinyin-emit-text emit_text_test.cpp)
 target_link_libraries(rospinyin-emit-text PRIVATE imfw-engine)

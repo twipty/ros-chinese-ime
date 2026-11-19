@@ -521,6 +521,18 @@ def run(root: Path) -> int:
             "Scheme* scheme_factory()" in scheme_reg_toy and
             "ToyScheme" in scheme_reg_toy and
             "ROSPINYIN_SCHEME" in read(root, "ime/CMakeLists.txt"))
+    # X2-b: the host smoke test must exist *and be registered*, because a test
+    # file nobody runs is worse than no file (it looks like coverage). The
+    # static half checks registration and that the expected log really pins the
+    # toggle; ctest listing it is the runtime half.
+    smoke_src = read(root, "tests/host_smoke_test.cpp")
+    c.check("X2-b: host smoke is present and registered in ctest",
+            (root / "tests/host_smoke_test.cpp").is_file() and
+            "add_test(NAME host-smoke" in read(root, "tests/CMakeLists.txt") and
+            "check_log(" in smoke_src and
+            "set_open(0)" in smoke_src and
+            "feed:z" in smoke_src)
+
     # X2-a: the key policy must stay portable. The entire point of moving it out
     # of imm_entry.cpp is that tests/host_key_test.cpp links it on the build
     # host; one <windows.h> in this layer and that test stops being possible --
