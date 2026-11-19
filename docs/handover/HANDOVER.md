@@ -193,9 +193,11 @@ ros-pinyin/
 │   ├── src/                    读音归一化、切分、会话、Scheme、宿主兜底数据源
 │   └── host/dat_source_win.cpp Win32 数据源（读 system32\rospinyin.dat）
 ├── ime/                        装配层：rospinyin.def（16 导出）、rospinyin_res.rc、scheme_reg.cpp、图标
-├── tests/                      11 个宿主测试（ctest）
+├── tests/                      16 个宿主测试（ctest）
 ├── tools/
-│   ├── check_m1.py             契约静态检查（63 项，无第三方依赖）
+│   ├── check_m1.py             契约静态检查（77 项，无第三方依赖）
+│   ├── artifact_hashes.py      部署件对账：size + sha256，回答"我到底放出哪一版"
+│   ├── vm_clock.py             guest 时钟对齐：时区 .reg / 手敲 date+time 两个通道
 │   ├── mkdat/                  数据编译器 + fetch_data.py + fixtures
 │   ├── install-rospinyin/      安装器（分步注册；自身不写 Preload，属部署偏好）
 │   ├── httpdl/                 全静态 HTTP 下载器（guest 侧 wget/curl 替身）
@@ -233,7 +235,9 @@ ros-pinyin/
 | 装配 | `ime/scheme_reg.cpp` | 定义 `imfw::scheme_instance()`（唯一的 Scheme 注入点） | Win |
 | 数据编译 | `tools/mkdat/mkdat.cpp` | Unihan + hanziDB → `rospinyin.dat`（确定性输出） | 宿主 |
 | 安装器 | `tools/install-rospinyin/install.cpp` | `/step1..4` 分步注册、动态 HKL 记录、`/i` 串行（仅 Windows 参照机） | Win |
-| 契约检查 | `tools/check_m1.py` | 63 项静态断言（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、ABI、reload 顺序…） | 宿主 |
+| 契约检查 | `tools/check_m1.py` | 77 项静态断言（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、ABI、reload 顺序…） | 宿主 |
+| 部署对账 | `tools/artifact_hashes.py` | 各构建产物与共享副本的 size/sha256 对照，标出"同字节数不同内容"与"共享目录不是这一版" | 宿主 |
+| guest 时钟 | `tools/vm_clock.py` | 诊断宿主/UTC/guest 显示差值；生成时区 `.reg` 或打印 `date`/`time` 命令（**只打印，不代敲**） | 宿主 |
 
 ---
 
@@ -249,7 +253,7 @@ cd ros-pinyin
 cmake -S . -B build -DROSPINYIN_BUILD_TESTS=ON
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure        # 11 个测试，应 100% 通过
-python3 tools/check_m1.py                          # 63 项契约检查，应 63/63
+python3 tools/check_m1.py                          # 77 项契约检查，应 77/77
 ```
 
 - 宿主构建**不编译** Windows 专有部分（`ime/`、安装器、`httpdl`、`framework/platform/win32/imm32`、`framework/platform/win32/ui`），只测纯 C++ 层。
@@ -332,6 +336,10 @@ install-rospinyin.exe /step4      REM Layout Display Name
 **装没装上的判据**（别只看时间戳）：`dir C:\ReactOS\system32\rospinyin.ime` 的字节数要和构建产物一致
 （X2-d 无 trace 版是 **947,969** B，trace 版 971,982 B）。`rospinyin.dat` 本轮未变（902,776 B）。
 
+**版本对账**：`python3 tools/artifact_hashes.py --expect <构建产物的路径片段>` 会把仓库里所有 `.ime/.dat`
+和共享目录副本一起算 sha256，标出「共享目录那份是不是 ★」「哪些文件同字节数但内容不同」。
+本仓库实测就有 **940,888 B 三份不同内容、929,030 B 两份不同内容** —— 所以"大小一样"从来不是证据。
+
 ### 6.5 VM 运行与观察
 
 ```bash
@@ -347,6 +355,11 @@ cd m0/vm
   3. **串口日志** `m0/vm/logs/rosdbg.log`（ReactOS KDBG/DbgPrint 默认走 COM1）。
 - **传文件**：宿主机 `python3 -m http.server 8000 --bind 0.0.0.0 --directory m0/share`，guest 访问 `http://10.0.2.2:8000/`（SLIRP 内建）。
 - **截屏**：`hmp "screendump out.ppm"`（`common.sh` 提供 `hmp` 函数，走 monitor.sock）。
+- **guest 时钟**：QEMU 默认 `-rtc base=utc`，CMOS 存 UTC；guest 若把时区留成 UTC-08:00，
+  任务栏会比宿主本地慢 16 小时，`dir` 的日期全错（2026-11-19 实测：宿主 14:36，guest 显示前一天 22:30）。
+  用 `python3 tools/vm_clock.py` 看差值，`--reg` 生成时区 `.reg`（guest 导入后重启，持久），
+  `--guest` 打印手敲的 `date`/`time` 两行（临时，重启即失效）。**脚本只打印，不代敲。**
+  不要用 `-rtc base=localtime` 去"修"：那会让 CMOS 存本地时间、guest 再减自己的时区，错得更隐蔽。
 - **控制**：`hmp "quit"` 优雅关机；若 monitor.sock 失效，`kill -TERM <qemu pid>`。
 - ⚠️ 这些服务（QEMU / websockify / http.server）**交接时应确认已停止**（本次交接已全部关闭并核对端口 5901/8000/6080 无监听）。
 
@@ -461,7 +474,7 @@ VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
 | 门禁 | 命令 | 通过标准 |
 |---|---|---|
 | 宿单单测 | `ctest --test-dir build` | 11/11（smoke、session、pinyin、pinyin-session、candidate-pager、pinyin-scheme、emit-text、utf8、code-table、m1-contract、mkdat-e2e） |
-| 契约静态检查 | `python3 tools/check_m1.py` | 63/63（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
+| 契约静态检查 | `python3 tools/check_m1.py` | 77/77（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
 | Win32 语法检查 | CI 的第一步，见 §6.3 | 0 error（用 `tools/syntax_stub` 提供的 Windows 头） |
 | PE 导入表 | CI `objdump -p` | 不得出现 Vista+ 导出或非系统 DLL |
 | 真机验收 | `docs/milestones/m2/M2-ACCEPTANCE.md` | 15 项全绿 |
