@@ -7,6 +7,16 @@
 
 ## 未发布
 
+### X2 收口总验收
+
+- 所有 X2 子项已合入 `main`，PLAN 清单无未勾选项；收口重跑 `ctest` 17/17、
+  `check_m1` 109/109、`check_docs` 7/7、`git diff --check` 通过。
+- `linux-ci` 与 `win32-cross` 两条 preset 路径均重建通过；两个独立交叉构建目录的
+  `.ime` 逐字节相同（953,082 B，sha `f3e33b0a…`）。
+- 对外面未变：16 导出名及顺序、5 个导入 DLL 及函数集逐条同序一致；w1/w2/w3 是行为变更，
+  字节变化是预期，不是 ABI 回归。
+- 真机观感三项（状态指示器、候选窗稳定性、翻页保持）仍待用户在 VM 中确认，不由绿灯代替。
+
 ### Seam 清单与调用点上限（X2-f）
 
 - 新增 `tools/seams.py`：统计换前端时要动的 5 条 seam（`engine`、`scheme-policy`、`ui-exit`、

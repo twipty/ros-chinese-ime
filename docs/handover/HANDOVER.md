@@ -2298,7 +2298,7 @@ clamp 是必要的：新候选列表可能更短，留一个越界 `page_` 会�
 
 ---
 
-### 11.39 X2-f 收口：seam 清单变成可执行的耦合上限（2026-11-19 18:4x）
+### 11.39 X2-f 收口：seam 清单变成可执行的耦合上限（2026-11-19 18:0x）
 
 X2 的最后一项不是抽接口，而是**把"将来换前端要改多少地方"变成数字**。
 计划 §4 的机制 M2 一直写着"seam 清单 + 上限断言"，X2-f 把它落地：
@@ -2334,6 +2334,26 @@ python3 tools/check_m1.py         # import 同一个 over_cap()，越界即失�
 为一个还不存在的第二前端冻结 ABI 只会增加维护面。真正触发抽象的条件写在计划 §4 的 X4：
 出现第二个前端消费者、`imm_entry.cpp` 超过 1,200 行、或 csrss 崩溃成为实际痛感。
 X2-f 交付的是**触发时的数据**，不是提前交出的接口。
+
+---
+
+### 11.40 X2 总验收：构建、门禁、对外面与交付边界（2026-11-19 18:1x）
+
+X2 全部子项（a0/a/b/c/d/e1–e6/f/w1–w3）均已合入 `main`，PLAN 清单无未勾选项。
+收口时在同一棵工作树上重跑：
+
+| 项 | 结果 |
+|---|---|
+| 门禁 | `ctest --preset linux-ci` **17/17**；`python3 tools/check_m1.py` **109/109**；`python3 tools/check_docs.py` **7/7**；`git diff --check` 通过 |
+| presets | `cmake --preset linux-ci` / `cmake --build --preset win32-cross --parallel` 均通过。`win32-cross` 须先 `export ROSPINYIN_MINGW_TOOLCHAIN=/path/to/toolchain-i686.cmake`（见 §6.3）；两个独立目录 `build-cross` 与 `build-final-verify` 的 `.ime` 逐字节相同 |
+| 产物 | 当前 `.ime` **953,082 B**，sha256 `f3e33b0ac218…e787`；与 w3 合入时一致，X2-f 未改运行时代码 |
+| 对外面 | 16 个导出名及顺序与 X2-e3 基线逐项一致；5 个导入 DLL 及函数集逐条同序一致：GDI32 12 / IMM32 2 / KERNEL32 59 / msvcrt 43 / USER32 22。行为变了但 ABI 面没变 |
+| 文档 | CHANGELOG 有 X2-e3/e4/e5/e6、X2-w1/w2/w3、X2-f 与本节；HANDOVER §11.32–11.40 有对应执行记录；PLAN §3 与清单全部勾选 |
+
+**未由本次总验收代替的事项**：w1（Shift 后 `拼:开` ↔ `拼:关`、托盘「中」不动）、
+w2（连续输入 `nihao` 候选窗不闪）、w3（翻到第 2 页后继续打字页码保持）三项的真机观感。
+测试能证明调用序列与页码状态，证明不了"看起来对"；按红线不代用户发键鼠事件，
+这三项仍以用户在 ReactOS VM 中的同框确认作准。
 
 ---
 
