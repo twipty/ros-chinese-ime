@@ -33,6 +33,7 @@ Run directly or via ctest (target name: m1-contract).
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -46,10 +47,10 @@ REQUIRED_EXPORTS = {
 }
 
 SCAN_DIRS = [
-    "framework", "pinyin", "ime", "tests",
+    "framework", "pinyin", "ime", "tests", "cmake",
     "tools/install-rospinyin", "tools/syntax_stub",
 ]
-SOURCE_SUFFIXES = {".cpp", ".h", ".hpp", ".rc", ".def"}
+SOURCE_SUFFIXES = {".cpp", ".h", ".hpp", ".rc", ".def", ".cmake"}
 JAPANESE_WORDS = [
     "mzimeja", "MZ-IME", "Katayama", "片山",
     "Hiragana", "Katakana", "Roma-ji", "日本語", "カタカナ",
@@ -819,8 +820,16 @@ def run(root: Path) -> int:
     # a handful of bytes, so "same sha256" stops being an answer to "is this the
     # build I shipped". The whole deployment story (artifact_hashes.py, the
     # guest-side rhash.exe) depends on that answer, hence the flag is pinned.
+    #
+    # Since X2-e3 the flag lives in cmake/StaticRuntime.cmake and every shipped
+    # PE gets it; here the assertion only has to prove this target *asks for it*
+    # (a call, not the literal flag -- the literal moved out on purpose).
+    static_rt = read(root, "cmake/StaticRuntime.cmake")
     c.check("X2-e1: the .ime links reproducibly (no PE timestamp)",
-            "--no-insert-timestamp" in ime_cmake,
+            "-Wl,--no-insert-timestamp" in static_rt and
+            re.search(r"rospinyin_reproducible_pe\(\s*rospinyin-ime\s+CXX\s*\)",
+                      ime_cmake) is not None and
+            "--no-insert-timestamp" not in ime_cmake,
             "ld stamps link time into the header; hashes stop identifying a build")
 
     # X2-e2 (audit A-P1-5): the plug-in owns its data end to end, so the Win32
@@ -870,6 +879,98 @@ def run(root: Path) -> int:
     c.check("X2-e2: ROSPINYIN_TRACE is not re-declared on the assembly target",
             "ROSPINYIN_TRACE" not in strip_cmake_comments(ime_cmake),
             "ime/CMakeLists.txt defines a macro nothing in it reads")
+
+    # ------------------------------------------------------------------
+    # X2-e3 (audit A-P1-6): the build configuration itself, not one file in it.
+    #
+    # Everything below is about *where a fact is stated*. The failures they have
+    # to catch are the two that already happened in this repository:
+    #   * a guard (EXISTS) that turned "this directory is missing" into a
+    #     configure that succeeds and ships less -- X2-e2 found the same shape
+    #     one layer down, where a missing data source linked cleanly against a
+    #     weak stub and produced a 942,989 B .ime instead of 948,481 B;
+    #   * the same flag set restated per consumer, which is how tools/httpdl
+    #     ended up with -static but no reproducible header while the .ime had
+    #     both.
+    # ------------------------------------------------------------------
+    root_cmake = strip_cmake_comments(read(root, "CMakeLists.txt"))
+    c.check("X2-e3: no EXISTS guard can hide a missing subdirectory",
+            "EXISTS" not in root_cmake,
+            "an EXISTS guard makes a missing directory a silent no-op; "
+            "add_subdirectory fails loudly, which is the point")
+
+    c.check("X2-e3: the C language level is stated, not inherited",
+            "set(CMAKE_C_STANDARD 11)" in root_cmake and
+            "set(CMAKE_C_STANDARD_REQUIRED ON)" in root_cmake and
+            "set(CMAKE_C_EXTENSIONS OFF)" in root_cmake,
+            "C targets (httpdl, rhash) would follow whatever the compiler "
+            "defaults to, which changes across GCC versions")
+
+    # One root variable. CMAKE_SOURCE_DIR and PROJECT_SOURCE_DIR are equal here
+    # only because no subdirectory calls project(); the day one does, every
+    # CMAKE_SOURCE_DIR silently starts pointing somewhere else.
+    stray_source_dir = []
+    for cmake_file in sorted(root.rglob("CMakeLists.txt")):
+        if any(part in {"build", "build-standalone", "build-trace",
+                        "build-intree", "build-toy", "build-cross",
+                        "xingma", "vendor", ".git"}
+               for part in cmake_file.relative_to(root).parts):
+            continue
+        if "${CMAKE_SOURCE_DIR}" in cmake_file.read_text(encoding="utf-8"):
+            stray_source_dir.append(str(cmake_file.relative_to(root)))
+    c.check("X2-e3: subdirectories use PROJECT_SOURCE_DIR, not CMAKE_SOURCE_DIR",
+            not stray_source_dir, ", ".join(stray_source_dir))
+
+    c.check("X2-e3: StaticRuntime.cmake defines the two shipped-PE policies",
+            "function(rospinyin_static_runtime" in static_rt and
+            "function(rospinyin_reproducible_pe" in static_rt and
+            "include(\"${PROJECT_SOURCE_DIR}/cmake/StaticRuntime.cmake\")"
+            in root_cmake,
+            "the include is what makes the functions visible to every target")
+
+    # Every PE that runs on ReactOS asks for both policies by *call*, and none
+    # of them restates the flags. A literal -static-libstdc++ in one of these
+    # files is the drift itself, not a style issue: the flag it lacks is the
+    # one the other files forgot last time.
+    shipped = [
+        ("ime/CMakeLists.txt", "rospinyin-ime"),
+        ("tools/install-rospinyin/CMakeLists.txt", "install-rospinyin"),
+        ("tools/rhash/CMakeLists.txt", "rhash"),
+        ("tools/httpdl/CMakeLists.txt", "ros-wget"),
+        ("tools/httpdl/CMakeLists.txt", "ros-curl"),
+    ]
+    missing_calls, restated = [], []
+    for rel, target in shipped:
+        body = strip_cmake_comments(read(root, rel))
+        if re.search(rf"rospinyin_static_runtime\(\s*{re.escape(target)}\b",
+                     body) is None:
+            missing_calls.append(f"{rel}: static runtime")
+        if re.search(rf"rospinyin_reproducible_pe\(\s*{re.escape(target)}\b",
+                     body) is None:
+            missing_calls.append(f"{rel}: reproducible PE")
+        for literal in ("-static-libstdc++", "-static-libgcc",
+                        "--no-insert-timestamp"):
+            if literal in body:
+                restated.append(f"{rel}: {literal}")
+    c.check("X2-e3: every shipped PE asks for both policies by call",
+            not missing_calls, ", ".join(missing_calls))
+    c.check("X2-e3: no build file restates the flags instead of calling",
+            not restated, ", ".join(restated))
+
+    # Presets are what CI and humans share. Without them the same five
+    # configurations live in a workflow file and in someone's shell history,
+    # and they diverge silently (measured before X2-e3: build-win had tests OFF
+    # while build-win-trace-en had them ON).
+    presets = json.loads(read(root, "CMakePresets.json"))
+    preset_names = {p["name"] for p in presets["configurePresets"]}
+    required = {"linux-ci", "win32-mingw", "win32-trace"}
+    ci_yml = read(root, ".github/workflows/ci.yml")
+    c.check("X2-e3: presets exist and CI configures through them",
+            required <= preset_names and
+            "cmake --preset linux-ci" in ci_yml and
+            "cmake --preset win32-mingw" in ci_yml and
+            required <= {p["name"] for p in presets.get("buildPresets", [])},
+            f"missing presets: {sorted(required - preset_names)}")
 
     return c.summary()
 

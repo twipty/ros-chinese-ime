@@ -7,6 +7,26 @@
 
 ## 未发布
 
+### 构建配置收敛：presets 是唯一出处（X2-e3）
+
+- **`CMakePresets.json`（新）**：把 CI 与本地反复复述的 `-D` 列表写成 6 个 configure preset、
+  6 个 build preset 和 1 个 test preset。CI 现在只写 `cmake --preset linux-ci` /
+  `cmake --preset win32-mingw` / `cmake --preset win32-intree` / `cmake --preset win32-toy`；
+  `check_m1` 断言这些名字仍在，避免工作流改了 preset 却没人改断言、最后什么都没测。
+- **缺目录改为硬失败**：根 `CMakeLists.txt` 的 5 处 `EXISTS` 守卫全部删掉。原来 `tools/rhash`
+  目录消失也能 configure 成功，只是产物少一个 exe；现在 `add_subdirectory` 直接报 configure 错误。
+  这与 X2-e2 把 weak 兜底编译掉是同一种修法：缺东西必须当场说。
+- **统一根变量与 C 标准**：子目录一律 `PROJECT_SOURCE_DIR`；显式 `CMAKE_C_STANDARD 11` +
+  `REQUIRED` + `EXTENSIONS OFF`，C 工具不再跟随编译器默认值漂移。
+- **`cmake/StaticRuntime.cmake`（新）**：`rospinyin_static_runtime()` /
+  `rospinyin_reproducible_pe()` 两个函数集中静态运行时与无 PE 时间戳策略。`.ime`、安装器、
+  `rhash.exe`、`wget.exe`/`curl.exe` 全部按调用申请；此前只有 `.ime` 有可复现链接，
+  而 `rhash.exe` 正是回答"装的是不是这一版"的工具，它自己却带时间戳。
+- **`check_m1` 87 → 94 项**：7 条新断言全部按"匹配调用"写；7 次变异逐个变红。
+- 判据：16 导出名及顺序、5 个 DLL、每 DLL 导入函数集逐条同序完全一致；toy/trace/in-tree
+  三种形态构建通过；两个 Ninja 目录同源码产物逐字节相同。可复现性**不跨生成器**——
+  Ninja 与 Makefiles 的链接命令行不同，同源码同大小但 sha 不同，这是边界不是缺陷。
+
 ### 数据源归位，缺席即链接错误（X2-e2）
 
 - **`pinyin/host/dat_source_win.cpp` 归 `rospinyin-engine`**（Windows 分支），不再由 `ime/CMakeLists.txt`

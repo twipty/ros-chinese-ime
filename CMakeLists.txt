@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
-# C is required for the fully-static HTTP download helper (tools/httpdl).
+# C is required for the fully-static HTTP download helper (tools/httpdl) and the
+# guest-side SHA-256 tool (tools/rhash).
 project(RosPinyin VERSION 0.0.1 LANGUAGES C CXX)
 
 # Product form (decision D5): standalone installable package is the default.
@@ -15,9 +16,16 @@ option(ROSPINYIN_BUILD_TESTS "Build engine unit tests"                     ON)
 # macro (X2-e1).
 option(ROSPINYIN_TRACE       "Trace IMM32 entry points to C:\\rospinyin-trace.log" OFF)
 
+# Language levels are stated once, for both languages (X2-e3). Before this the
+# C++ level was pinned and C was left to the compiler default, which is gnu17
+# on GCC 11+ and gnu11 on older ones: a C tool that compiles today could stop
+# compiling after a toolchain upgrade with no change in this repository.
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
 
 # Source files are UTF-8 without BOM (checked in CI) and contain non-ASCII
 # string literals (Chinese layout names). MSVC on an en-US host defaults to
@@ -39,6 +47,11 @@ if(WIN32)
     enable_language(RC)
 endif()
 
+# rospinyin_static_runtime() / rospinyin_reproducible_pe(): what a shipped PE
+# looks like. Defined at the top level so every subdirectory sees the same two
+# functions instead of restating the flags (X2-e3, audit A-P1-6).
+include("${PROJECT_SOURCE_DIR}/cmake/StaticRuntime.cmake")
+
 # Reusable IMM32 framework: engine contract, generic code table, candidate
 # paging (framework/). Contains no pinyin knowledge, so a shape-based IME can
 # link the same library.
@@ -47,28 +60,31 @@ add_subdirectory(framework)
 # Pinyin plugin: reading normalization, segmentation and the PinyinScheme.
 add_subdirectory(pinyin)
 
-# IMM32 layer and the standalone installer are Windows/ReactOS only.
-if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ime/CMakeLists.txt")
+# No EXISTS guards below (X2-e3). A guard turned "this subdirectory is missing"
+# into a configure that succeeds and silently ships a smaller product: the same
+# failure mode X2-e2 removed from the data source, one layer up. add_subdirectory
+# on a missing directory is a hard configure error, which is what we want.
+
+# IMM32 layer: Windows/ReactOS only.
+if(WIN32)
     add_subdirectory(ime)
 endif()
-if(WIN32 AND NOT ROSPINYIN_IN_TREE AND
-   EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/install-rospinyin/CMakeLists.txt")
+# Standalone package extras. The in-tree form does not build them: ReactOS's own
+# build machinery owns registration there.
+if(WIN32 AND NOT ROSPINYIN_IN_TREE)
+    # Step-by-step installer (register/unregister without touching the default
+    # input language).
     add_subdirectory(tools/install-rospinyin)
-endif()
-# SHA-256 helper for the guest: ReactOS ships no sha256sum, and byte counts
-# cannot tell two same-sized builds apart.
-if(WIN32 AND NOT ROSPINYIN_IN_TREE AND
-   EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/rhash/CMakeLists.txt")
+    # SHA-256 helper for the guest: ReactOS ships no sha256sum, and byte counts
+    # cannot tell two same-sized builds apart.
     add_subdirectory(tools/rhash)
 endif()
-# Fully-static HTTP download helper for the ReactOS VM (wget/curl shims).
-if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/httpdl/CMakeLists.txt")
+if(WIN32)
+    # Fully-static HTTP download helper for the ReactOS VM (wget/curl shims).
     add_subdirectory(tools/httpdl)
 endif()
 # M2 data compiler: a host-side tool (runs on Linux CI), no Windows headers.
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/mkdat/CMakeLists.txt")
-    add_subdirectory(tools/mkdat)
-endif()
+add_subdirectory(tools/mkdat)
 
 if(ROSPINYIN_BUILD_TESTS)
     enable_testing()

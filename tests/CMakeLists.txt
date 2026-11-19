@@ -44,7 +44,7 @@ add_test(NAME scheme-registry COMMAND rospinyin-scheme-registry)
 # nobody links. Links imfw-engine only — no pinyin, no data.
 add_executable(rospinyin-toy-scheme toy_scheme_test.cpp ../samples/toy-scheme/toy_scheme.cpp)
 target_include_directories(rospinyin-toy-scheme PRIVATE
-    "${CMAKE_SOURCE_DIR}/samples/toy-scheme")
+    "${PROJECT_SOURCE_DIR}/samples/toy-scheme")
 target_link_libraries(rospinyin-toy-scheme PRIVATE imfw-engine)
 add_test(NAME toy-scheme COMMAND rospinyin-toy-scheme)
 
@@ -93,8 +93,8 @@ find_program(ROSPINYIN_PYTHON NAMES python3 python QUIET)
 if(ROSPINYIN_PYTHON)
     add_test(NAME m1-contract
              COMMAND "${ROSPINYIN_PYTHON}"
-                     "${CMAKE_SOURCE_DIR}/tools/check_m1.py"
-                     --root "${CMAKE_SOURCE_DIR}")
+                     "${PROJECT_SOURCE_DIR}/tools/check_m1.py"
+                     --root "${PROJECT_SOURCE_DIR}")
 else()
     message(STATUS "Python3 not found; M1 contract check skipped")
 endif()
@@ -103,9 +103,9 @@ endif()
 if(TARGET mkdat AND ROSPINYIN_PYTHON)
     add_test(NAME mkdat-e2e
              COMMAND "${ROSPINYIN_PYTHON}"
-                     "${CMAKE_SOURCE_DIR}/tests/check_mkdat.py"
+                     "${PROJECT_SOURCE_DIR}/tests/check_mkdat.py"
                      --mkdat $<TARGET_FILE:mkdat>
-                     --root "${CMAKE_SOURCE_DIR}")
+                     --root "${PROJECT_SOURCE_DIR}")
 else()
     message(STATUS "mkdat or Python3 unavailable; mkdat-e2e skipped")
 endif()

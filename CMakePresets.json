@@ -1,0 +1,119 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "release-base",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "linux-ci",
+      "displayName": "Linux host: engine tests + contract checks",
+      "description": "What the ubuntu job runs: no Windows headers, no MinGW, all 16 tests plus check_m1/check_docs/mkdat.",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ROSPINYIN_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "win32-mingw",
+      "displayName": "MinGW-w64 i686: standalone .ime + tools",
+      "description": "The shippable product form. Run from a MINGW32 shell so g++/windres are the i686 ones.",
+      "inherits": "release-base",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-standalone",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++",
+        "CMAKE_RC_COMPILER": "windres",
+        "ROSPINYIN_BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "win32-trace",
+      "displayName": "MinGW-w64 i686: standalone with the trace channel",
+      "description": "Same product plus C:\\rospinyin-trace.log lines. Bigger binary; never shipped.",
+      "inherits": "win32-mingw",
+      "binaryDir": "${sourceDir}/build-trace",
+      "cacheVariables": {
+        "ROSPINYIN_TRACE": "ON"
+      }
+    },
+    {
+      "name": "win32-intree",
+      "displayName": "MinGW-w64 i686: ReactOS in-tree target",
+      "description": "ROSPINYIN_IN_TREE=ON: no installer, no rhash (ReactOS's build owns registration).",
+      "inherits": "win32-mingw",
+      "binaryDir": "${sourceDir}/build-intree",
+      "cacheVariables": {
+        "ROSPINYIN_IN_TREE": "ON"
+      }
+    },
+    {
+      "name": "win32-toy",
+      "displayName": "MinGW-w64 i686: letters-only canary scheme",
+      "description": "ROSPINYIN_SCHEME=toy. Proves a second input method is a folder, not a framework patch. Not shippable.",
+      "inherits": "win32-mingw",
+      "binaryDir": "${sourceDir}/build-toy",
+      "cacheVariables": {
+        "ROSPINYIN_SCHEME": "toy"
+      }
+    },
+    {
+      "name": "win32-cross",
+      "displayName": "Linux to i686-w64-mingw32 cross build",
+      "description": "For machines without a MINGW32 shell. Requires ROSPINYIN_MINGW_TOOLCHAIN to point at a toolchain file whose compiler is i686-w64-mingw32-g++ (and the matching -posix suffixed CC/RC).",
+      "inherits": "release-base",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-cross",
+      "toolchainFile": "$env{ROSPINYIN_MINGW_TOOLCHAIN}",
+      "cacheVariables": {
+        "ROSPINYIN_BUILD_TESTS": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "linux-ci",
+      "configurePreset": "linux-ci"
+    },
+    {
+      "name": "win32-mingw",
+      "configurePreset": "win32-mingw"
+    },
+    {
+      "name": "win32-trace",
+      "configurePreset": "win32-trace"
+    },
+    {
+      "name": "win32-intree",
+      "configurePreset": "win32-intree"
+    },
+    {
+      "name": "win32-toy",
+      "configurePreset": "win32-toy"
+    },
+    {
+      "name": "win32-cross",
+      "configurePreset": "win32-cross"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "linux-ci",
+      "configurePreset": "linux-ci",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

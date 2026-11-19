@@ -7,13 +7,18 @@
 
 add_executable(rhash rhash.c)
 
-if(MSVC)
-    # No vcruntime140.dll on a bare ReactOS install.
-    set_property(TARGET rhash PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+# Static CRT + reproducible header (cmake/StaticRuntime.cmake, X2-e3). The
+# reproducible half matters most here: this tool is what the guest uses to
+# answer "is this the build I meant?", so the binaries it hashes must not carry
+# a link timestamp either.
+rospinyin_static_runtime(rhash C)
+rospinyin_reproducible_pe(rhash C)
+
+if(NOT MSVC)
+    # wmain needs the Unicode CRT entry point (entry point, not runtime).
+    target_link_options(rhash PRIVATE -municode)
 endif()
 
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-    # wmain needs the Unicode CRT entry point; -static keeps libgcc out.
-    target_link_options(rhash PRIVATE -municode -static)
     target_compile_options(rhash PRIVATE -Wall -Wextra)
 endif()

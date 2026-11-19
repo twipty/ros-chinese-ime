@@ -392,6 +392,21 @@ X1 改了代码与 `check_m1` 的 15 处路径却漏了这棵树。
 | 门禁 | — | `ctest` 16/16、`check_m1` **87/87**（+4）、`check_docs` 7/7 |
 | 对外面 | 逐个一致 | 16 导出名及顺序、5 个 DLL、每 DLL 导入函数集逐条同序**完全一致**；函数符号 1386 个两边逐个相同。i686 拼音 `948,481 → 947,820 B`（−661，`.text` −64 / `.rdata` +32，其余为节对齐）、trace 版 `971,982 → 971,833 B`、玩具 `876,352 B` 不变 |
 
+**✅ X2-e3 构建配置收敛（2026-11-19 16:4x）**
+
+计划：`CMakePresets.json` + `EXISTS` 硬失败 + 统一根变量 + C 标准 + 静态策略收敛（A-P1-6）。
+
+| 项 | 计划 | 实际 |
+|---|---|---|
+| 配置定义 | presets | `CMakePresets.json`：6 个 configure（含 `linux-ci` / `win32-mingw` / `win32-trace` / `win32-toy` / `win32-intree` / `win32-cross`）+ 6 个 build + 1 个 test；CI 四段 YAML `-D` 列表改为 preset 名，断言钉住名字 |
+| 缺目录 | 硬失败 | 根文件 5 处 `EXISTS` 守卫全删；`add_subdirectory` 缺目录直接 configure 失败。与 X2-e2 的 weak 兜底同型：少一块不能静默成功 |
+| 根变量 | 统一 | 子目录一律 `PROJECT_SOURCE_DIR`，`check_m1` 扫全部 `CMakeLists.txt` 禁止 `${CMAKE_SOURCE_DIR}` |
+| C 语言等级 | 显式 | `CMAKE_C_STANDARD 11` + `REQUIRED` + `EXTENSIONS OFF`（实测 `-std=c11`），C 工具不再跟随编译器默认 |
+| 静态策略 | 收敛 | `cmake/StaticRuntime.cmake` 两个函数；5 个已发布 PE 逐个按调用申请，禁止复述字面 flag。此前 `httpdl` 只有 `-static`、没有可复现头，四个工具哈希都不可信 |
+| 新增断言 | — | 7 条（87 → 94）：无 `EXISTS` / C 标准三行 / 根变量 / 策略中枢存在 / 每个 PE 两条调用 / 不许复述 flag / presets + CI 走 preset；7 次变异全红 |
+| 门禁 | — | `ctest` 16/16、`check_m1` **94/94**、`check_docs` 7/7 |
+| 对外面 | 逐个一致 | 16 导出名及顺序、5 个 DLL、每 DLL 导入函数集逐条同序完全一致；toy 876,352 B、trace 971,833 B、in-tree 947,820 B 且不产安装器与 `rhash.exe`。两个 Ninja 目录同源码产物逐字节相同；跨生成器（Ninja vs Makefiles）哈希不同，是已记录的边界 |
+
 **X2-e 构建收敛（1.5–2 天）**
 
 | 子项 | 出处 | 做法 |
@@ -539,7 +554,7 @@ Ctrl+Space 与备用热键——**全部改在 `process_key` 里**。先有冒�
 - [x] X2-d `imm_entry` 按职责拆 TU（实际 4 个，候选过滤在 X2-a 已走）+ 合并两条激活路径 + 合并 trace 十进制转换（审计 A-P0-3、复核 N-1）
 - [x] X2-e1 `platform/win32/{imm32,ui}` 库目标 + `ime` 只 link（审计 A-P1-4）— 2026-11-19，见 §3 X2-e1 执行记录
 - [x] X2-e2 `dat_source_win.cpp` 归 `rospinyin-engine` + 链接期符号断言（审计 A-P1-5）— 见 §3「X2-e2」
-- [ ] X2-e3 `CMakePresets.json` + `EXISTS` 硬失败 + 统一根变量 + C 标准 + 静态策略收敛（审计 A-P1-6）
+- [x] X2-e3 `CMakePresets.json` + `EXISTS` 硬失败 + 统一根变量 + C 标准 + 静态策略收敛（审计 A-P1-6）— 2026-11-19，见 §3 X2-e3 执行记录
 - [ ] X2-e4 28 处 `#ifndef` 平台补丁归位（审计 A-P2-11）
 - [ ] X2-e5 版本收敛到 `ime/version.h` 一处 + CI 断言（审计 A-P1-7 版本部分；达成 G7）
 - [ ] X2-e6 `dat_source_win.cpp` 不再引宿主私有头（复核 N / X1 表）

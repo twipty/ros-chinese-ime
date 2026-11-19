@@ -102,25 +102,10 @@ elseif(NOT ROSPINYIN_IME_LANGID STREQUAL "0804")
         "ROSPINYIN_IME_LANGID must be 0804 or 0409, got '${ROSPINYIN_IME_LANGID}'")
 endif()
 
-# Do not drag a compiler runtime DLL onto a ReactOS installation.
-if(MSVC)
-    # Kept for the historical MSVC toolchain only. ReactOS 0.4.16's kernel32
-    # lacks InitializeCriticalSectionEx, which MSVC's static CRT imports, so
-    # the supported build is MinGW (see .github/workflows/ci.yml).
-    set_property(TARGET rospinyin-ime PROPERTY
-        MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-endif()
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    # A bare ReactOS has none of libstdc++-6.dll / libgcc_s_dw2-1.dll /
-    # libwinpthread-1.dll, so link the whole runtime statically. The resulting
-    # PE then only imports system DLLs (kernel32/user32/gdi32/imm32).
-    target_link_options(rospinyin-ime PRIVATE
-        -static-libgcc -static-libstdc++ -static)
-    # No PE timestamp. ld stamps the link time into the header, so two builds of
-    # byte-identical sources differ in 4-6 bytes and every sha256 differs -- a
-    # trap for exactly the check tools/artifact_hashes.py and rhash.exe exist to
-    # support ("is this the build I meant?"). Measured: 0x88 TimeDateStamp,
-    # 0xd8 OptionalHeader.Checksum, plus 2 bytes that mirror the stamp.
-    # Nothing on ReactOS reads the stamp; the version resource does not either.
-    target_link_options(rospinyin-ime PRIVATE -Wl,--no-insert-timestamp)
-endif()
+# Do not drag a compiler runtime DLL onto a ReactOS installation, and do not
+# let ld stamp the link time into the header. Both are stated once, in
+# cmake/StaticRuntime.cmake (X2-e3): the same two promises apply to the
+# installer, rhash and the download shims, and restating the flag set per build
+# file is exactly how they drifted before.
+rospinyin_static_runtime(rospinyin-ime CXX)
+rospinyin_reproducible_pe(rospinyin-ime CXX)

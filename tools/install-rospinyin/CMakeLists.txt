@@ -9,17 +9,13 @@ add_executable(install-rospinyin install.cpp)
 
 target_link_libraries(install-rospinyin PRIVATE imm32 advapi32)
 
-if(MSVC)
-    # ReactOS has no vcruntime140.dll: link the CRT statically so the
-    # installer runs on a bare ReactOS installation.
-    set_property(TARGET install-rospinyin PROPERTY
-        MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-endif()
+# Static CRT + reproducible header (cmake/StaticRuntime.cmake, X2-e3).
+rospinyin_static_runtime(install-rospinyin CXX)
+rospinyin_reproducible_pe(install-rospinyin CXX)
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    # wmain requires the Unicode CRT entry point on MinGW-w64.
-    # -static avoids any dependency on libstdc++-6.dll / libgcc_s_dw2-1.dll /
-    # libwinpthread-1.dll, none of which ship with ReactOS 0.4.16.
-    target_link_options(install-rospinyin PRIVATE
-        -municode -static-libgcc -static-libstdc++ -static)
+if(NOT MSVC)
+    # wmain requires the Unicode CRT entry point on MinGW-w64. This is about
+    # which entry point the PE declares, not about the runtime, so it stays here
+    # while the runtime flags live in cmake/StaticRuntime.cmake.
+    target_link_options(install-rospinyin PRIVATE -municode)
 endif()

@@ -196,7 +196,7 @@ ros-pinyin/
 ├── ime/                        装配层：rospinyin.def（16 导出）、rospinyin_res.rc、scheme_reg.cpp、图标
 ├── tests/                      16 个宿主测试（ctest）
 ├── tools/
-│   ├── check_m1.py             契约静态检查（87 项，无第三方依赖）
+│   ├── check_m1.py             契约静态检查（94 项，无第三方依赖）
 │   ├── artifact_hashes.py      部署件对账：size + sha256，回答"我到底放出哪一版"
 │   ├── vm_clock.py             guest 时钟对齐：时区 .reg / 手敲 date+time 两个通道
 │   ├── mkdat/                  数据编译器 + fetch_data.py + fixtures
@@ -238,7 +238,7 @@ ros-pinyin/
 | 装配 | `ime/scheme_reg.cpp` | 定义 `imfw::scheme_instance()`（唯一的 Scheme 注入点） | Win |
 | 数据编译 | `tools/mkdat/mkdat.cpp` | Unihan + hanziDB → `rospinyin.dat`（确定性输出） | 宿主 |
 | 安装器 | `tools/install-rospinyin/install.cpp` | `/step1..4` 分步注册、动态 HKL 记录、`/i` 串行（仅 Windows 参照机） | Win |
-| 契约检查 | `tools/check_m1.py` | 87 项静态断言（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、ABI、reload 顺序…） | 宿主 |
+| 契约检查 | `tools/check_m1.py` | 94 项静态断言（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、ABI、reload 顺序…） | 宿主 |
 | 部署对账 | `tools/artifact_hashes.py` | 各构建产物与共享副本的 size/sha256 对照，标出"同字节数不同内容"与"共享目录不是这一版" | 宿主 |
 | guest 侧哈希 | `tools/rhash/rhash.c` | 自带 SHA-256 的小 exe：`rhash.exe [文件...]`，无参数时算 system32 的 `.ime`/`.dat`。只依赖 kernel32+msvcrt | Win |
 | guest 时钟 | `tools/vm_clock.py` | 诊断宿主/UTC/guest 显示差值；生成时区 `.reg` 或打印 `date`/`time` 命令（**只打印，不代敲**） | 宿主 |
@@ -254,11 +254,14 @@ ros-pinyin/
 
 ```bash
 cd ros-pinyin
-cmake -S . -B build -DROSPINYIN_BUILD_TESTS=ON
-cmake --build build --parallel
-ctest --test-dir build --output-on-failure        # 11 个测试，应 100% 通过
-python3 tools/check_m1.py                          # 87 项契约检查，应 87/87
+cmake --preset linux-ci
+cmake --build --preset linux-ci --parallel
+ctest --preset linux-ci                           # 16 个测试，应 100% 通过
+python3 tools/check_m1.py                          # 94 项契约检查，应 94/94
 ```
+
+`CMakePresets.json` 是构建配置的唯一出处（X2-e3）：CI、README 和本节的命令都走 preset，
+不再各自复述一遍 `-D` 列表。preset 名由 `check_m1` 断言，改名会让 Linux job 直接红。
 
 - 宿主构建**不编译** Windows 专有部分（`ime/`、安装器、`httpdl`、`framework/platform/win32/imm32`、`framework/platform/win32/ui`），只测纯 C++ 层。
 - 产物：`build/tests/rospinyin-*`、`build/tools/mkdat/mkdat`。
@@ -276,17 +279,27 @@ bash tools/mkdat/build_dat.sh            # 默认输出 build/m2-data/rospinyin.
 
 ### 6.3 Win32 / ReactOS 目标（MinGW-w64 i686）
 
-CI 上（`.github/workflows/ci.yml`）跑两套配置：
+CI 上（`.github/workflows/ci.yml`）跑三套配置，全部来自 `CMakePresets.json`（X2-e3）：
 
 ```bash
-cmake -S . -B build-standalone -G Ninja -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_CXX_COMPILER=g++ -DCMAKE_RC_COMPILER=windres -DROSPINYIN_BUILD_TESTS=OFF
-cmake -S . -B build-intree -G Ninja -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_CXX_COMPILER=g++ -DCMAKE_RC_COMPILER=windres \
-      -DROSPINYIN_IN_TREE=ON -DROSPINYIN_BUILD_TESTS=OFF
-cmake --build build-standalone --parallel
-cmake --build build-intree --parallel
+# 在 MSYS2 的 MINGW32 shell 里（g++/windres 就是 i686 的那套）
+cmake --preset win32-mingw          # 可发布形态，build-standalone/
+cmake --preset win32-intree         # ROSPINYIN_IN_TREE=ON，不建安装器与 rhash
+cmake --preset win32-toy            # ROSPINYIN_SCHEME=toy，注入缝的常驻证明
+cmake --build --preset win32-mingw --parallel
+cmake --build --preset win32-intree --parallel
+cmake --build --preset win32-toy --parallel
 ```
+
+**没有 MINGW32 shell 的机器**（本机就是这种）用交叉 preset：
+
+```bash
+export ROSPINYIN_MINGW_TOOLCHAIN=/path/to/toolchain-i686.cmake   # CC/CXX/RC 都指向 i686-w64-mingw32-*
+cmake --preset win32-cross          # build-cross/
+cmake --build --preset win32-cross --parallel
+```
+
+`win32-trace` 是加 `ROSPINYIN_TRACE=ON` 的同一形态（`build-trace/`），只在排查时用，不进发布。
 
 **工具链硬约束**（历史踩坑换来的）：
 
@@ -497,8 +510,8 @@ VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
 
 | 门禁 | 命令 | 通过标准 |
 |---|---|---|
-| 宿单单测 | `ctest --test-dir build` | 11/11（smoke、session、pinyin、pinyin-session、candidate-pager、pinyin-scheme、emit-text、utf8、code-table、m1-contract、mkdat-e2e） |
-| 契约静态检查 | `python3 tools/check_m1.py` | 87/87（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
+| 宿单单测 | `ctest --preset linux-ci`（或 `ctest --test-dir build`） | 16/16（smoke、session、pinyin、pinyin-session、candidate-pager、pinyin-scheme、scheme-registry、toy-scheme、host-key、key-route、host-smoke、emit-text、utf8、code-table、m1-contract、mkdat-e2e） |
+| 契约静态检查 | `python3 tools/check_m1.py` | 94/94（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
 | Win32 语法检查 | CI 的第一步，见 §6.3 | 0 error（用 `tools/syntax_stub` 提供的 Windows 头） |
 | PE 导入表 | CI `objdump -p` | 不得出现 Vista+ 导出或非系统 DLL |
 | 真机验收 | `docs/milestones/m2/M2-ACCEPTANCE.md` | 15 项全绿 |
@@ -2060,6 +2073,67 @@ make[3]: *** [ime/CMakeFiles/rospinyin-ime.dir/build.make:120: ime/rospinyin.ime
 
 ---
 
+### 11.32 X2-e3 构建配置收敛：presets 一处定义，缺目录不再是静默成功（2026-11-19 16:4x）
+
+审计 A-P1-6 列了五件事，它们的共同点不是"构建文件难看"，而是**同一个事实被多处复述**。
+复述就会漂移，而漂移在这个项目里已经有过样本：`build-win` 的测试是 OFF，
+`build-win-trace-en` 是 ON，两个目录并排放着，没人知道哪个才是"对的构建"。
+
+| 事项 | 之前 | 现在 |
+|---|---|---|
+| 配置定义 | CI 的 YAML 里 4 段 `-D` 列表，本地靠 shell 历史 | `CMakePresets.json` 6 个 configure preset + 6 个 build preset + 1 个 test preset，CI 只写 `cmake --preset win32-mingw` |
+| 缺目录 | 5 处 `EXISTS` 守卫：目录不在就静默少编一块 | 裸 `add_subdirectory`，缺目录是 configure 失败 |
+| 根变量 | `tests/` 用 `CMAKE_SOURCE_DIR`，`ime/`、`pinyin/` 用 `PROJECT_SOURCE_DIR` | 一律 `PROJECT_SOURCE_DIR` |
+| C 语言等级 | 只钉 C++17，C 跟着编译器默认走（GCC 11 是 gnu17，更早是 gnu11） | `CMAKE_C_STANDARD 11` + `REQUIRED` + `EXTENSIONS OFF`（实测 `-std=c11`） |
+| 静态运行时 | 4 个文件各写一遍，`httpdl` 还只写了一半 | `cmake/StaticRuntime.cmake` 两个函数：`rospinyin_static_runtime()` / `rospinyin_reproducible_pe()` |
+
+**为什么 `EXISTS` 必须去掉，而不是"改成警告"。** 它的形状与 X2-e2 那个洞完全一样：X2-e2 里，
+数据源没编进来时 weak 兜底让链接成功，产物 942,989 B（正常 948,481 B），装上去只是候选变少；
+这里，`tools/rhash` 目录没了，configure 成功、产物少一个 `rhash.exe`，而 CI 的
+`find ... -name rhash.exe` 会拿到空字符串——`test -n "$RHASH"` 恰好会红，但那是**另一条**断言
+替它挡的，不是构建本身说的话。构建该说的是"这个目录必须存在"，`add_subdirectory` 天生会说这句。
+
+**静态策略收拢后顺手补了一个漏洞**：`--no-insert-timestamp` 之前只给了 `.ime`。
+`install-rospinyin.exe`、`rhash.exe`、`wget.exe`/`curl.exe` 仍带链接时间戳，
+于是"同一个哈希 = 同一次构建"这句话对四个工具都不成立——而 `rhash.exe` 正是 guest 侧
+用来回答这个问题的工具，它自己却不可复现。现在四个 PE 都拿到了。
+实测：两个不同构建目录的 `rhash.exe`、`wget.exe` 各自 sha256 相同；与 X2-e2 那版比，
+`rhash.exe` 只差 **5 个字节**（`TimeDateStamp` + `Checksum` + 镜像字节）。
+
+**presets 落地时的一个真发现：可复现性不跨生成器。**
+`win32-*` preset 用 Ninja，而本机旧的 `build-x2a1-pinyin` 是 Unix Makefiles。
+两份产物**同为 947,820 B，sha256 不同**（`b0529131…` vs `93ab887d…`），差异 14,567 字节、散布 122 个 4 KB 块。
+原因是生成器决定链接命令行：Makefiles 先把目标文件打成 `objects.a` 再 whole-archive，
+Ninja 直接列 `.obj`。代码一模一样，布局不一样。
+**这不是缺陷，是边界**：把生成器写进 preset 正是为了让"同一份源码 → 同一个哈希"有确定的含义。
+两个 Ninja 目录实测逐字节相同（`b0529131…`），这条才成立。
+
+**判据**（对外面一律不看字节）：
+- 16 导出名及顺序、5 个 DLL、每 DLL 导入函数集逐条同序，与 X2-e2 产物**完全一致**；
+- 四个 PE 的依赖面：`.ime` GDI32/IMM32/KERNEL32/msvcrt/USER32；`install-rospinyin.exe`
+  ADVAPI32/IMM32/KERNEL32/msvcrt；`rhash.exe` KERNEL32/msvcrt；`wget.exe` KERNEL32/msvcrt/WS2_32。
+  无 `vcruntime140` / `api-ms-win-crt` / `libstdc++-6` / `libgcc_s` / `libwinpthread`；
+- 三种形态构建通过：toy 876,352 B（不变）、trace 971,833 B（`dat MISSING`/`dat TRUNCATED` 仍命中）、
+  in-tree 947,820 B 且 **不产** `install-rospinyin.exe` / `rhash.exe`（只留 httpdl + mkdat）；
+- `ctest` 16/16、`check_m1` 87 → **94**（+7）、`check_docs` 7/7。
+
+**新增 7 条断言**（全部按"匹配调用"写，且 7 次变异逐个变红）：
+
+| 断言 | 钉法 | 变异（都红） |
+|---|---|---|
+| 没有 `EXISTS` 守卫 | 根 `CMakeLists.txt` 剥注释后不含 `EXISTS` | 加回 `EXISTS` 守卫 |
+| C 语言等级显式 | 三行 `CMAKE_C_STANDARD` 必须在根文件 | 删掉三行 |
+| 根变量统一 | 扫全部 `CMakeLists.txt`，`${CMAKE_SOURCE_DIR}` 不许出现 | `tests/` 改回一处 |
+| 策略中枢存在 | `cmake/StaticRuntime.cmake` 定义两个函数 + 根文件 `include()` 它 | — |
+| 每个 PE 都调用两条策略 | 5 个 (文件, 目标) 对逐个匹配 `rospinyin_static_runtime(<t>` 与 `rospinyin_reproducible_pe(<t>` | 删 `ros-curl` 的可复现调用 |
+| 不许复述 flag | 上述文件剥注释后不许出现 `-static-libstdc++` / `-static-libgcc` / `--no-insert-timestamp` | 在 `ime/` 写回字面 flag |
+| presets + CI 走 preset | JSON 必含 `linux-ci` / `win32-mingw` / `win32-trace`，且 YAML 里有 `cmake --preset linux-ci`、`cmake --preset win32-mingw` | preset 改名 / CI 去掉 `--preset` |
+
+顺带把 `.cmake` 加进 `check_m1` 的 SPDX 扫描范围——新文件 `cmake/StaticRuntime.cmake` 因此
+和其他源文件受同一条规则约束。
+
+---
+
 ### 11.2 其他待办
 
 - ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。
@@ -2077,7 +2151,7 @@ make[3]: *** [ime/CMakeFiles/rospinyin-ime.dir/build.make:120: ime/rospinyin.ime
 **改代码**
 
 1. `cmake --build build --parallel && ctest --test-dir build` → 16/16；
-2. `python3 tools/check_m1.py` → 87/87（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
+2. `python3 tools/check_m1.py` → 94/94（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
 3. 动了 `framework/platform/win32/imm32` 或 `framework/platform/win32/ui`：跑 CI 那步宿主语法检查（§6.3），确认 `-Wchanges-meaning` / ABI 断言不炸；
 4. 动了 ABI：本地用 zig 真实 MinGW 头编译一次 `framework/platform/win32/imm32/imm_entry.cpp`（`-target x86-windows-gnu -c`）。
 

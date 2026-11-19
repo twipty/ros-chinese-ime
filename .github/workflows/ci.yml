@@ -37,12 +37,15 @@ jobs:
           framework/platform/win32/ui/toolbar.cpp ime/scheme_reg.cpp
           ime/scheme_reg_toy.cpp samples/toy-scheme/toy_scheme.cpp
           tools/install-rospinyin/install.cpp
+      # CMakePresets.json is the single source of build configuration
+      # (X2-e3, audit A-P1-6). Repeating the flags here is how build-win ended
+      # up with tests OFF while build-win-trace-en had them ON.
       - name: Configure
-        run: cmake -S . -B build -DROSPINYIN_BUILD_TESTS=ON
+        run: cmake --preset linux-ci
       - name: Build
-        run: cmake --build build --parallel
+        run: cmake --build --preset linux-ci --parallel
       - name: Test
-        run: ctest --test-dir build --output-on-failure
+        run: ctest --preset linux-ci
       - name: Build rospinyin.dat from pinned sources
         # Same sha256-verified inputs the VM data plan documents; the dat is
         # published with the binaries so guestOS can wget it from the share.
@@ -97,44 +100,30 @@ jobs:
         # base64 and restored here before windres compiles rospinyin_res.rc.
         shell: msys2 {0}
         run: tr -d '\r' < ime/rospinyin.ico.b64 | base64 -d > ime/rospinyin.ico
+      # Three configurations, one definition each: CMakePresets.json (X2-e3).
+      # The preset names below are asserted by tools/check_m1.py, so a rename
+      # here fails the Linux job instead of quietly testing nothing.
       - name: Configure (standalone)
         shell: msys2 {0}
-        run: >-
-          cmake -S . -B build-standalone -G Ninja
-          -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_CXX_COMPILER=g++
-          -DCMAKE_RC_COMPILER=windres
-          -DROSPINYIN_BUILD_TESTS=OFF
+        run: cmake --preset win32-mingw
       - name: Configure (in-tree target)
         shell: msys2 {0}
-        run: >-
-          cmake -S . -B build-intree -G Ninja
-          -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_CXX_COMPILER=g++
-          -DCMAKE_RC_COMPILER=windres
-          -DROSPINYIN_IN_TREE=ON
-          -DROSPINYIN_BUILD_TESTS=OFF
+        run: cmake --preset win32-intree
       - name: Configure (toy scheme)
         # X2-a0's standing proof: a *second* scheme assembles from the same
         # framework by switching one option. If this job disappears, the "add a
         # folder, not a framework patch" claim stops being tested anywhere.
         shell: msys2 {0}
-        run: >-
-          cmake -S . -B build-toy -G Ninja
-          -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_CXX_COMPILER=g++
-          -DCMAKE_RC_COMPILER=windres
-          -DROSPINYIN_BUILD_TESTS=OFF
-          -DROSPINYIN_SCHEME=toy
+        run: cmake --preset win32-toy
       - name: Build (standalone)
         shell: msys2 {0}
-        run: cmake --build build-standalone --parallel
+        run: cmake --build --preset win32-mingw --parallel
       - name: Build (in-tree target)
         shell: msys2 {0}
-        run: cmake --build build-intree --parallel
+        run: cmake --build --preset win32-intree --parallel
       - name: Build (toy scheme)
         shell: msys2 {0}
-        run: cmake --build build-toy --parallel
+        run: cmake --build --preset win32-toy --parallel
       - name: Verify PE imports (ReactOS 0.4.16 compatibility)
         shell: msys2 {0}
         run: |
