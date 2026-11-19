@@ -204,14 +204,15 @@
 - **12.1 F-T1 分级码表（dat v2）**（估 1.5-2 人日）
   - 12.1.1 `tools/` 新增 cmap 提取脚本（fontTools，Linux 宿主一次性）：从 Droid Sans Fallback
     提取覆盖码点集，入库 fixtures（单一真相源）
-  - 12.1.2 mkdat 吃码点集，`CharEntry` 增 `tier` 字段（uint32：1=系统保底可绘，2=需额外字体）；
-    dat 版本 1→2，`CodeTable` 解析同步，旧 v1 文件按「全部 tier 1」语义读（向后兼容读法或明确拒载二选一，实现时定）
+  - 12.1.2 mkdat 吃码点集，Entry 第 6 槽 `flags` bit1 = tier（**0 = 系统保底可绘，1 = 需额外字体**；
+    统一格式冻结见 `DAT-FORMAT-V2.md`：Header 64B / Entry 24B，与形码同骨架）；
+    dat 版本 1→2，`CodeTable` 解析同步，旧 v1 文件按「全部 tier 0」兼容读（**已定，不拒载**）
   - 12.1.3 同输入逐字节复现；两级字数统计入构建日志与 EXIT-GAP 口径
 - **12.2 F-T2 全字形开关 + 探测链退役**（估 1-1.5 人日）
   - 12.2.1 会话级布尔（默认关、不持久化——不写注册表不写文件）；重置时机三处：IME 重选、
     切换输入法、切换上下文（据此放 `on_select`/激活路径，一行赋值）
-  - 12.2.2 候选过滤语义：关闭态候选只含 tier 1（rare/无 rank 维持现行为），打开态不过滤；
-    行为变更点记录：原「tier 2 且有 rank」的字由「显示后剔除」改为「关闭态不显示」
+  - 12.2.2 候选过滤语义：关闭态候选只含 tier 0（rare/无 rank 维持现行为），打开态不过滤；
+    行为变更点记录：原「tier 1 且有 rank」的字由「显示后剔除」改为「关闭态不显示」
   - 12.2.3 `GlyphProbe`/`UiCanRender`/`Win32Host::can_render`/`renderable_candidates` 运行时探测链退役
     （X2-f 的 can-render seam 2/2 归零；`tools/seams.py` 与 `check_m1` 同步删项）
 - **12.3 F-T3 快/全指示器与切换**（估 1.5-2 人日；排在 M3 键位定型之后）
@@ -229,10 +230,10 @@
     Fonts 键 + `WM_FONTCHANGE`；**只许在安装器里注册**（`check_m1` §6 白名单）；`/status` 三态、
     `/u` 对称清理
 - **12.5 回归口径**（并入上述各项）
-  - 12.5.1 `coverage_report.py` 适配 tier：tier 1 覆盖率单独报告，M2 的 96.8% 门限按 tier 1 口径复核
+  - 12.5.1 `coverage_report.py` 适配 tier：tier 0 覆盖率单独报告，M2 的 96.8% 门限按 tier 0 口径复核
   - 12.5.2 同步 `RARE-CHAR-AND-GLYPH-SOLUTION.md`（第 1/2 层被 F-T2 取代、第 3 层被开关吸收、
     第 4 层并入 12.4）与 `docs/milestones/m2/M2-REMAINING.md` 的 P1-2 口径
 
-退出标准（改）：关闭态（默认）候选集 ⊆ tier 1，零方框由构建期保证；打开态全字可达、
+退出标准（改）：关闭态（默认）候选集 ⊆ tier 0，零方框由构建期保证；打开态全字可达、
 方框为文档化预期；`快/全` 指示器与开关一致、三重置时机后回关闭态；开关零持久化；
 探测链删除后 ctest/check_m1 全绿。

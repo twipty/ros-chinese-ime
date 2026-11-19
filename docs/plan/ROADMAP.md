@@ -95,8 +95,8 @@ v0.1「墨」→ v0.2「联」→ v0.3「全」→ v1.0「正」
 
 | 阶段 | 内容 | 判据 |
 |---|---|---|
-| **F-T1** | **分级码表**：构建期按 Droid Sans Fallback（当前 UI 绘制字体的单一真相源）的 cmap 覆盖把 `.dat` 每字分为两级——tier 1 = 系统保底可绘（关闭态可见集），tier 2 = 需额外字体 | `tools/` 新增脚本（fontTools，Linux 宿主一次性）提取 cmap 入库 fixtures；mkdat 吃码点集产出 dat v2（`CharEntry` 增 `tier` 字段）；同输入逐字节复现；tier 统计（两级各多少字）入构建日志 |
-| **F-T2** | **全字形开关 + 过滤语义改造**：会话级布尔（默认关）；关闭态候选只含 tier 1（rare/无 rank 字维持现行为：尾部、音节空才回退），打开态不过滤；`GlyphProbe`/`UiCanRender`/`Host::can_render`/`renderable_candidates` 运行时探测链**退役**（含 X2-f 的 can-render seam、seams.py/check_m1 同步） | 关闭态候选 ⊆ tier 1（宿主单测钉住）；打开态全字可达；探测链删除后 ctest/check_m1 全绿；行为变更点记录（原「tier 2 且有 rank」的字关闭态由显示后剔除改为不显示） |
+| **F-T1** | **分级码表**：构建期按 Droid Sans Fallback（当前 UI 绘制字体的单一真相源）的 cmap 覆盖把 `.dat` 每字分为两级——**tier 0 = 系统保底可绘（关闭态可见集），tier 1 = 需额外字体** | `tools/` 新增脚本（fontTools，Linux 宿主一次性）提取 cmap 入库 fixtures；mkdat 吃码点集产出 dat v2（统一格式：64B 头 / 24B 条目，Entry `flags` bit1 = tier，见 `DAT-FORMAT-V2.md`）；同输入逐字节复现；tier 统计（两级各多少字）入构建日志 |
+| **F-T2** | **全字形开关 + 过滤语义改造**：会话级布尔（默认关）；关闭态候选只含 tier 0（rare/无 rank 字维持现行为：尾部、音节空才回退），打开态不过滤；`GlyphProbe`/`UiCanRender`/`Host::can_render`/`renderable_candidates` 运行时探测链**退役**（含 X2-f 的 can-render seam、seams.py/check_m1 同步） | 关闭态候选 ⊆ tier 0（宿主单测钉住）；打开态全字可达；探测链删除后 ctest/check_m1 全绿；行为变更点记录（原「tier 1 且有 rank」的字关闭态由显示后剔除改为不显示） |
 | **F-T3** | **指示器**：工具栏 `拼:开/关` 旁新增 `快/全`（对应全字形开关）；切换交互按实现难度先做一种——**建议 lone-Ctrl 热键**（与 lone-Shift 同构、键路由/冒烟基建可直接复用；ReactOS imm32 热键注册有 CORE-19455 前科，VM 实测兜底），备选工具栏点击（需 MA_NOACTIVATE 防抢焦点）；未实现的那种归入状态工具条（PLAN §11） | `toolbar_text()` 扩展 `快/全` 段（scheme.hpp 加虚函数，默认空 → toy scheme 零改动）；toolbar 宽度适配（44px 实测边界已裁过 `拼:开`，5 全角字符需重算）；toolbar_text_test 扩展；lone-Ctrl 与 Ctrl+Space 判定次序写明（先组合键后 lone） |
 | **F-T4** | **安装器与文档提示** + **全字形字体包（原 F3，移出关键路径）**：安装器 `/status` 与发布说明写明「全字形模式需字体支持」；字体包（文津/Jigmo 三件套，≈57 MB，独立可选）服务打开开关后想真正看见的用户——**装了字体包的用户打开开关即得完整覆盖** | `/status` 提示行；alpha0.0.3 发布说明按 HANDOVER §6.4 纪律写安装器首选 + 全字形提示；README 已知问题；字体包保留原判据（`/status` 三态、`/u` 对称清理、只许安装器注册） |
 
@@ -106,7 +106,7 @@ v0.1「墨」→ v0.2「联」→ v0.3「全」→ v1.0「正」
 2. **打开态全字可达**：方框为预期行为并有提示（安装器 + 发布说明），装字体包后真可见；
 3. **指示器与开关一致**：`快/全` 随开关刷新；三重置时机（IME 重选 / 切换输入法 / 切换上下文）后回到关闭态；
 4. **零持久化**：开关不写注册表、不写文件，纯会话内存态；
-5. `coverage_report.py` 适配 tier 口径（第 1 级覆盖率单独报告，M2 的 96.8% 门限按 tier 1 口径复核）。
+5. `coverage_report.py` 适配 tier 口径（tier 0 覆盖率单独报告，M2 的 96.8% 门限按 tier 0 口径复核）。
 
 **联动处置**：`FONT-PLAN-REVIEW.md`/`MINIMAL-FONT-SET-PLAN.md`/`FULL-GLYPH-COVERAGE-PLAN.md`/`RARE-CHAR-AND-GLYPH-SOLUTION.md` 已加变更标注（原文保留入库）；字体选型结论（文津/Jigmo 实测 100%）仍指导 F-T4 字体包；RARE-CHAR 第 1/2 层被 F-T2 取代、第 3 层被开关吸收（TailLimited 不再单独立项）、第 4 层并入 F-T4；D-F1（字体链入口风格）推迟到字体包有真实需求时拍板。
 

@@ -7,13 +7,29 @@
 
 ## 未发布
 
+### 码表 dat 统一格式 v2 冻结（2026-11-20，规范 + 头文件契约，零行为变更）
+
+- owner 裁定：接收 `xingma/docs/glyph-tier/UNIFIED-DAT-FORMAT.md` 为**新版 dat 的唯一冻结版本**——
+  拼音 `rospinyin.dat` 与形码 `shape.dat` 同骨架、分 magic（`ROSPYDAT` / `ROSSHDAT`）。
+  拼音侧落地文本为新增的 `docs/plan/DAT-FORMAT-V2.md`：Header 64B、Entry 24B 六槽、
+  `flags` bit1 = `tier`（**0 = Droid 保底可绘，1 = 需额外字体**）；两文冲突以统一文本为准。
+- `framework/include/imfw/dat_format.hpp` 增加 v2 契约（`kVersionV2`、`HeaderV2` 64B、
+  `CharEntryV2` 24B、`kFlagTier`），static_assert 钉住尺寸；**v1 结构与 `kVersion` 原样保留**，
+  加载器行为不变（v2 读取随 F-T1 落地）。
+- 拼音三条校验红线写入规范：① 拼音入口只认 `ROSPYDAT`（防止形码表被静默误读）；
+  ② `rank == kUnknownRank` 合法（44,355 条里 34,457 条无频序）；③ 槽 4 是 `alt_off`，
+  不得要求为 0（多音字次读音）。
+- 文档口径同步：`PLAN.md` §12、`ROADMAP.md` §F、`M2-REMAINING.md` 的 tier 编号改为 0 = 保底可绘。
+- 遗留待裁决 7 项见 `DAT-FORMAT-V2.md` §10（含统一文本 §2.1 公式笔误 `24 → 64`）。
+
 ### F 里程碑计划变更：分级码表 + 全字形开关（2026-11-19，仅计划文档）
 
 - owner 决策：摒弃「调用输入法时运行时字形探测」路线（原 F0 GDI 探针、F1 多字体探针、
   F4 过滤三态化、D-F1 风格决策），改为**构建期分级码表 + 用户全字形开关**：
-  1. `.dat` 按 Droid Sans Fallback 的 cmap 覆盖分两级（tier 1 = 系统保底可绘），
-     mkdat 产出 dat v2（`CharEntry` 增 `tier` 字段）；
-  2. 输入法新增「全字形」开关：关闭态（默认）候选只含 tier 1、零方框由构建期保证；
+  1. `.dat` 按 Droid Sans Fallback 的 cmap 覆盖分两级（tier 0 = 系统保底可绘；
+     字段形态最终由 2026-11-20 统一格式冻结为 Entry `flags` bit1），
+     mkdat 产出 dat v2；
+  2. 输入法新增「全字形」开关：关闭态（默认）候选只含 tier 0、零方框由构建期保证；
      打开态显示全部（需字体支持）；工具栏 `拼:开/关` 旁新增 `快/全` 指示器；
      切换交互按实现难度先实现一种（首选 lone-Ctrl 热键），另一种归状态工具条；
   3. 安装器与发布说明提示「全字形模式需字体支持」；
