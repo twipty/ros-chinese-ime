@@ -743,6 +743,19 @@ def run(root: Path) -> int:
             "SPI_GETWORKAREA" in toolbar_cpp and
             "screen_h - kToolbarHeight" not in toolbar_cpp)
 
+    # Guest-side hashing (2026-11-19). ReactOS ships no sha256sum and no
+    # certutil, while two of our rospinyin.ime builds are both 940,888 bytes
+    # with different content -- so a byte count cannot verify a deployment.
+    # rhash fills that gap; the constraints are the same as the installer's:
+    # CryptoAPI is incomplete on ReactOS (own SHA-256 instead), and msvcrt
+    # does not guarantee %llu (HANDOVER 11.4), hence plain %lu sizes.
+    rhash_src = strip_cpp_comments(read(root, "tools/rhash/rhash.c"))
+    c.check("rhash: own SHA-256, no CryptoAPI, no %llu",
+            "0x6a09e667u" in rhash_src and
+            "Crypt" not in rhash_src and
+            "%llu" not in rhash_src and
+            "FILE_SHARE_DELETE" in rhash_src)
+
     return c.summary()
 
 

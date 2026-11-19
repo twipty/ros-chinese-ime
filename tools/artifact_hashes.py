@@ -60,7 +60,7 @@ DEFAULT_SHARE = Path.home() / ".workbuddy" / "tmp" / "vmshare"
 SUFFIXES = {".ime", ".dat"}
 # Deployment binaries, matched by name because a build tree holds hundreds of
 # unrelated .exe files.
-EXE_NAMES = {"install-rospinyin.exe", "imhost.exe", "imhost_dyn.exe"}
+EXE_NAMES = {"install-rospinyin.exe", "rhash.exe", "imhost.exe", "imhost_dyn.exe"}
 SKIP_DIRS = {".git", "xingma", "vendor", "node_modules"}
 
 
@@ -216,6 +216,11 @@ def main() -> int:
                 else:
                     print(f"  ✗ 共享目录的 {a.path.name} 不是 ★：{a.size:,} B {a.short}"
                           f"（guest 若从这里取，装的就是另一版）")
+        if expected.path.suffix.lower() == ".ime":
+            print("\n  guest 内核对（ReactOS 没有 sha256sum，用我们自己的 rhash.exe）：")
+            print(r"    rhash.exe C:\ReactOS\system32\rospinyin.ime")
+            print(f"    期望 {expected.size:,} B 与上面的 sha256；")
+            print("    若 rhash.exe 不在 guest 里，先 wget http://10.0.2.2:8000/rhash.exe")
 
     if collisions:
         print("\n⚠ 同字节数、不同内容 —— 只比大小的检查在这里会失效：")

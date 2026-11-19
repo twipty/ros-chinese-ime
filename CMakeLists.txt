@@ -49,6 +49,12 @@ if(WIN32 AND NOT ROSPINYIN_IN_TREE AND
    EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/install-rospinyin/CMakeLists.txt")
     add_subdirectory(tools/install-rospinyin)
 endif()
+# SHA-256 helper for the guest: ReactOS ships no sha256sum, and byte counts
+# cannot tell two same-sized builds apart.
+if(WIN32 AND NOT ROSPINYIN_IN_TREE AND
+   EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/rhash/CMakeLists.txt")
+    add_subdirectory(tools/rhash)
+endif()
 # Fully-static HTTP download helper for the ReactOS VM (wget/curl shims).
 if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/httpdl/CMakeLists.txt")
     add_subdirectory(tools/httpdl)

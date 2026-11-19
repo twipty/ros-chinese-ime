@@ -142,12 +142,15 @@ jobs:
           IME=$(find build-standalone -type f -name rospinyin.ime | head -n 1)
           TOY=$(find build-toy -type f -name rospinyin.ime | head -n 1)
           EXE=$(find build-standalone -type f -name install-rospinyin.exe | head -n 1)
+          RHASH=$(find build-standalone -type f -name rhash.exe | head -n 1)
           WGET=$(find build-standalone -type f -name wget.exe | head -n 1)
           CURL=$(find build-standalone -type f -name curl.exe | head -n 1)
-          test -n "$IME" && test -n "$TOY" && test -n "$EXE" && test -n "$WGET" && test -n "$CURL"
+          test -n "$IME" && test -n "$TOY" && test -n "$EXE" && test -n "$RHASH"
+          test -n "$WGET" && test -n "$CURL"
           echo "IME=$IME"
           echo "TOY=$TOY"
           echo "EXE=$EXE"
+          echo "RHASH=$RHASH"
           echo "WGET=$WGET"
           echo "CURL=$CURL"
           # A toy build that came out byte-identical to the product build means
@@ -157,7 +160,7 @@ jobs:
             echo "FATAL: -DROSPINYIN_SCHEME=toy produced the pinyin binary"
             exit 1
           fi
-          for f in "$IME" "$TOY" "$EXE" "$WGET" "$CURL"; do
+          for f in "$IME" "$TOY" "$EXE" "$RHASH" "$WGET" "$CURL"; do
             echo "===== imports of $f ====="
             objdump -p "$f" | sed -n '/The Import Tables/,$p'
             if objdump -p "$f" | grep -Eqi 'InitializeCriticalSectionEx'; then
@@ -177,11 +180,13 @@ jobs:
           set -eu
           IME=$(find build-standalone -type f -name rospinyin.ime | head -n 1)
           EXE=$(find build-standalone -type f -name install-rospinyin.exe | head -n 1)
+          RHASH=$(find build-standalone -type f -name rhash.exe | head -n 1)
           WGET=$(find build-standalone -type f -name wget.exe | head -n 1)
           CURL=$(find build-standalone -type f -name curl.exe | head -n 1)
           mkdir -p stage
           cp "$IME" stage/rospinyin.ime
           cp "$EXE" stage/install-rospinyin.exe
+          cp "$RHASH" stage/rhash.exe
           cp "$WGET" stage/wget.exe
           cp "$CURL" stage/curl.exe
           ls -l stage
@@ -241,8 +246,8 @@ jobs:
           git config user.email "82503737+twipty@users.noreply.github.com"
           mkdir -p /tmp/binaries
           cp -f stage/rospinyin.ime stage/install-rospinyin.exe \
-                stage/wget.exe stage/curl.exe m2-stage/rospinyin.dat \
-                /tmp/binaries/
+                stage/rhash.exe stage/wget.exe stage/curl.exe \
+                m2-stage/rospinyin.dat /tmp/binaries/
           if git ls-remote --exit-code origin m1-artifacts >/dev/null 2>&1; then
             git fetch origin m1-artifacts
             git checkout -B m1-artifacts origin/m1-artifacts
@@ -252,12 +257,12 @@ jobs:
             git clean -fdx >/dev/null 2>&1 || true
           fi
           cp -f /tmp/binaries/rospinyin.ime /tmp/binaries/install-rospinyin.exe \
-                /tmp/binaries/wget.exe /tmp/binaries/curl.exe \
-                /tmp/binaries/rospinyin.dat .
+                /tmp/binaries/rhash.exe /tmp/binaries/wget.exe \
+                /tmp/binaries/curl.exe /tmp/binaries/rospinyin.dat .
           printf 'source commit: %s\nbuilt: %s\n' \
             "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > INFO.txt
-          git add -f rospinyin.ime install-rospinyin.exe wget.exe curl.exe \
-                    rospinyin.dat INFO.txt
+          git add -f rospinyin.ime install-rospinyin.exe rhash.exe wget.exe \
+                    curl.exe rospinyin.dat INFO.txt
           git commit -m "M2 Win32 binaries + data from ${GITHUB_SHA::7}" || echo "no changes"
           # Force push: this branch is a binary drop zone, newest run wins.
           # Also removes non-fast-forward failures from concurrent runs.
@@ -297,13 +302,15 @@ jobs:
         run: |
           set -eu
           mkdir -p out
-          cp stage/rospinyin.ime stage/install-rospinyin.exe m2-stage/rospinyin.dat out/
+          cp stage/rospinyin.ime stage/install-rospinyin.exe stage/rhash.exe \
+             m2-stage/rospinyin.dat out/
           printf 'tag: %s\nsource commit: %s\nworkflow run: %s\n' \
             "$TAG" "$GITHUB_SHA" \
             "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             > out/INFO.txt
           cd out
-          sha256sum rospinyin.ime rospinyin.dat install-rospinyin.exe INFO.txt \
+          sha256sum rospinyin.ime rospinyin.dat install-rospinyin.exe rhash.exe \
+            INFO.txt \
             > SHA256SUMS.txt
           cat SHA256SUMS.txt
       - name: Publish

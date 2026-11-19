@@ -200,6 +200,7 @@ ros-pinyin/
 │   ├── vm_clock.py             guest 时钟对齐：时区 .reg / 手敲 date+time 两个通道
 │   ├── mkdat/                  数据编译器 + fetch_data.py + fixtures
 │   ├── install-rospinyin/      安装器（分步注册；自身不写 Preload，属部署偏好）
+│   ├── rhash/                  guest 侧 SHA-256：ReactOS 没有 sha256sum/certutil
 │   ├── httpdl/                 全静态 HTTP 下载器（guest 侧 wget/curl 替身）
 │   └── syntax_stub/            宿主侧 Win32 头桩（Linux 语法检查用）
 ├── m0/vm/                      QEMU/ReactOS 实验环境（qcow2、启动脚本、noVNC、证据、日志）
@@ -237,6 +238,7 @@ ros-pinyin/
 | 安装器 | `tools/install-rospinyin/install.cpp` | `/step1..4` 分步注册、动态 HKL 记录、`/i` 串行（仅 Windows 参照机） | Win |
 | 契约检查 | `tools/check_m1.py` | 77 项静态断言（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、ABI、reload 顺序…） | 宿主 |
 | 部署对账 | `tools/artifact_hashes.py` | 各构建产物与共享副本的 size/sha256 对照，标出"同字节数不同内容"与"共享目录不是这一版" | 宿主 |
+| guest 侧哈希 | `tools/rhash/rhash.c` | 自带 SHA-256 的小 exe：`rhash.exe [文件...]`，无参数时算 system32 的 `.ime`/`.dat`。只依赖 kernel32+msvcrt | Win |
 | guest 时钟 | `tools/vm_clock.py` | 诊断宿主/UTC/guest 显示差值；生成时区 `.reg` 或打印 `date`/`time` 命令（**只打印，不代敲**） | 宿主 |
 
 ---
@@ -339,6 +341,20 @@ install-rospinyin.exe /step4      REM Layout Display Name
 **版本对账**：`python3 tools/artifact_hashes.py --expect <构建产物的路径片段>` 会把仓库里所有 `.ime/.dat`
 和共享目录副本一起算 sha256，标出「共享目录那份是不是 ★」「哪些文件同字节数但内容不同」。
 本仓库实测就有 **940,888 B 三份不同内容、929,030 B 两份不同内容** —— 所以"大小一样"从来不是证据。
+
+**guest 侧核对**：ReactOS 没有 `sha256sum`/`certutil`/PowerShell，字节数是唯一现成的判据，而它不够。
+所以随包给一个 `rhash.exe`（`tools/rhash/rhash.c`，自带 SHA-256，只依赖 kernel32+msvcrt）：
+
+```bat
+wget http://10.0.2.2:8000/rhash.exe
+rhash.exe                                  REM 默认算 system32\rospinyin.ime 与 .dat
+rhash.exe C:\ReactOS\system32\rospinyin.ime
+REM 输出：<64 hex>  <bytes>  <path>   —— 与 artifact_hashes.py 打印的 sha256 逐字符比
+```
+
+它用自己的 SHA-256 而不是 CryptoAPI：ReactOS 的 CryptoAPI 实现不全，且引进来就多一条
+`advapi32` 依赖。`check_m1.py` 钉住三点：必须有初始常量（证明是自己算的）、源码不得出现
+`Crypt`、不得用 `%llu`（msvcrt 不保证，见 §11.4）。三处各变异一次都变红。
 
 ### 6.5 VM 运行与观察
 
