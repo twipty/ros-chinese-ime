@@ -7,6 +7,27 @@
 
 ## 未发布
 
+### 状态指示器：Shift 切状态，不切布局（2026-11-19）— **未合入，排队 X2-w1**
+
+> **状态：已实现并验证，`main` 上没有。** 在分支 `wip/status-indicator`；按用户"和候选窗补丁
+> 一起排期、先把 X2 做完"的决定，排入 PLAN-MODULARIZATION §3「X2-w」，顺序 w1 → w2 → w3。
+> 下面记的是那份改动的实测数字，不是 `main` 的。
+
+- **语义澄清**：托盘红底「中」跟键盘布局（HKL）走，Shift 只改 `fOpen` → 它**不该变**，此前
+  "托盘不跟随"的记录方向有误。状态由我们自己的工具栏显示：`拼:开` / `拼:关`。
+- **`Scheme::toolbar_state_label(bool)`**（默认 `nullptr` = 无状态，四个假方案零改动）：
+  拼音 `开/关`，玩具 `on/off`。
+- **`framework/src/toolbar_text.cpp`（新，可移植）**：`拼` + `:` + 状态。提到可移植层是为了能测——
+  窗口要 GDI，字符串不用。新增 `tests/toolbar_text_test.cpp`（`ctest` **16/16**）。
+- **`toolbar.cpp`**：宽度改为实测（原来写死 44 px 会把 `拼:开` 裁掉），右边缘固定向左生长；
+  文本相同且可见时直接返回，避免每键一次 `InvalidateRect`。
+- **`imm_entry.cpp`**：每个键在 `ImeProcessKey` 里拉一次状态（bool 比较），Shift 手势后立刻再拉
+  一次。用"拉"而不是给 `Host` 加钩子，是因为 imm32 的 Ctrl+Space 直接改 `fOpen`、根本不进我们 DLL。
+- `check_m1` **71/71**（+3：标题必须由 `toolbar_text` 生成且旧直传必须消失、两处同步计数、
+  布局切换函数全仓库 0 处）；变异 5 次全红；16 导出 / 5 依赖 / 各自导入函数集全部一致；
+  i686 `949,940 B`（+3,641）。
+- 真机待验：一次 Shift 后 `拼:开`→`拼:关` 与托盘「中」不变需同框确认。
+
 ### 宿主冒烟（X2-b）：一段固定键序 + 一列精确的宿主调用
 
 - **新增 `tests/host_smoke_test.cpp`**（463 行，`ctest` 15/15）：`zhongguo` → `2` → `Backspace`×2 →
