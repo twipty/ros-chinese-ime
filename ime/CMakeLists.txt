@@ -57,6 +57,9 @@ add_library(rospinyin-ime SHARED
     ${ROSPINYIN_SCHEME_SOURCES}
     ../framework/platform/win32/imm32/dllmain.cpp
     ../framework/platform/win32/imm32/imm_entry.cpp
+    ../framework/platform/win32/imm32/key_translate.cpp
+    ../framework/platform/win32/imm32/trace_line.cpp
+    ../framework/platform/win32/imm32/win32_host.cpp
     ../framework/platform/win32/imm32/ui_server.cpp
     ../framework/platform/win32/imm32/session_store.cpp
     ../framework/platform/win32/ui/ime_ui.cpp

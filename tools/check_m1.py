@@ -218,7 +218,21 @@ def run(root: Path) -> int:
             f"extra={sorted(exports - REQUIRED_EXPORTS)}")
 
     abi = read(root, "framework/platform/win32/imm32/imm32_abi.h")
-    entry = read(root, "framework/platform/win32/imm32/imm_entry.cpp")
+    # X2-d split the IMM32 host layer into four translation units. Claims about
+    # the *layer* (what it may call, what it links, what it converts) read
+    # `entry_all`; claims about *ownership* read one named file and, where a
+    # second copy is the failure mode, say so explicitly -- "the string is
+    # somewhere" cannot distinguish "moved" from "copied", which is the false
+    # green this project hit three times during X2-a0/c.
+    IMM32 = "framework/platform/win32/imm32/"
+    entry = read(root, IMM32 + "imm_entry.cpp")
+    # Function-body assertions read the comment-stripped text: every one of them
+    # asks "is this call here", and a comment that names the call answers yes.
+    entry_code = strip_cpp_comments(entry)
+    key_translate = read(root, IMM32 + "key_translate.cpp")
+    win32_host = read(root, IMM32 + "win32_host.cpp")
+    trace_line = read(root, IMM32 + "trace_line.cpp")
+    entry_all = "\n".join([entry, key_translate, win32_host, trace_line])
     abi_missing = [n for n in REQUIRED_EXPORTS
                    if not re.search(r"\b" + n + r"\s*\(", abi)]
     impl_missing = [n for n in REQUIRED_EXPORTS
@@ -239,8 +253,8 @@ def run(root: Path) -> int:
     # policy file must *decide*. The historical M1 snapshot is not the shipping
     # behaviour either way.
     policy = read(root, "framework/src/host_key.cpp")
-    process_body = function_body(entry, r"BOOL\s+WINAPI\s+ImeProcessKey\s*\([^)]*\)")
-    ascii_body = function_body(entry, r"UINT\s+WINAPI\s+ImeToAsciiEx\s*\([^)]*\)")
+    process_body = function_body(entry_code, r"BOOL\s+WINAPI\s+ImeProcessKey\s*\([^)]*\)")
+    ascii_body = function_body(entry_code, r"UINT\s+WINAPI\s+ImeToAsciiEx\s*\([^)]*\)")
     c.check("ImeProcessKey delegates key ownership to wants_key (host-tested)",
             process_body is not None and
             "const bool consume = state != nullptr && imfw::wants_key(*state, event, host);"
@@ -264,17 +278,18 @@ def run(root: Path) -> int:
     # adapter carries the bit" + "the policy refuses it"; both halves are
     # required, so both are asserted.
     c.check("ImeProcessKey declines key-up (ImeToAsciiEx cannot see lParam)",
-            "kKeyUpBit" in entry and
+            "kKeyUpBit" in key_translate and
             process_body is not None and "event.key_up" in process_body and
             "if (event.key_up) return false;" in policy)
     c.check("ImeToAsciiEx dispatches key processing to handle_key",
             ascii_body is not None and "imfw::handle_key(" in ascii_body)
     c.check("M2 commits text through WM_IME_CHAR TRANSMESSAGEs",
-            "WM_IME_CHAR" in entry and "emit_text" in entry)
+            "WM_IME_CHAR" in key_translate and "imfw::emit_text(" in key_translate)
     c.check("G1: commit path handles multi-codepoint text (words)",
-            "emit_text(lpTransMsgList, result.commit)" in entry and
+            ascii_body is not None and
+            "imfw::win32::emit_commit(lpTransMsgList, result.commit)" in ascii_body and
             "apply_commit" in policy and
-            "chosen->text[0]" not in entry and
+            "chosen->text[0]" not in entry_all and
             "chosen->text[0]" not in policy)
     # Audit 2026-11-17 §2.1 (P0): ImeToAsciiEx takes a TRANSMSGLIST whose
     # uMsgCount header is pre-filled with the capacity; messages live at
@@ -283,22 +298,22 @@ def run(root: Path) -> int:
     abi = read(root, "framework/platform/win32/imm32/imm32_abi.h")
     c.check("G1 ABI: ImeToAsciiEx takes TRANSMSGLIST, not a bare TRANSMSG array",
             "struct TransMsgList" in abi and
-            "rpimm::TransMsgList* lpTransMsgList" in entry and
-            "rpimm::TransMsg* lpTransMsg" not in entry)
+            "rpimm::TransMsgList* lpTransMsgList" in key_translate and
+            "rpimm::TransMsg* lpTransMsg" not in entry_all)
     c.check("G1 ABI: messages written via list->TransMsg with uMsgCount capacity",
-            "lpTransMsgList->TransMsg" in entry and
-            "lpTransMsgList->uMsgCount" in entry and
-            "offsetof(rpimm_list, TransMsg) == sizeof(UINT)" in entry)
+            "lpTransMsgList->TransMsg" in key_translate and
+            "lpTransMsgList->uMsgCount" in key_translate and
+            "offsetof(rpimm_list, TransMsg) == sizeof(UINT)" in key_translate)
     # G1 hardening: the emission logic is host-testable in imfw-engine, and
     # the host delegates instead of re-implementing the UTF-16 conversion.
     c.check("G1: WM_IME_CHAR emission lives in imfw-engine (host-tested)",
             (root / "framework/include/imfw/emit_text.hpp").is_file() and
             (root / "framework/src/emit_text.cpp").is_file() and
-            "imfw::emit_text" in entry and
-            "sizeof(imfw::TransMsgSlot) == sizeof(rpimm::TransMsg)" in entry)
+            "imfw::emit_text" in key_translate and
+            "sizeof(imfw::TransMsgSlot) == sizeof(rpimm::TransMsg)" in key_translate)
 
     # 4b. Framework gap dispositions (xingma/XINGMA-PLAN.md 3.4).
-    configure_body = function_body(entry, r"BOOL\s+WINAPI\s+ImeConfigure\s*\([^)]*\)")
+    configure_body = function_body(entry_code, r"BOOL\s+WINAPI\s+ImeConfigure\s*\([^)]*\)")
     c.check("G3: ImeConfigure delegates to the Scheme configure hook",
             configure_body is not None and
             "scheme_instance().configure" in configure_body)
@@ -314,7 +329,7 @@ def run(root: Path) -> int:
             "scheme.is_selection_key(ch)" in route_cpp and
             "scheme.page_key(ch)" in route_cpp and
             "bool is_page_key" not in policy and
-            "is_selection_key" not in entry)
+            "is_selection_key" not in entry_all)
     store_hpp = read(root, "framework/platform/win32/imm32/session_store.hpp")
     c.check("G2: sessions reload at runtime via reload_sessions",
             "void reload_sessions()" in store_hpp)
@@ -348,12 +363,16 @@ def run(root: Path) -> int:
             "dat_filename" not in read(root, "pinyin/src/scheme.cpp"))
     composition_ui = read(root, "framework/platform/win32/ui/composition_window.cpp")
     c.check("G4: compositions decode as UTF-8 (CJK allowed)",
-            "utf8_to_wide" in entry and "utf8_to_wide" in composition_ui)
+            "utf8_to_wide" in win32_host and "utf8_to_wide" in composition_ui)
     # Regression guard: PinyinSession::feed() is a no-op until on_select(true),
     # so a missing activation makes the IME silently swallow every pinyin key.
-    select_body = function_body(entry, r"BOOL\s+WINAPI\s+ImeSelect\s*\([^)]*\)")
+    # X2-d moved that call into the shared activation path; the assertion follows
+    # it instead of pinning a line that no longer means anything.
+    activate_body = function_body(entry_code, r"void activate_session\([^)]*\)")
+    select_body = function_body(entry_code, r"BOOL\s+WINAPI\s+ImeSelect\s*\([^)]*\)")
     c.check("ImeSelect activates the engine session on select",
-            select_body is not None and "on_select(true)" in select_body)
+            activate_body is not None and "on_select(true)" in activate_body and
+            select_body is not None and "activate_session(hIMC)" in select_body)
 
     # 5. Version resource (WBS 2.2.3).
     rc = read(root, "ime/rospinyin_res.rc")
@@ -479,6 +498,9 @@ def run(root: Path) -> int:
                 "framework/src/engine.cpp",
                 "framework/platform/win32/imm32/dllmain.cpp",
                 "framework/platform/win32/imm32/imm_entry.cpp",
+                "framework/platform/win32/imm32/key_translate.cpp",
+                "framework/platform/win32/imm32/trace_line.cpp",
+                "framework/platform/win32/imm32/win32_host.cpp",
                 "framework/platform/win32/ui/README.md",
                 "pinyin/include/rospinyin/scheme.hpp",
                 "pinyin/src/scheme.cpp",
@@ -600,8 +622,10 @@ def run(root: Path) -> int:
             "ROSPINYIN_IME_LANG_EN" in res_rc and
             "ROSPINYIN_TRANSLATION_LANGID 0x804" in res_rc)
     framework_pinyin_refs = []
-    for rel in ["framework/src/code_table.cpp", "framework/platform/win32/imm32/imm_entry.cpp",
-                "framework/src/engine.cpp", "framework/platform/win32/imm32/session_store.cpp"]:
+    for rel in ["framework/src/code_table.cpp", IMM32 + "imm_entry.cpp",
+                IMM32 + "key_translate.cpp", IMM32 + "win32_host.cpp",
+                IMM32 + "trace_line.cpp",
+                "framework/src/engine.cpp", IMM32 + "session_store.cpp"]:
         # The diagnostic channel is compiled in under ROSPINYIN_TRACE (the
         # product name, not the language); matching that against "pinyin"
         # would make this gate fire on the trace build alone, which is noise.
@@ -646,33 +670,69 @@ def run(root: Path) -> int:
     # but only through the helpers, so no call site can invent its own meaning.
     # X2-a split the helpers across the boundary: set_ime_open() (policy) calls
     # Host::set_open(), and the one ImmSetOpenStatus lives in the adapter.
-    entry_code = strip_cpp_comments(entry)
     gate = function_body(policy, r"bool wants_key\([^)]*\)")
     toggle = function_body(policy, r"void set_ime_open\([^)]*\)")
-    open_writer = function_body(entry_code, r"void set_open\(bool open\)[^{]*")
+    # X2-d moved the adapter to win32_host.cpp; the assertion follows it and
+    # also pins that the copy is gone from the entry file (a moved call that
+    # left its old body behind is exactly the drift this check is for).
+    open_writer = function_body(strip_cpp_comments(win32_host),
+                                r"void Win32Host::set_open\(bool open\)[^{]*")
     c.check("open status is owned by the IME: aligned, toggled on lone Shift, "
             "read through one helper",
             "AlignOpenStatus(" in entry_code and
-            "VK_SHIFT" in entry_code and
+            "VK_SHIFT" in key_translate and
             toggle is not None and "host.set_open(" in toggle and
             open_writer is not None and "ImmSetOpenStatus(" in open_writer and
             gate is not None and "host.is_open()" in gate,
             "wants_key/set_ime_open/set_open not found"
             if gate is None or toggle is None or open_writer is None else "")
 
-    # U1 (2026-11-18 真机): the alignment must hang off BOTH entry points.
-    # ReactOS can deliver ImeSelect without a preceding ImeSetActiveContext;
-    # when only the latter aligned, the very first switch to this layout stayed
-    # "closed" -- the tray showed EN and the user's first Shift *opened* the
-    # IME instead of switching language.
-    select_body = function_body(entry_code, r"BOOL WINAPI ImeSelect\([^)]*\)")
+    # U1 (2026-11-18 真机): both entry points must activate, and since X2-d they
+    # do it through one helper. The point of the helper is that the sequence
+    # exists once: two copies in two orders is precisely what produced U1.
     active_body = function_body(entry_code,
                                 r"BOOL WINAPI ImeSetActiveContext\([^)]*\)")
     c.check("open status aligned on both activation entry points "
             "(ImeSelect and ImeSetActiveContext)",
-            select_body is not None and "AlignOpenStatus(" in select_body and
-            active_body is not None and "AlignOpenStatus(" in active_body,
-            "AlignOpenStatus missing from one of the two entry points")
+            select_body is not None and "activate_session(hIMC)" in select_body and
+            active_body is not None and "activate_session(hIMC)" in active_body,
+            "activate_session missing from one of the two entry points")
+
+    # X2-d. Two claims, both pinned in the failing direction:
+    #  * imm_entry.cpp is an entry-point file again -- the four things that made
+    #    it 600 lines live in their own TUs now, and the guards below name the
+    #    most characteristic symbol of each, so re-merging one fails here;
+    #  * the activation sequence exists once. A copy left behind in either entry
+    #    point is the U1 bug waiting to re-appear in a different order.
+    entry_lines = len(entry.splitlines())
+    c.check("X2-d: imm_entry.cpp holds entry points, not a god object",
+            entry_lines <= 400 and
+            "class Win32Host" not in entry and
+            "class Win32Host" in read(root, IMM32 + "win32_host.h") and
+            "trace::Line" not in entry and
+            "framework_key_char" not in entry and
+            "offsetof(" not in entry,
+            f"{entry_lines} lines")
+    c.check("X2-d: the activation sequence exists once (activate_session)",
+            activate_body is not None and
+            "AlignOpenStatus(" in activate_body and
+            "on_select(true)" in activate_body and
+            "UiToolbarShow(" in activate_body and
+            select_body is not None and
+            active_body is not None and
+            "AlignOpenStatus(" not in select_body and
+            "AlignOpenStatus(" not in active_body and
+            "on_select(true)" not in select_body and
+            "on_select(true)" not in active_body and
+            "UiToolbarShow(" not in select_body and
+            "UiToolbarShow(" not in active_body)
+    # The trace channel had two hand-written divide-by-ten loops (pid, tid)
+    # inside commit(); both now go through trace_stamp.h's put_uint().
+    c.check("X2-d: one decimal formatter in the trace channel",
+            "put_uint(" in trace_line and
+            "% 10" not in trace_line and
+            "unsigned put_uint(char* out, unsigned len, unsigned cap" in
+            read(root, IMM32 + "trace_stamp.h"))
 
     # U3 (2026-11-18 真机): dock to the work area, never to the raw screen.
     # SM_CYSCREEN puts the toolbar under the taskbar, and on ReactOS

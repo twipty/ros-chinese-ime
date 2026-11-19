@@ -28,6 +28,8 @@ jobs:
           -Itools/syntax_stub -Iframework/include -Iframework/platform/win32/imm32
           -Iframework/platform/win32/ui -Ipinyin/include -Iime -Isamples/toy-scheme
           framework/platform/win32/imm32/dllmain.cpp framework/platform/win32/imm32/imm_entry.cpp
+          framework/platform/win32/imm32/key_translate.cpp framework/platform/win32/imm32/trace_line.cpp
+          framework/platform/win32/imm32/win32_host.cpp
           framework/platform/win32/imm32/ui_server.cpp framework/platform/win32/imm32/session_store.cpp
           pinyin/host/dat_source_win.cpp
           framework/platform/win32/ui/ime_ui.cpp framework/platform/win32/ui/ui_window.cpp

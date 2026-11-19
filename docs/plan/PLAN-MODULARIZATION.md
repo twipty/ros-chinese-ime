@@ -45,16 +45,19 @@
 
 ```bash
 wc -l framework/src/*.cpp framework/include/imfw/*.hpp | tail -1   # 1728  可移植层（X2-c：intent.hpp + key_route.cpp 进来，路由从 host_key 搬走）
-wc -l framework/platform/win32/imm32/* framework/platform/win32/ui/* | tail -1  # 2511  平台层（Win32）→ 0 测试
+wc -l framework/platform/win32/imm32/* framework/platform/win32/ui/* | tail -1  # 2689  平台层（Win32）→ 0 测试（X2-d 后 +178，见下）
 wc -l ime/*.cpp                                       | tail -1   # 46    装配（含玩具装配件，不进产品构建）
 wc -l tests/*.cpp samples/toy-scheme/*.cpp | tail -1   # 2737  测试（全 host-side）
-python3 tools/check_m1.py | tail -1                               # 71 项 契约断言（静态）
+python3 tools/check_m1.py | tail -1                               # 77 项 契约断言（静态）
 (cd build && ctest -N | tail -1)                                  # 16 项 全在可移植层
 ```
 
 | 文件 | 行数 | 性质 |
 |---|---|---|
-| `framework/platform/win32/imm32/imm_entry.cpp` | 613 | IMM32 入口 + 宿主适配器（X2-a 从 783 降下来；X2-c 把路由搬走后只剩翻译与跳板） |
+| `framework/platform/win32/imm32/imm_entry.cpp` | **314** | 只剩 16 个导出 + 唯一的激活序列 `activate_session()`（783 → 613（X2-a/c）→ 314（X2-d）） |
+| `framework/platform/win32/imm32/key_translate.cpp` | 103 | vk → `KeyEvent`、`KeyResult` → `TRANSMSGLIST`（X2-d 拆出） |
+| `framework/platform/win32/imm32/win32_host.cpp` | 92 | `Win32Host`：`Host` 的 Win32 实现（X2-d 拆出） |
+| `framework/platform/win32/imm32/trace_line.cpp` | 117 | `ROSPINYIN_TRACE` 通道（X2-d 拆出） |
 | `framework/platform/win32/ui/ime_ui.cpp` | 300 | 窗口编排、锚点、`GlyphProbe` 字形探针 |
 | `framework/src/key_route.cpp` + `include/imfw/intent.hpp` | 70 + 75 | X2-c 的路由层：`route_key()` 纯函数 + `Intent` 词汇（`status: draft`） |
 | `framework/platform/win32/ui/ui_window.cpp` | — | 几何单一 owner；开头 28 处 `#ifndef` 重定义 Win32 常量 |
@@ -65,11 +68,11 @@ python3 tools/check_m1.py | tail -1                               # 71 项 契�
 
 | seam | 现状调用点 | 抽象后要动的半径 | 备注 |
 |---|---|---|---|
-| 引擎（`state->engine->*`） | 6 处 | 全在 `process_key` / `apply_commit` | 引擎由 `scheme_instance().create_engine()` 产出 |
-| 方案策略（`scheme.*`） | 13 处 | 全在 `process_key` | |
-| UI 出口（`UiShow/UiHide/UiRefresh/UiCountersSnapshot`） | 5 处 | 全在 `process_key` + `refresh_ui` | |
-| IMM32 ABI（`imm32_abi.h` + 16 导出） | 1 个文件 | 只在 `imm_entry.cpp` | |
-| **字形能力（`UiCanRender`）** | 2 处 | `renderable_candidates`（`imm_entry.cpp:351+`） | **审计 A-P2-9 新增**：不替换它，CI 上的冒烟测试恒为"全部可渲染"，测不出字体相关回归 |
+| 引擎（`state->engine->*`） | `host_key.cpp` 内 | 一个 TU | 引擎由 `scheme_instance().create_engine()` 产出 |
+| 方案策略（`scheme.*`） | `key_route.cpp`（判定）+ `host_key.cpp`（执行） | 两个 TU，各一次 | X2-c 后"一个键是什么"只问一次 |
+| UI 出口（`UiShow/UiHide/UiCanRender/UiCounters*`） | `win32_host.cpp` | **一个 TU**（X2-d 前散在 600 行里） | 全部经 `imfw::Host`，策略层零 Win32 |
+| IMM32 ABI（`imm32_abi.h` + 16 导出） | 1 个文件 | 只在 `imm_entry.cpp` | X2-d 后这个文件只剩导出与激活 |
+| **字形能力（`UiCanRender`）** | 1 处，`Win32Host::can_render` | `renderable_candidates`（`host_key.cpp`）只经 `Host` 问 | **审计 A-P2-9 新增**：不替换它，CI 上的冒烟测试恒为"全部可渲染"，测不出字体相关回归 |
 
 **结构缺口（审计复核后新增，原计划没覆盖）**
 
@@ -299,9 +302,11 @@ artifact 从未上传，使 `publish-artifacts-branch` 永久失败。补全 `to
 > 的一个提交里；上表数字是在那个分支上测的。按用户"和候选窗补丁一起排期、先把 X2 做完"的决定，
 > 排入 **X2-w1**（见下）。`main` 上的门禁仍是 X2-b 的数字（`ctest` 15/15、`check_m1` 68/68）。
 >
-> **合并时会撞一次**：该分支改的 `imm_entry.cpp` 是 `ImeProcessKey` 里两处 `UiToolbarSetOpen`，
-> 而 X2-d 要把这个文件按职责拆 TU。X2-d 拆完后，这两处要落到"键翻译/入口"那个新 TU 的同一位置——
-> 合 w1 时按当时的文件落位，不要照抄旧 hunk。
+> **合并时会撞（X2-d 已落地，撞点已确认）**：该分支改的是 `ImeProcessKey` 里两处
+> `UiToolbarSetOpen`，而 X2-d 已经把该函数从 `imm_entry.cpp` 里清出去——**新的落点是
+> `imm_entry.cpp` 的 `ImeProcessKey`（这个函数仍在原文件，只是不含任何判定逻辑）**，
+> 而它调的 `Win32Host::set_open`/`is_open` 在 `win32_host.cpp`。也就是说 w1 的 hunk 会**跨两个文件**：
+> 调用点在 `imm_entry.cpp`，状态写入在 `win32_host.cpp`。合入时按这两处重落，不要照抄旧 hunk。
 
 **✅ X2-c `route_key` + `Intent`（2026-11-19 12:4x）**
 
@@ -326,18 +331,26 @@ artifact 从未上传，使 `publish-artifacts-branch` 永久失败。补全 `to
 "不许有任何策略调用（`page_key(` / `is_selection_key(` / `input_char(`）+ `scheme_instance()` 只许一次"，
 再用两种写法各变异一次，都红了。
 
-**X2-d 拆 god object（1–1.5 天）**
+**✅ X2-d 拆 god object（2026-11-19 13:1x）**
 
-`imm_entry.cpp` 783 行按 6 类职责拆 TU：trace（`:48-176`）、键翻译与 `emit_text`（`:178-242`）、
-UI 刷新（`:244-271`）、候选过滤（`:344-382`）、键路由（`:409-500`）、16 个导出（`:506+`）。
-顺手两件事：
+计划：`imm_entry.cpp` 按 6 类职责拆 TU（trace / 键翻译与 `emit_text` / UI 刷新 / 候选过滤 /
+键路由 / 16 个导出）；合并两条激活路径；合并 trace 的两份十进制转换。
+验收：`host_smoke` 序列不变 + 真机 `nihao` 冒烟一次；**不看字节**。
 
-- **合并两条激活路径为 `activate_session(hIMC)`**（`ImeSelect:581-594` 与 `ImeSetActiveContext:650-655`）。
-  注意它们**当前顺序相反**（`on_select` 与 `AlignOpenStatus` 互换），统一顺序
-  ——今天 U1 那个"首次激活是关的"bug 就是这类分散路径造成的（见复核文档 N-1）。
-- trace 的十进制转换有两份（`:128` 与 `:141`），合并。
+| 项 | 计划 | 实际 |
+|---|---|---|
+| TU 数 | 6 | **4**：`key_translate` / `win32_host` / `trace_line` + `imm_entry`。计划里的"候选过滤"与"键路由"两行在 X2-a、X2-c 已经走了（`renderable_candidates` 进 `host_key.cpp`、`route_key` 进 `key_route.cpp`）——**计划里的行号是 783 行那版的，按行号找职责已经过期** |
+| `imm_entry.cpp` | 783 → ? | 613 → **314** 行（只剩 16 导出 + `activate_session`）。平台层总数 2511 → **2689**（+178：四个文件各自的许可证头 + namespace 壳）；**这才是拆分的真实成本，不藏** |
+| 激活路径 | 合并为 `activate_session(hIMC)` | 合并，顺序固定为 `AlignOpenStatus` → `on_select(true)` → `UiToolbarShow`（原来两个入口点**顺序相反**，U1 就是这么来的）<br>**解除激活不合并**：`ImeSelect(FALSE)` 要 `UiDestroy`+`release_session`，`ImeSetActiveContext(FALSE)` 只 `UiHide`，合并就是改行为 |
+| trace 十进制 | 合并两份（pid / tid） | 都走 `trace_stamp.h` 的 `put_uint()`；给它补了 `cap` 参数，把"截断而不是越界"变成参数化保证 |
+| 判据改造 | 未提 | `check_m1` 里一多半断言原文是 `... in entry`（`entry` 就是 imm_entry.cpp）。拆完不是"变红因为行为变了"，而是"变红因为文件里没有了"——**换成 4 TU 拼接会让"搬走了"和"多了一份拷贝"再也分不出来**，所以按归属改：某 TU 必须有、另一个必须没有 |
+| 新增断言 | — | 3 条（净 +6 项）：入口文件 ≤400 行且不含 `class Win32Host`/`trace::Line`/`framework_key_char`/`offsetof(`；激活序列只在 `activate_session` 里；trace 只有一个十进制格式化器（`put_uint(` 在、`% 10` 不在） |
+| 门禁 | — | `ctest` 16/16（可移植层一行未动，`host_smoke` 输出逐字一致）、`check_m1` **77/77**、`check_docs` 7/7 |
+| 变异 | — | 6 次全红：入口点抄回 `AlignOpenStatus` / `ImeSetActiveContext` 绕过 `activate_session` / vk 表回落 / 手写十进制回归 / `set_open` 改名 / 文件长到 405 行 |
+| 对外面 | 不看字节 | 16 导出名及顺序、5 个 DLL 依赖、每个 DLL 的导入函数集**逐个一致**；i686 `947,148 → 947,969 B`（+821，只记录不判定） |
 
-判据：仅 `host_smoke` 序列不变 + 真机 `nihao` 冒烟一次；**不看字节**（拆 TU 本就该改字节）。
+**一处 trace 文本变了**：`ImeSelect` 里 `select state=… engine=…` 改成 `activate state=…`，
+因为这条现在由共享路径打印；前面的 `select imc=…` / `active f=…` 行仍在，日志仍能分清入口点。
 
 **X2-e 构建收敛（1.5–2 天）**
 
@@ -483,7 +496,7 @@ Ctrl+Space 与备用热键——**全部改在 `process_key` 里**。先有冒�
 - [x] X2-a `handle_key` 剥离 + `KeyEvent`/`KeyResult`（行为不变）— 2026-11-18，见 §3 X2-a 执行记录
 - [x] X2-b `tests/host_smoke_test.cpp`（假 engine/scheme/sink/can_render，5 段键序）（审计 A-P0-1）— 2026-11-19，见 §3 X2-b 执行记录
 - [x] X2-c `route_key` + `Intent` 单测；`host_smoke` 序列不变 — 2026-11-19，见 §3 X2-c 执行记录
-- [ ] X2-d `imm_entry` 按 6 类职责拆 TU + 合并两条激活路径 + 合并 trace 十进制转换（审计 A-P0-3、复核 N-1）
+- [x] X2-d `imm_entry` 按职责拆 TU（实际 4 个，候选过滤在 X2-a 已走）+ 合并两条激活路径 + 合并 trace 十进制转换（审计 A-P0-3、复核 N-1）
 - [ ] X2-e1 `platform/win32/{imm32,ui}` 库目标 + `ime` 只 link（审计 A-P1-4）
 - [ ] X2-e2 `dat_source_win.cpp` 归 `rospinyin-engine` + 链接期符号断言（审计 A-P1-5）
 - [ ] X2-e3 `CMakePresets.json` + `EXISTS` 硬失败 + 统一根变量 + C 标准 + 静态策略收敛（审计 A-P1-6）

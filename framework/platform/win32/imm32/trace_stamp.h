@@ -50,14 +50,23 @@ inline unsigned put_three(char* out, unsigned len, unsigned value) {
     return len + 3;
 }
 
-inline unsigned put_uint(char* out, unsigned len, unsigned long value) {
+// The one decimal formatter of the trace channel (X2-d): DllMain, the
+// timestamp prefix and the per-line builder all reach the same digits instead
+// of each carrying a hand-written divide-by-ten loop that can disagree about
+// zero or about running out of room.
+//
+// `cap` is what makes it safe to call next to a payload of unknown length: the
+// digits are dropped rather than written past the end, exactly like the
+// hand-written loop it replaced (which guarded `len + 2 < sizeof(out)`).
+inline unsigned put_uint(char* out, unsigned len, unsigned cap,
+                         unsigned long value) {
     char tmp[12];
     unsigned count = 0;
     do {
         tmp[count++] = static_cast<char>('0' + value % 10);
         value /= 10;
     } while (value != 0 && count < 11);
-    while (count > 0) out[len++] = tmp[--count];
+    while (count > 0 && len + 1 < cap) out[len++] = tmp[--count];
     return len;
 }
 
@@ -80,7 +89,7 @@ inline unsigned stamp(char* out, unsigned len, unsigned cap) {
     len = put_three(out, len, now.wMilliseconds);
     out[len++] = ' ';
     out[len++] = '+';
-    len = put_uint(out, len, static_cast<unsigned long>(GetTickCount()));
+    len = put_uint(out, len, cap, static_cast<unsigned long>(GetTickCount()));
     out[len++] = 'm';
     out[len++] = 's';
     out[len++] = ']';

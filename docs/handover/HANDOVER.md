@@ -74,8 +74,11 @@ TSF/Cicero 支持、云候选/账号/皮肤、繁体与其他方言、真实 Win
 └───────────────▲────────────────────────────────────────────────────┘
                 │ 16 个导出（ime/rospinyin.def）
 ┌───────────────┴────────────────────────────────────────────────────┐
-│  platform/win32/imm32 —— 可复用宿主层（imfw）                      │
-│    imm_entry.cpp   通用键处理：退格/Esc/选字/翻页/上屏             │
+│  platform/win32/imm32 —— 可复用宿主层（imfw，X2-d 拆 4 个 TU）     │
+│    imm_entry.cpp   16 个导出 + 唯一激活序列 activate_session()     │
+│    key_translate   原生消息 ↔ KeyEvent；commit → TRANSMSGLIST      │
+│    win32_host      Win32Host：键策略的 Win32 半边（Host 实现）     │
+│    trace_line      ROSPINYIN_TRACE 通道（一行一次开写关）          │
 │    imm32_abi.h     IME 侧 ABI（含 TRANSMSGLIST）                   │
 │    session_store   每 HIMC 一个会话 + reload_sessions()            │
 │    ui_server/dllmain  UI server 窗口类注册（DllMain 只做这个）     │
@@ -211,7 +214,10 @@ ros-pinyin/
 | 模块 | 关键文件 | 职责 | 平台 |
 |---|---|---|---|
 | ABI 声明 | `framework/platform/win32/imm32/imm32_abi.h` | 16 导出原型、`TransMsg`/`TransMsgList`、IMEINFO、属性位 | Win |
-| 导出实现 | `framework/platform/win32/imm32/imm_entry.cpp` | 键路由、选字/翻页、上屏（`emit_text`）、`ImeConfigure`/`ImeSelect`/`ImeSetActiveContext` | Win |
+| 导出实现 | `framework/platform/win32/imm32/imm_entry.cpp` | 16 个导出；`ImeConfigure`/`ImeSelect`/`ImeSetActiveContext`；**唯一的激活序列 `activate_session()`**（对齐 fOpen → `on_select(true)` → 工具条） | Win |
+| 键翻译 | `framework/platform/win32/imm32/key_translate.cpp` | vk → `KeyEvent`（含 key-up 位）、`KeyResult` → `TRANSMSGLIST`（`WM_IME_CHAR` 容量与 `TRANSMSGLIST` 偏移规则） | Win |
+| 宿主适配器 | `framework/platform/win32/imm32/win32_host.cpp` | `Win32Host`：`is_open`/`set_open`/`show`/`hide`/`can_render` + 两个 trace 钩子 | Win |
+| trace 通道 | `framework/platform/win32/imm32/trace_line.cpp` | `ROSPINYIN_TRACE` 一行一写；十进制统一走 `trace_stamp.h` 的 `put_uint()` | Win |
 | 会话存储 | `framework/platform/win32/imm32/session_store.cpp` | 每 HIMC 一个 `ImeSessionState`；`reload_sessions()` data-first | Win |
 | DllMain | `framework/platform/win32/imm32/dllmain.cpp` | **只注册 UI server 窗口类**（M0 红线 #1） | Win |
 | UI server | `framework/platform/win32/imm32/ui_server.cpp` | 接收 IMM32 的 UI 消息并转发窗口层 | Win |
@@ -1776,6 +1782,70 @@ Backspace / Escape`。两处与计划不同，都是执行时发现计划的名�
 i686 拼音版 `946,299 → 947,148 B`（+849），玩具版 `874,682 → 875,019 B`（+337）。
 新增的 849 字节全是"多一个 TU + 一次 switch"，没有任何新 Win32 API 调用。
 
+### 11.29 X2-d 拆 god object：613 行的入口文件变成 4 个 TU，两条激活路径合成一条（2026-11-19 13:1x）
+
+`imm_entry.cpp` 之前一个文件装五种东西：trace 通道、vk 翻译、`TRANSMSGLIST` 上屏、
+`Host` 的 Win32 实现、16 个导出。要回答"这个键是怎么被吃掉的"，得把 613 行从头读到尾。
+拆完（**总数 613 → 782 行 / 7 个文件**，增长全是每个文件自己的许可证头与 namespace 壳）：
+
+| 文件 | 行数 | 只负责 |
+|---|---|---|
+| `imm_entry.cpp` | **314**（613 → 314） | 16 个导出 + 唯一的激活序列 `activate_session()` |
+| `key_translate.cpp` | 103 | vk → `KeyEvent`（含 key-up 位）、`KeyResult` → `TRANSMSGLIST` |
+| `win32_host.cpp` | 92 | `Win32Host`：`Host` 的 Win32 实现（唯二调用 `ImmGet/SetOpenStatus` 的地方之一） |
+| `trace_line.cpp` | 117 | `ROSPINYIN_TRACE` 通道 |
+
+**与计划的一处偏离，如实记**：计划写"按 6 类职责拆 TU"，其中"候选过滤（`:344-382`）"这一类
+在 X2-a 就已经搬进 `framework/src/host_key.cpp` 的 `renderable_candidates()` 了（那是可移植逻辑，
+不该留在平台层）。所以今天只拆出 4 个 TU，不是 6 个——**计划里的行号是 783 行那版的**，
+按行号找职责这件事本身已经过期了。
+
+**合并两条激活路径。** `ImeSelect(TRUE)` 与 `ImeSetActiveContext(TRUE)` 原本做同样三步，
+但**顺序相反**：一个先 `on_select` 再对齐 `fOpen`，另一个对齐 `fOpen` 再 `on_select`。
+U1（"第一次切到本布局时是关的"）就是这么来的——一段必须按同一顺序发生的事，写了两份。
+现在统一到 `activate_session()`，顺序是：
+
+1. `AlignOpenStatus`：它决定工具条接下来显示什么；
+2. `on_select(true)`：引擎契约要求它在任何 `feed()` 之前；
+3. `UiToolbarShow`：渲染第 1 步建立的状态。
+
+**解除激活没有合并**：`ImeSelect(FALSE)` 要 `UiDestroy` + `release_session`，
+`ImeSetActiveContext(FALSE)` 只 `UiHide`（输入上下文要跨焦点变化活下来）。合并那是改行为，不是重构。
+
+**trace 的十进制转换合并。** `commit()` 里 pid 与 tid 各有一份手写除十循环，现在都走
+`trace_stamp.h` 的 `put_uint()`；顺手给它加了 `cap` 参数，让"截断而不是越界"从一句注释变成
+一个有参数的保证（`len + 1 < cap`，与原来手写循环的 `n + 2 < sizeof(out)` 同义）。
+
+**判据切换的代价（这次最值得记的一条）。** `check_m1.py` 里一多半断言原文是 `... in entry`，
+`entry` 就是 `imm_entry.cpp`。拆完之后这些断言**会直接变红**——但它们红的原因是"文件里没有了"，
+不是"行为变了"。于是有两种改法，而它们不等价：
+
+- 把 `entry` 换成 4 个 TU 的拼接 `entry_all` → 断言继续绿，但"搬走了"和"多了一份拷贝"再也分不出来；
+- 按**归属**改：某个 TU 必须**有**，另一个必须**没有**。
+
+选的是后者，新增了三条 X2-d 断言（变异 6 次全红）：
+
+| 断言 | 双向钉法 |
+|---|---|
+| `imm_entry.cpp` 是入口文件 | ≤ 400 行 **且** 里面不许出现 `class Win32Host`、`trace::Line`、`framework_key_char`、`offsetof(`；同时 `class Win32Host` 必须在 `win32_host.h` |
+| 激活序列只存在一次 | `activate_session` 必须含 `AlignOpenStatus(` / `on_select(true)` / `UiToolbarShow(`；两个入口点必须含 `activate_session(hIMC)` **且**都不许含那三个调用 |
+| trace 只有一个十进制格式化器 | `trace_line.cpp` 里 `put_uint(` 必须在、`% 10` 不许有；`trace_stamp.h` 的函数签名必须带 `cap` |
+
+**门禁**：`ctest` 16/16（可移植层一行未动，`host_smoke` 输出逐字一致）、`check_m1` **77/77**（+6）、
+`check_docs` 7/7。变异 6 次全红：入口点抄回一遍 `AlignOpenStatus` / `ImeSetActiveContext` 绕过
+`activate_session` / vk 表回落到 `imm_entry.cpp` / trace 手写十进制回归 / `set_open` 改名 /
+文件重新长到 405 行。
+
+**对外面**：16 个导出名及顺序、5 个 DLL 依赖、每个 DLL 的导入函数集**逐个一致**；i686 拼音版
+`947,148 → 947,969 B`（+821）。按计划 X2-d **不看字节**（拆 TU 本就该改字节，跨 TU 少掉的内联
+与每文件多出的节对齐都在这 821 里），这一栏只是留个记录。
+
+**一处 trace 文本变了**：`ImeSelect` 里原来的 `select state=… engine=…` 改成了
+`activate state=… engine=…`，因为这条现在由共享路径打印、两个入口点都会打。前面的
+`select imc=…` / `active f=…` 行还在，所以一份日志仍能分清是哪个入口点。
+
+---
+
 ### 11.2 其他待办
 
 - ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。
@@ -1792,8 +1862,8 @@ i686 拼音版 `946,299 → 947,148 B`（+849），玩具版 `874,682 → 875,01
 
 **改代码**
 
-1. `cmake --build build --parallel && ctest --test-dir build` → 11/11；
-2. `python3 tools/check_m1.py` → 63/63（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
+1. `cmake --build build --parallel && ctest --test-dir build` → 16/16；
+2. `python3 tools/check_m1.py` → 77/77（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
 3. 动了 `framework/platform/win32/imm32` 或 `framework/platform/win32/ui`：跑 CI 那步宿主语法检查（§6.3），确认 `-Wchanges-meaning` / ABI 断言不炸；
 4. 动了 ABI：本地用 zig 真实 MinGW 头编译一次 `framework/platform/win32/imm32/imm_entry.cpp`（`-target x86-windows-gnu -c`）。
 

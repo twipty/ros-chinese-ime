@@ -7,6 +7,27 @@
 
 ## 未发布
 
+### 拆 god object（X2-d）
+
+- **`imm_entry.cpp` 613 → 314 行**，按职责拆出三个 TU（`imfw` 宿主层现在是一张能一眼看完的地图）：
+  - `key_translate.cpp`（103 行）：vk → `KeyEvent`（key-up 位）、`KeyResult` → `TRANSMSGLIST`
+    （`WM_IME_CHAR` 容量与 `TRANSMSGLIST` 偏移规则）。**不再叫 `emit_text`**：它只发射 commit，
+    与 `imfw::emit_text` 同名会让读者以为两者是一回事。
+  - `win32_host.cpp`（92 行）：`Win32Host` —— 键策略的 Win32 半边，**整个平台层唯一实现 `imfw::Host` 的地方**。
+  - `trace_line.cpp`（117 行）：`ROSPINYIN_TRACE` 通道。`#if` 开关换成 `IMFW_TRACE_ON`，
+    插桩代码不再自己写 `#if defined(ROSPINYIN_TRACE)`。
+- **两条激活路径合成 `activate_session(hIMC)`**：`ImeSelect(TRUE)` 与 `ImeSetActiveContext(TRUE)`
+  原本做同样三步但**顺序相反**（U1"首次激活是关的"就是这么来的）。顺序固定为
+  对齐 `fOpen` → `on_select(true)` → 工具条。**解除激活没有合并**（一个要销毁会话、一个只隐藏窗口，
+  合并是改行为）。
+- **trace 的两份手写十进制转换合并**到 `trace_stamp.h` 的 `put_uint()`，并给它补 `cap` 参数，
+  让"截断而不是越界"可证。
+- **`check_m1` 71 → 77 项**：拆 TU 让一多半 `... in entry` 断言失效（不是行为变了，是文件里没有了）。
+  改法不是"拼 4 个 TU 继续匹配"，而是**按归属双向钉**：该有它的 TU 必须有，另一个必须没有。
+- 平台层总数 **2511 → 2689 行（+178）**：四个文件各自的许可证头与 namespace 壳。
+  `imm_entry.cpp` 少了 299 行，别只看这一个数字。
+- 对外面：16 导出名及顺序、5 个 DLL 依赖、每个 DLL 的导入函数集**逐个一致**；i686 `+821 B`。
+
 ### 键路由提取为纯函数（X2-c）
 
 - **新增 `framework/include/imfw/intent.hpp`（75 行）+ `framework/src/key_route.cpp`（70 行）**：
