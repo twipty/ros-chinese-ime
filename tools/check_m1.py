@@ -972,6 +972,55 @@ def run(root: Path) -> int:
             required <= {p["name"] for p in presets.get("buildPresets", [])},
             f"missing presets: {sorted(required - preset_names)}")
 
+    # A-P2-11: the Win32 UI files used to guess SDK constants in production.
+    # The real <windows.h> always supplied them, so every #ifndef block was a
+    # no-op in a shipped PE and only existed to make the host syntax stub happy.
+    # That is the stub's job, not the product's: move the values there.
+    ui_tus = [
+        "framework/platform/win32/ui/ui_window.cpp",
+        "framework/platform/win32/ui/ime_ui.cpp",
+        "framework/platform/win32/ui/candidate_window.cpp",
+        "framework/platform/win32/ui/composition_window.cpp",
+        "framework/platform/win32/ui/toolbar.cpp",
+    ]
+    # Match the *shape* (a constant guarded by its own definition), not a word
+    # like "SWP_", and cover both common spellings of the guard.
+    sdk_patch = re.compile(
+        r"#\s*ifndef\s+([A-Z][A-Z0-9_]*)\s*\n\s*#\s*define\s+\1\b"
+        r"|#\s*if\s+!defined\s*\(\s*([A-Z][A-Z0-9_]*)\s*\)"
+        r"\s*\n\s*#\s*define\s+\2\b")
+    patched = [rel for rel in ui_tus
+               if sdk_patch.search(strip_cpp_comments(read(root, rel)))]
+    c.check("X2-e4: no UI production TU re-defines an SDK constant",
+            not patched, ", ".join(patched))
+
+    # The stub must supply every SDK identifier the UI code references. Types
+    # are declared with using/struct, constants with #define; both are part of
+    # the stub surface. Project-owned prefixes are exempt, and the exemptions
+    # are explicit rather than "any uppercase word".
+    stub_code = strip_cpp_comments(read(root, "tools/syntax_stub/windows.h"))
+    stub_surface = set(re.findall(r"^#\s*define\s+([A-Z][A-Z0-9_]*)",
+                                  stub_code, re.M))
+    stub_surface |= set(re.findall(
+        r"^(?:using|struct|class|enum)\s+([A-Z][A-Z0-9_]*)", stub_code, re.M))
+    used_ids = set()
+    for rel in ui_tus:
+        used_ids |= set(re.findall(
+            r"\b([A-Z][A-Z0-9_]{2,})\b",
+            strip_cpp_comments(read(root, rel))))
+    exempt_prefixes = ("ROSPINYIN_", "IMFW_", "SPDX_")
+    missing_ids = {name for name in used_ids - stub_surface
+                   if not name.startswith(exempt_prefixes)}
+    c.check("X2-e4: syntax_stub declares every SDK identifier the UI uses",
+            not missing_ids, ", ".join(sorted(missing_ids)))
+
+    # Text assertions alone cannot prove the stub is actually used; the CI
+    # syntax step is the compiler-backed half of this contract.
+    c.check("X2-e4: CI syntax-checks every UI TU against the stub",
+            "-Itools/syntax_stub" in ci_yml and
+            all(rel in ci_yml for rel in ui_tus),
+            "the stub is only honest if the compiler checks it against the UI TUs")
+
     return c.summary()
 
 

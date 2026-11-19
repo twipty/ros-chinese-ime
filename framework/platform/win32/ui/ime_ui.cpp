@@ -24,13 +24,6 @@
 #include <string>
 #include <vector>
 
-#ifndef SM_CXSCREEN
-#define SM_CXSCREEN 0
-#endif
-#ifndef SM_CYSCREEN
-#define SM_CYSCREEN 1
-#endif
-
 namespace imfw {
 namespace {
 

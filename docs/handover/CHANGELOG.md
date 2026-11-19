@@ -7,6 +7,18 @@
 
 ## 未发布
 
+### 平台补丁归位：生产代码不再猜 Win32 常量（X2-e4）
+
+- 五个 UI TU 中 **47 处** `#ifndef <Win32常量> / #define ... / #endif` 全部删除（审计只点名了
+  其中 30 处）。真实 `<windows.h>` 一直提供这些宏，补丁在发布构建里从未生效；它们只是
+  Linux 宿主语法检查的拐杖。
+- `tools/syntax_stub/windows.h` 补齐 25 个窗口样式、消息与 GDI 度量宏。stub 的值仅用于
+  语法检查，不进产品；真实值由 MinGW SDK 提供。
+- `check_m1` 94 → 97：生产侧结构断言、stub 表面覆盖断言、CI syntax check 覆盖断言；
+  3 次变异全红。
+- 交叉构建前后 `.ime` 的 sha256 完全相同（`b0529131…`）——补丁本来就是死代码，这是最硬的
+  "行为不变"证据。
+
 ### 构建配置收敛：presets 是唯一出处（X2-e3）
 
 - **`CMakePresets.json`（新）**：把 CI 与本地反复复述的 `-D` 列表写成 6 个 configure preset、

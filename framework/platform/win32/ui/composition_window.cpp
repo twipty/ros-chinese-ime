@@ -9,16 +9,6 @@
 
 #include <windows.h>
 
-#ifndef TRANSPARENT
-#define TRANSPARENT 1
-#endif
-#ifndef WHITE_BRUSH
-#define WHITE_BRUSH 0
-#endif
-#ifndef BLACK_BRUSH
-#define BLACK_BRUSH 4
-#endif
-
 namespace imfw {
 namespace ui {
 

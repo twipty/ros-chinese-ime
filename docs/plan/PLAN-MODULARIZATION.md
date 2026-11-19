@@ -407,6 +407,20 @@ X1 改了代码与 `check_m1` 的 15 处路径却漏了这棵树。
 | 门禁 | — | `ctest` 16/16、`check_m1` **94/94**、`check_docs` 7/7 |
 | 对外面 | 逐个一致 | 16 导出名及顺序、5 个 DLL、每 DLL 导入函数集逐条同序完全一致；toy 876,352 B、trace 971,833 B、in-tree 947,820 B 且不产安装器与 `rhash.exe`。两个 Ninja 目录同源码产物逐字节相同；跨生成器（Ninja vs Makefiles）哈希不同，是已记录的边界 |
 
+**✅ X2-e4 平台补丁归位（2026-11-19 17:0x）**
+
+计划："`ui_window.cpp` 那 28 处 `#ifndef` 与 `ime_ui.cpp:27-32` 的重定义，移到 `syntax_stub` 侧，
+生产代码不再猜常量值"（A-P2-11）。实际范围是 **47 处 / 5 个 UI TU**，不是审计点名的 30 处。
+
+| 项 | 计划 | 实际 |
+|---|---|---|
+| 生产侧 | 不再猜常量值 | 5 个 UI TU 共删 47 块（ui_window 28、toolbar 9、candidate 5、composition 3、ime_ui 2）；include guard 不是 SDK 补丁，保留 |
+| stub 侧 | 承接补丁 | `tools/syntax_stub/windows.h` 新增 25 个宏；已有的刷子 / `SM_*` / `SPI_GETWORKAREA` / `HWND_TOPMOST` 不重复定义 |
+| 新增断言 | — | 3 条（94 → 97）：生产侧禁止"常量被自己的 `#ifndef` 包住再 `#define`"（含 `#if !defined`）/ stub 表面覆盖 UI 用到的 SDK 标识符 / CI syntax check 必须包含 stub 与 5 个 UI TU |
+| 变异 | — | 3 次全红：恢复 `WS_POPUP` 补丁 / 删 stub 的 `TRANSPARENT` / CI 命令里改掉 `toolbar.cpp` |
+| 门禁 | — | `ctest` 16/16、`check_m1` **97/97**、`check_docs` 7/7；宿主 syntax check 17 个 TU 全过 |
+| 对外面 | 不变 | 交叉构建前后 sha256 同为 `b0529131…`（947,820 B），连字节都没变——这些 `#ifndef` 在真实 SDK 下从未生效 |
+
 **X2-e 构建收敛（1.5–2 天）**
 
 | 子项 | 出处 | 做法 |
@@ -555,7 +569,7 @@ Ctrl+Space 与备用热键——**全部改在 `process_key` 里**。先有冒�
 - [x] X2-e1 `platform/win32/{imm32,ui}` 库目标 + `ime` 只 link（审计 A-P1-4）— 2026-11-19，见 §3 X2-e1 执行记录
 - [x] X2-e2 `dat_source_win.cpp` 归 `rospinyin-engine` + 链接期符号断言（审计 A-P1-5）— 见 §3「X2-e2」
 - [x] X2-e3 `CMakePresets.json` + `EXISTS` 硬失败 + 统一根变量 + C 标准 + 静态策略收敛（审计 A-P1-6）— 2026-11-19，见 §3 X2-e3 执行记录
-- [ ] X2-e4 28 处 `#ifndef` 平台补丁归位（审计 A-P2-11）
+- [x] X2-e4 28 处 `#ifndef` 平台补丁归位（审计 A-P2-11；实际 47 处 / 5 个 TU）— 2026-11-19，见 §3 X2-e4 执行记录
 - [ ] X2-e5 版本收敛到 `ime/version.h` 一处 + CI 断言（审计 A-P1-7 版本部分；达成 G7）
 - [ ] X2-e6 `dat_source_win.cpp` 不再引宿主私有头（复核 N / X1 表）
 - [ ] X2-f `tools/seams.py` + `check_m1` 新增 seam 上限项（含 `UiCanRender`）

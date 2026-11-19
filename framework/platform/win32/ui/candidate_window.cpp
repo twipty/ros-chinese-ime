@@ -10,22 +10,6 @@
 #include <cstddef>
 #include <string>
 
-#ifndef SWP_NOMOVE
-#define SWP_NOMOVE 0x0002
-#endif
-#ifndef SWP_NOZORDER
-#define SWP_NOZORDER 0x0004
-#endif
-#ifndef SWP_NOACTIVATE
-#define SWP_NOACTIVATE 0x0010
-#endif
-#ifndef TRANSPARENT
-#define TRANSPARENT 1
-#endif
-#ifndef LTGRAY_BRUSH
-#define LTGRAY_BRUSH 1
-#endif
-
 namespace imfw {
 namespace ui {
 namespace {

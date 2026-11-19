@@ -7,34 +7,6 @@
 
 #include <windows.h>
 
-#ifndef SWP_NOSIZE
-#define SWP_NOSIZE 0x0001
-#endif
-#ifndef SWP_NOZORDER
-#define SWP_NOZORDER 0x0004
-#endif
-#ifndef SWP_NOACTIVATE
-#define SWP_NOACTIVATE 0x0010
-#endif
-#ifndef SWP_SHOWWINDOW
-#define SWP_SHOWWINDOW 0x0040
-#endif
-#ifndef TRANSPARENT
-#define TRANSPARENT 1
-#endif
-#ifndef LTGRAY_BRUSH
-#define LTGRAY_BRUSH 1
-#endif
-#ifndef SM_CXSCREEN
-#define SM_CXSCREEN 0
-#endif
-#ifndef SM_CYSCREEN
-#define SM_CYSCREEN 1
-#endif
-#ifndef SPI_GETWORKAREA
-#define SPI_GETWORKAREA 0x0030
-#endif
-
 namespace imfw {
 namespace ui {
 

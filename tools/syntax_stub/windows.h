@@ -120,6 +120,36 @@ using LPCSTR = const char*;
 #define HWND_TOPMOST reinterpret_cast<HWND>(static_cast<std::intptr_t>(-1))
 #define RGB(r, g, b) (static_cast<COLORREF>((r) | ((g) << 8) | ((b) << 16)))
 
+// Window styles, messages and GDI metrics used by framework/platform/win32/ui.
+// These used to be guessed in each production TU with #ifndef blocks (A-P2-11).
+// They belong to the Win32 SDK (winuser.h / wingdi.h); the host stub supplies
+// illustrative values here, while real builds take them from <windows.h>.
+#define GWLP_USERDATA      (-21)
+#define WS_POPUP           0x80000000L
+#define WS_EX_TOOLWINDOW   0x00000080L
+#define WS_EX_TOPMOST      0x00000008L
+#define WS_EX_NOACTIVATE   0x08000000L
+#define SW_HIDE            0
+#define SW_SHOWNOACTIVATE  4
+#define SWP_NOSIZE         0x0001
+#define SWP_NOMOVE         0x0002
+#define SWP_NOZORDER       0x0004
+#define SWP_NOACTIVATE     0x0010
+#define SWP_SHOWWINDOW     0x0040
+#define WM_PAINT           0x000F
+#define WM_ERASEBKGND      0x0014
+#define WM_MOUSEACTIVATE   0x0021
+#define MA_NOACTIVATE      0x0004
+#define TRANSPARENT        1
+#define FW_NORMAL          400
+#define DEFAULT_CHARSET    1
+#define OUT_DEFAULT_PRECIS 0
+#define CLIP_DEFAULT_PRECIS 0
+#define DEFAULT_QUALITY    1
+#define DEFAULT_PITCH      8
+#define FF_DONTCARE        0
+#define LF_FACESIZE        32
+
 #define HKEY_CURRENT_USER  reinterpret_cast<HKEY>(static_cast<std::uintptr_t>(0x80000001u))
 #define HKEY_LOCAL_MACHINE reinterpret_cast<HKEY>(static_cast<std::uintptr_t>(0x80000002u))
 

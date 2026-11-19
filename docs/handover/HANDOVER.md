@@ -196,7 +196,7 @@ ros-pinyin/
 ├── ime/                        装配层：rospinyin.def（16 导出）、rospinyin_res.rc、scheme_reg.cpp、图标
 ├── tests/                      16 个宿主测试（ctest）
 ├── tools/
-│   ├── check_m1.py             契约静态检查（94 项，无第三方依赖）
+│   ├── check_m1.py             契约静态检查（97 项，无第三方依赖）
 │   ├── artifact_hashes.py      部署件对账：size + sha256，回答"我到底放出哪一版"
 │   ├── vm_clock.py             guest 时钟对齐：时区 .reg / 手敲 date+time 两个通道
 │   ├── mkdat/                  数据编译器 + fetch_data.py + fixtures
@@ -238,7 +238,7 @@ ros-pinyin/
 | 装配 | `ime/scheme_reg.cpp` | 定义 `imfw::scheme_instance()`（唯一的 Scheme 注入点） | Win |
 | 数据编译 | `tools/mkdat/mkdat.cpp` | Unihan + hanziDB → `rospinyin.dat`（确定性输出） | 宿主 |
 | 安装器 | `tools/install-rospinyin/install.cpp` | `/step1..4` 分步注册、动态 HKL 记录、`/i` 串行（仅 Windows 参照机） | Win |
-| 契约检查 | `tools/check_m1.py` | 94 项静态断言（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、ABI、reload 顺序…） | 宿主 |
+| 契约检查 | `tools/check_m1.py` | 97 项静态断言（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、ABI、reload 顺序…） | 宿主 |
 | 部署对账 | `tools/artifact_hashes.py` | 各构建产物与共享副本的 size/sha256 对照，标出"同字节数不同内容"与"共享目录不是这一版" | 宿主 |
 | guest 侧哈希 | `tools/rhash/rhash.c` | 自带 SHA-256 的小 exe：`rhash.exe [文件...]`，无参数时算 system32 的 `.ime`/`.dat`。只依赖 kernel32+msvcrt | Win |
 | guest 时钟 | `tools/vm_clock.py` | 诊断宿主/UTC/guest 显示差值；生成时区 `.reg` 或打印 `date`/`time` 命令（**只打印，不代敲**） | 宿主 |
@@ -257,7 +257,7 @@ cd ros-pinyin
 cmake --preset linux-ci
 cmake --build --preset linux-ci --parallel
 ctest --preset linux-ci                           # 16 个测试，应 100% 通过
-python3 tools/check_m1.py                          # 94 项契约检查，应 94/94
+python3 tools/check_m1.py                          # 97 项契约检查，应 97/97
 ```
 
 `CMakePresets.json` 是构建配置的唯一出处（X2-e3）：CI、README 和本节的命令都走 preset，
@@ -511,7 +511,7 @@ VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
 | 门禁 | 命令 | 通过标准 |
 |---|---|---|
 | 宿单单测 | `ctest --preset linux-ci`（或 `ctest --test-dir build`） | 16/16（smoke、session、pinyin、pinyin-session、candidate-pager、pinyin-scheme、scheme-registry、toy-scheme、host-key、key-route、host-smoke、emit-text、utf8、code-table、m1-contract、mkdat-e2e） |
-| 契约静态检查 | `python3 tools/check_m1.py` | 94/94（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
+| 契约静态检查 | `python3 tools/check_m1.py` | 97/97（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
 | Win32 语法检查 | CI 的第一步，见 §6.3 | 0 error（用 `tools/syntax_stub` 提供的 Windows 头） |
 | PE 导入表 | CI `objdump -p` | 不得出现 Vista+ 导出或非系统 DLL |
 | 真机验收 | `docs/milestones/m2/M2-ACCEPTANCE.md` | 15 项全绿 |
@@ -2134,6 +2134,39 @@ Ninja 直接列 `.obj`。代码一模一样，布局不一样。
 
 ---
 
+### 11.33 X2-e4 平台补丁归位：生产代码不再猜 Win32 常量（2026-11-19 17:0x）
+
+审计 A-P2-11 点名的是 `ui_window.cpp` 的 28 处和 `ime_ui.cpp` 的 2 处。实际扫下来是
+**47 处、5 个 TU**：`ui_window.cpp` 28、`toolbar.cpp` 9、`candidate_window.cpp` 5、
+`composition_window.cpp` 3、`ime_ui.cpp` 2。只清理被点名的 30 处不叫"生产代码不再猜常量值"，
+所以五个文件一起清。
+
+这些块全部是同一个形状：
+
+```cpp
+#ifndef SWP_NOZORDER
+#define SWP_NOZORDER 0x0004
+#endif
+```
+
+它们属于 `winuser.h` / `wingdi.h`，真实 MinGW 构建里 `<windows.h>` 早就定义好了，
+`#ifndef` 一支**从未生效**——存在的唯一理由是让 Linux 上那个瘦 `windows.h` stub 能通过
+`-fsyntax-only`。这是 stub 的责任，不是产品的责任。
+
+| 项 | 处理 |
+|---|---|
+| 生产侧 | 5 个 UI TU 删掉全部 47 块；普通 include guard（`trace_stamp.h`、`version.h` 等）不是 SDK 补丁，保留 |
+| stub 侧 | `tools/syntax_stub/windows.h` 补 25 个宏；刷子、`SM_*`、`SPI_GETWORKAREA`、`HWND_TOPMOST` 已有，不重复定义。stub 的值仍是 illustrative，真正的值只由真实 SDK 背书 |
+| 断言 | 3 条（94 → 97）：生产 TU 不得出现"常量被自己的 `#ifndef` 包住再 `#define`"这个结构（含 `#if !defined(...)` 变体）；UI 代码用到的 SDK 标识符必须在 stub 的 `#define` / `using` / `struct` 表面里；CI 的 syntax check 必须真的包含 stub 与五个 UI TU |
+| 变异 | 3 次全红：恢复一处 `WS_POPUP` 补丁 / 删掉 stub 的 `TRANSPARENT` / 把 `toolbar.cpp` 从 CI 命令里改成不存在的名字 |
+| 门禁 | `ctest` 16/16、`check_m1` **97/97**、`check_docs` 7/7；宿主 syntax check 17 个 TU 全过 |
+
+**对外面零改动，而且是可证的**：交叉构建前后 `rospinyin.ime` 的 sha256 都是
+`b0529131b605...`（947,820 B）——因为这些补丁在真实构建里从未生效。这比"导出面一致"
+更强：连一个字节都没动。
+
+---
+
 ### 11.2 其他待办
 
 - ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。
@@ -2151,7 +2184,7 @@ Ninja 直接列 `.obj`。代码一模一样，布局不一样。
 **改代码**
 
 1. `cmake --build build --parallel && ctest --test-dir build` → 16/16；
-2. `python3 tools/check_m1.py` → 94/94（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
+2. `python3 tools/check_m1.py` → 97/97（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
 3. 动了 `framework/platform/win32/imm32` 或 `framework/platform/win32/ui`：跑 CI 那步宿主语法检查（§6.3），确认 `-Wchanges-meaning` / ABI 断言不炸；
 4. 动了 ABI：本地用 zig 真实 MinGW 头编译一次 `framework/platform/win32/imm32/imm_entry.cpp`（`-target x86-windows-gnu -c`）。
 
