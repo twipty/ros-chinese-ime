@@ -33,6 +33,7 @@ Run directly or via ctest (target name: m1-contract).
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import re
 import sys
@@ -622,6 +623,19 @@ def run(root: Path) -> int:
             host_key_code.count("pager.reset(") >= 3,
             "replace() belongs to Input; reset() still owns commit, "
             "Backspace and Escape")
+
+    # X2-f: reuse tools/seams.py instead of restating the call-site patterns
+    # here. A second copy of the seam list is exactly the drift this check is
+    # meant to catch.
+    seams_spec = importlib.util.spec_from_file_location(
+        "rospinyin_seams", Path(__file__).with_name("seams.py"))
+    seams_mod = importlib.util.module_from_spec(seams_spec)
+    seams_spec.loader.exec_module(seams_mod)
+    seam_over = seams_mod.over_cap(root)
+    c.check("X2-f: front-end seam call sites stay at or below their caps",
+            not seam_over,
+            ", ".join(f"{name}={value}>{cap}"
+                      for name, (value, cap) in sorted(seam_over.items())))
 
     # X2-a: the key policy must stay portable. The entire point of moving it out
     # of imm_entry.cpp is that tests/host_key_test.cpp links it on the build

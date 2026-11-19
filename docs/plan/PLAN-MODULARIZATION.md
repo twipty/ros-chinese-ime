@@ -25,7 +25,7 @@
 | G2 | 键路由有 Linux 单测 | `route_key` 的分支覆盖现有全部分支，ctest 出现新目标 |
 | G3 | 宿主层有一条冒烟测试 | 假 engine/scheme/sink + 固定键序，断言 sink 调用序列；**这是后续任何重构唯一的自动化安全网** |
 | G4 | 第二个方案"只加文件夹"接入 | `git diff --stat` 不出现 `framework/` 任何文件 |
-| G5 | 未来换前端时改动被限制在 seam 内 | seam 清单里的调用点数量有上限断言（`check_m1` 新增一项） |
+| G5 | 未来换前端时改动被限制在 seam 内 | seam 清单里的调用点数量有上限断言（`check_m1` 新增一项；X2-f 达成，5 条 seam 当前均等于上限） |
 | G6 | 构建有单一入口 | `cmake --preset linux-ci` / `--preset win32-mingw` 两条路径，零手工 `-D` 即复现 CI 与发版 |
 | G7 | 版本只有一个真值 | 仓库内发版版本号只出现在 `ime/version.h`；其余位置出现即 CI 失败（X2-e5 达成，白名单见 §3 执行记录） |
 
@@ -447,6 +447,19 @@ X1 改了代码与 `check_m1` 的 15 处路径却漏了这棵树。
 | 门禁 | — | `ctest` 16/16、`check_m1` **104/104**、`check_docs` 7/7；17 TU 语法检查全过 |
 | 对外面 | 不变 | 交叉构建 sha256 仍为 `b0529131…`（947,820 B），依赖面 5 个 DLL 不变；trace 版 971,833 B，三条 `dat ...` 诊断串仍在 |
 
+**✅ X2-f seam 上限落地（2026-11-19 18:4x，达成 G5）**
+
+计划："seam 清单里的调用点数量有上限断言"。X2-f 只交付清单和闸门，不抽新接口。
+
+| 项 | 计划 | 实际 |
+|---|---|---|
+| 清单 | 5 条 seam | `tools/seams.py`: `engine` 4/4、`scheme-policy` 12/12、`ui-exit` 12/12、`imm32-abi` 16/16、`can-render` 2/2；计数全部等于上限 |
+| 计数正确性 | 调用点而非词 | `strip_comments()` 先删 `/* */` 与 `//`，注释里出现的路径/旧名字不计；与 X2-a 词匹配假绿同型防御 |
+| 闸门 | `check_m1` 新增一项 | `check_m1.py` 用 `importlib` 加载同一个 `seams.py`，只调 `over_cap(root)`，不复制第二份正则；失败信息列 `name=count>cap` |
+| 变异 | — | 5 次全红：逐条制造一个越界，每次点名对应 seam |
+| 门禁 | — | `ctest` 17/17、`check_m1` 108 → **109/109**、`check_docs` 7/7 |
+| 对外面 | 不变 | 零运行时改动：16 导出、5 个 DLL 的导入函数集、`.ime` 字节均不变（X2-w3 的 `f3e33b0a…` 仍是当前基线） |
+
 **X2-e 构建收敛（1.5–2 天）**
 
 | 子项 | 出处 | 做法 |
@@ -565,7 +578,7 @@ X3 就是那句宣称的验收场——**同进程加载两个 scheme，看窗�
 | # | 机制 | 现在做什么 | 将来省什么 |
 |---|---|---|---|
 | M1 | **Intent 中间语言** | X2-c 把路由判定收敛为一个枚举 + 纯函数 | 换前端时，Intent 是两端共用的稳定词汇 |
-| M2 | **seam 清单 + 上限断言** | `tools/seams.py` 统计 5 条 seam 的调用点数（含 `UiCanRender`），`check_m1` 加一项：任一 seam 超上限即报错 | 耦合只能减少不能增加；某天从 6 涨到 20 就是抽象的必要性证据 |
+| M2 | **seam 清单 + 上限断言** | **已落地（X2-f）**：`tools/seams.py` 统计 5 条 seam 的调用点数（含 `UiCanRender`），`check_m1` 直接 import `over_cap()`：任一 seam 超上限即报错 | 耦合只能减少不能增加；某天从 6 涨到 20 就是抽象的必要性证据 |
 | M3 | **接口状态标记** | 头文件给每个契约标 `// status: freeze \| candidate \| draft`（`Engine`/`Scheme` = candidate；`Intent` = draft） | "冻结"变成显式、可检索的事；`check_m1` 可断言"draft 接口不进 DLL 导出" |
 
 三条都不改运行时代码，M1/M2 各半天。
@@ -630,7 +643,7 @@ Ctrl+Space 与备用热键——**全部改在 `process_key` 里**。先有冒�
 - [x] X2-e4 28 处 `#ifndef` 平台补丁归位（审计 A-P2-11；实际 47 处 / 5 个 TU）— 2026-11-19，见 §3 X2-e4 执行记录
 - [x] X2-e5 版本收敛到 `ime/version.h` 一处 + CI 断言（审计 A-P1-7 版本部分；达成 G7）— 2026-11-19，见 §3 X2-e5 执行记录
 - [x] X2-e6 `dat_source_win.cpp` 不再引宿主私有头（复核 N / X1 表）— 2026-11-19，见 §3 X2-e6 执行记录
-- [ ] X2-f `tools/seams.py` + `check_m1` 新增 seam 上限项（含 `UiCanRender`）
+- [x] X2-f `tools/seams.py` + `check_m1` 新增 seam 上限项（含 `UiCanRender`，达成 G5）— 2026-11-19，见 §3 X2-f seam 上限落地
 - [x] X2-w1/w2/w3 临时需求批（状态指示器 / 候选窗稳定性 / 翻页重置）— 三条均已合入 main，见 §3「X2-w 合入记录」；真机观感待验
 
 **待排期 → 已排期（2026-11-19 12:2x：三条一起进 X2-w，排在 X2 收口后、X3 之前）**

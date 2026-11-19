@@ -7,6 +7,16 @@
 
 ## 未发布
 
+### Seam 清单与调用点上限（X2-f）
+
+- 新增 `tools/seams.py`：统计换前端时要动的 5 条 seam（`engine`、`scheme-policy`、`ui-exit`、
+  `imm32-abi`、`can-render`），先剥注释再计数，避免把注释里的路径或名字当成调用点。
+  当前计数全部等于上限：4/4、12/12、12/12、16/16、2/2。
+- `check_m1.py` 直接 import `seams.py` 的 `over_cap()`，不再复述一套正则：任一 seam 越界即
+  报错，数字只能随代码一起改。`check_m1` 108 → **109/109**，`ctest` 17/17、`check_docs` 7/7。
+- 5 次变异（各 seam 制造一处越界）全部变红。只加工具与断言，不改运行时代码、不改导出/导入面、
+  不改发布产物。
+
 ### 翻页状态合入 main（X2-w3）
 
 - `CandidatePager::replace()` 与 `reset()` 分工：`Input/Absorb` 继续打字时用 `replace()` 保留
