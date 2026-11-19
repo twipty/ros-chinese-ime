@@ -21,6 +21,11 @@ public:
     // Replace the candidate set and reset to the first page.
     void reset(std::vector<Candidate> candidates);
 
+    // Replace the candidate set but keep the current page when it still
+    // exists, clamping down when the new list has fewer pages (X2-w3).
+    // Typing another letter must not drag the user back to page 1.
+    void replace(std::vector<Candidate> candidates);
+
     std::size_t total() const noexcept { return candidates_.size(); }
     std::size_t page() const noexcept { return page_; }
     std::size_t page_count() const noexcept;

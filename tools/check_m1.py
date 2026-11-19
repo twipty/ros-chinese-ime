@@ -611,6 +611,18 @@ def run(root: Path) -> int:
     c.check("Shift never switches the keyboard layout (tray 中 must stay put)",
             not layout_switches, ", ".join(layout_switches))
 
+    # X2-w3: the Input branch re-feeds the pager on every letter, but that is
+    # a *replacement*, not a new session. Match the two calls: replace() must
+    # exist on the typing path, while commit / Backspace / Escape must still
+    # reset() to page 1 (three sites). Changing either one silently changes
+    # what the user sees after a page turn.
+    host_key_code = strip_cpp_comments(read(root, "framework/src/host_key.cpp"))
+    c.check("X2-w3: typing keeps the page, boundary events still reset it",
+            "pager.replace(" in host_key_code and
+            host_key_code.count("pager.reset(") >= 3,
+            "replace() belongs to Input; reset() still owns commit, "
+            "Backspace and Escape")
+
     # X2-a: the key policy must stay portable. The entire point of moving it out
     # of imm_entry.cpp is that tests/host_key_test.cpp links it on the build
     # host; one <windows.h> in this layer and that test stops being possible --

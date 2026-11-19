@@ -251,6 +251,12 @@ const std::vector<imfw::Candidate>& zhong_candidates() {
     return list;
 }
 
+std::vector<imfw::Candidate> many_candidates(int count) {
+    std::vector<imfw::Candidate> list;
+    for (int i = 0; i < count; ++i) list.push_back(candidate(U"候", 1000 - i));
+    return list;
+}
+
 // Compare two logs and print the first difference: "the sequence changed" is
 // useless without knowing where.
 void check_log(const std::vector<std::string>& actual,
@@ -415,6 +421,46 @@ int main() {
         check(script->ops.size() == 12,
               "unclaimed keys never reach the engine");
         check(host.log.size() == 13, "unclaimed keys produce no host calls");
+    }
+
+    // ------------------------------------------------------------------
+    // X2-w3: paging survives typing. The pager is re-fed on every letter,
+    // but replace() must keep the page; a shorter new list clamps instead of
+    // producing an out-of-range page or silently jumping to page 1.
+    // ------------------------------------------------------------------
+    {
+        imfw::ImeSessionState session;
+        auto engine = std::make_unique<ScriptedEngine>();
+        ScriptedEngine* script = engine.get();
+        session.engine = std::move(engine);
+        script->feed_script = {
+            absorb("a", {"a"}, many_candidates(20)),
+            absorb("ab", {"ab"}, many_candidates(20)),
+            absorb("abc", {"abc"}, many_candidates(5)),
+        };
+
+        RecordingHost host;
+        const imfw::KeyEvent steps[] = {
+            letter_event('A'), char_event(U'='), letter_event('B'),
+            letter_event('C'),
+        };
+        for (const imfw::KeyEvent& event : steps) {
+            const bool claimed = imfw::wants_key(session, event, host);
+            check(claimed, "paging/typing keys belong to the open IME");
+            if (claimed) imfw::handle_key(session, event, host);
+        }
+
+        check_log(host.log,
+                  {
+                      "show comp=a segs=[a] cands=20 page=1/3",
+                      "show comp=a segs=[a] cands=20 page=2/3",
+                      "show comp=ab segs=[ab] cands=20 page=2/3",
+                      "show comp=abc segs=[abc] cands=5 page=1/1",
+                  },
+                  "typing keeps the page, a shorter list clamps it");
+        check_ops(script->ops, {"feed:a", "feed:b", "feed:c"});
+        check(!script->underrun, "the page key did not call the engine");
+        check(session.pager.page() == 0, "a one-page list clamps to page zero");
     }
 
     // ------------------------------------------------------------------

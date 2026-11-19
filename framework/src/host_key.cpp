@@ -240,7 +240,10 @@ KeyResult handle_key(ImeSessionState& session, const KeyEvent& event, Host& host
             return {apply_commit(host, session, result)};
         case Action::Absorb:
             adopt_result(session, result);
-            session.pager.reset(
+            // X2-w3: typing while page 2 is on screen must not snap back to
+            // page 1. Commit / Backspace / Escape still use reset() because
+            // those are deliberate boundary events.
+            session.pager.replace(
                 renderable_candidates(host, result.candidates));
             session.composing = !result.composition.empty();
             refresh_ui(host, session);

@@ -196,7 +196,7 @@ ros-pinyin/
 ├── ime/                        装配层：rospinyin.def（16 导出）、rospinyin_res.rc、scheme_reg.cpp、图标
 ├── tests/                      17 个宿主测试（ctest）
 ├── tools/
-│   ├── check_m1.py             契约静态检查（107 项，无第三方依赖）
+│   ├── check_m1.py             契约静态检查（108 项，无第三方依赖）
 │   ├── artifact_hashes.py      部署件对账：size + sha256，回答"我到底放出哪一版"
 │   ├── vm_clock.py             guest 时钟对齐：时区 .reg / 手敲 date+time 两个通道
 │   ├── mkdat/                  数据编译器 + fetch_data.py + fixtures
@@ -238,7 +238,7 @@ ros-pinyin/
 | 装配 | `ime/scheme_reg.cpp` | 定义 `imfw::scheme_instance()`（唯一的 Scheme 注入点） | Win |
 | 数据编译 | `tools/mkdat/mkdat.cpp` | Unihan + hanziDB → `rospinyin.dat`（确定性输出） | 宿主 |
 | 安装器 | `tools/install-rospinyin/install.cpp` | `/step1..4` 分步注册、动态 HKL 记录、`/i` 串行（仅 Windows 参照机） | Win |
-| 契约检查 | `tools/check_m1.py` | 107 项静态断言（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、ABI、reload 顺序…） | 宿主 |
+| 契约检查 | `tools/check_m1.py` | 108 项静态断言（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、ABI、reload 顺序…） | 宿主 |
 | 部署对账 | `tools/artifact_hashes.py` | 各构建产物与共享副本的 size/sha256 对照，标出"同字节数不同内容"与"共享目录不是这一版" | 宿主 |
 | guest 侧哈希 | `tools/rhash/rhash.c` | 自带 SHA-256 的小 exe：`rhash.exe [文件...]`，无参数时算 system32 的 `.ime`/`.dat`。只依赖 kernel32+msvcrt | Win |
 | guest 时钟 | `tools/vm_clock.py` | 诊断宿主/UTC/guest 显示差值；生成时区 `.reg` 或打印 `date`/`time` 命令（**只打印，不代敲**） | 宿主 |
@@ -257,7 +257,7 @@ cd ros-pinyin
 cmake --preset linux-ci
 cmake --build --preset linux-ci --parallel
 ctest --preset linux-ci                           # 17 个测试，应 100% 通过
-python3 tools/check_m1.py                          # 107 项契约检查，应 107/107
+python3 tools/check_m1.py                          # 108 项契约检查，应 108/108
 ```
 
 `CMakePresets.json` 是构建配置的唯一出处（X2-e3）：CI、README 和本节的命令都走 preset，
@@ -511,7 +511,7 @@ VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
 | 门禁 | 命令 | 通过标准 |
 |---|---|---|
 | 宿单单测 | `ctest --preset linux-ci`（或 `ctest --test-dir build`） | 17/17（smoke、session、pinyin、pinyin-session、candidate-pager、pinyin-scheme、scheme-registry、toy-scheme、host-key、key-route、host-smoke、toolbar-text、emit-text、utf8、code-table、m1-contract、mkdat-e2e） |
-| 契约静态检查 | `python3 tools/check_m1.py` | 107/107（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
+| 契约静态检查 | `python3 tools/check_m1.py` | 108/108（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
 | Win32 语法检查 | CI 的第一步，见 §6.3 | 0 error（用 `tools/syntax_stub` 提供的 Windows 头） |
 | PE 导入表 | CI `objdump -p` | 不得出现 Vista+ 导出或非系统 DLL |
 | 真机验收 | `docs/milestones/m2/M2-ACCEPTANCE.md` | 15 项全绿 |
@@ -2269,6 +2269,34 @@ Linux 默认构建看不到它。
 
 ---
 
+### 11.38 X2-w3 合入：打字不再把翻页踢回第一页（2026-11-19 18:2x）
+
+`handle_key` 的 `Input/Absorb` 分支每个字母都调用 `pager.reset(candidates)`，而 `reset()`
+无条件 `page_ = 0`。于是翻到第 2 页后再敲一个字母，页码立刻回到 `1/N`。
+
+修法是区分两种"换候选"：
+
+| 调用 | 语义 | 场景 |
+|---|---|---|
+| `reset()` | 新会话，回到第 1 页 | `finish_composition`（Esc / 关 IME）、提交后收尾、Backspace |
+| `replace()`（新） | 同一会话的候选刷新，保留当前页并 clamp | 继续打字（`Input/Absorb`） |
+
+clamp 是必要的：新候选列表可能更短，留一个越界 `page_` 会让 `page_begin()` 指到无效位置。
+`replace()` 在 `page_count()==0` 时归零，否则把超出范围的页码压到最后一页。
+
+| 项 | 结果 |
+|---|---|
+| 判据 | `candidate_pager_test` 新增保留页 / 短列表 clamp / 空列表三组；`host_smoke` 新增一段：20 候选 → `=` 翻到第 2 页 → 再敲两个字母仍显示 `page=2/3` → 候选缩到 5 条时显示 `page=1/1`，且翻页键没有调用 engine |
+| 门禁 | `ctest` 17/17、`check_m1` 107 → **108/108**、`check_docs` 7/7 |
+| 变异 | 3 次全红：打字路径改回 `reset()` / `replace()` 无条件归零 / 去掉 clamp |
+| 对外面 | 16 导出与 5 个 DLL 的导入函数集逐条同序不变；`.ime` 952,485 → **953,082 B**，sha `1ced1364…` → `f3e33b0a…` |
+| 真机 | **待用户操作**：候选多于 9 条时翻到第 2 页，继续打字看页码是否保持 |
+
+三条 X2-w 临时需求至此全部合入；它们的共同点是"测试能证明序列，证明不了观感"，
+所以三条的完成判据都保留一行**真机待验**，不由构建绿灯代替。
+
+---
+
 ### 11.2 其他待办
 
 - ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。
@@ -2286,7 +2314,7 @@ Linux 默认构建看不到它。
 **改代码**
 
 1. `cmake --build build --parallel && ctest --test-dir build` → 17/17；
-2. `python3 tools/check_m1.py` → 107/107（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
+2. `python3 tools/check_m1.py` → 108/108（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
 3. 动了 `framework/platform/win32/imm32` 或 `framework/platform/win32/ui`：跑 CI 那步宿主语法检查（§6.3），确认 `-Wchanges-meaning` / ABI 断言不炸；
 4. 动了 ABI：本地用 zig 真实 MinGW 头编译一次 `framework/platform/win32/imm32/imm_entry.cpp`（`-target x86-windows-gnu -c`）。
 

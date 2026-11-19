@@ -7,6 +7,15 @@
 
 ## 未发布
 
+### 翻页状态合入 main（X2-w3）
+
+- `CandidatePager::replace()` 与 `reset()` 分工：`Input/Absorb` 继续打字时用 `replace()` 保留
+  当前页（页不存在时 clamp 到最后一页）；提交、Backspace、Esc 仍用 `reset()` 从第 1 页开始。
+- `candidate_pager_test` 新增保留页 / clamp / 空候选三组；`host_smoke` 新增"翻到第 2 页后
+  继续打字仍在第 2 页"的精确日志段。3 次变异全红。
+- `ctest` 17/17、`check_m1` 107 → **108/108**、`check_docs` 7/7。
+- 导出/导入面不变；`.ime` 952,485 → 953,082 B，sha `1ced1364…` → `f3e33b0a…`。真机待验。
+
 ### 候选窗稳定性合入 main（X2-w2）
 
 - `PinyinSession::recompute()` 只给已完成音节发候选。新增 `completed_syllables()`：

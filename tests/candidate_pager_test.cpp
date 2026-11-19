@@ -84,6 +84,23 @@ int main() {
           pager.page_size() == 9 && !pager.next_page(),
           "18 candidates fit exactly two pages");
 
+    // X2-w3: replace() is the typing path. It keeps the page the user is on,
+    // and clamps when the new candidate set is shorter.
+    pager.reset(make_candidates(20));
+    check(pager.next_page(), "get to page 2 before typing");
+    pager.replace(make_candidates(20));
+    check(pager.page() == 1 && pager.page_count() == 3,
+          "typing keeps page 2 instead of snapping back to page 1");
+    pager.replace(make_candidates(10));
+    check(pager.page() == 1 && pager.page_count() == 2,
+          "a shorter list keeps page 2 when page 2 still exists");
+    pager.replace(make_candidates(5));
+    check(pager.page() == 0 && pager.page_count() == 1,
+          "page clamps down when the new list has only one page");
+    pager.replace({});
+    check(pager.empty() && pager.page() == 0 && pager.page_begin() == nullptr,
+          "an empty replacement is safe");
+
     // Reset clears paging state.
     pager.reset(make_candidates(3));
     check(pager.page() == 0 && pager.page_count() == 1 &&
