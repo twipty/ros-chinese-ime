@@ -745,7 +745,7 @@ def run(root: Path) -> int:
             "put_uint(" in trace_line and
             "% 10" not in trace_line and
             "unsigned put_uint(char* out, unsigned len, unsigned cap" in
-            read(root, IMM32 + "trace_stamp.h"))
+            read(root, "framework/include/imfw/trace_stamp.hpp"))
 
     # U3 (2026-11-18 真机): dock to the work area, never to the raw screen.
     # SM_CYSCREEN puts the toolbar under the taskbar, and on ReactOS
@@ -879,6 +879,37 @@ def run(root: Path) -> int:
     c.check("X2-e2: ROSPINYIN_TRACE is not re-declared on the assembly target",
             "ROSPINYIN_TRACE" not in strip_cmake_comments(ime_cmake),
             "ime/CMakeLists.txt defines a macro nothing in it reads")
+
+    # X2-e6: the trace formatter is an imfw public service, not a host private
+    # header. The data source used to name a file inside platform/win32/imm32,
+    # which forced rospinyin-engine to carry a path into the host layer. The
+    # formatter now lives under framework/include and reaches both clients via
+    # imfw-engine's PUBLIC include path -- no new implementation, no second copy.
+    ds_code = strip_cpp_comments(read(root, "pinyin/host/dat_source_win.cpp"))
+    c.check("X2-e6: pinyin data source uses the public trace header",
+            "#include <imfw/trace_stamp.hpp>" in ds_code and
+            "#include \"trace_stamp.h\"" not in ds_code,
+            "a plugin must not name a file in the host's platform directory")
+
+    c.check("X2-e6: rospinyin-engine has no platform include path",
+            "framework/platform/win32/imm32" not in pinyin_cmake,
+            "the engine reaches the formatter through imfw-engine, not by "
+            "reaching into the host layer")
+
+    dllmain_code = strip_cpp_comments(read(root, IMM32 + "dllmain.cpp"))
+    trace_line_code = strip_cpp_comments(trace_line)
+    c.check("X2-e6: host callers still share the public formatter",
+            "#include <imfw/trace_stamp.hpp>" in dllmain_code and
+            "#include <imfw/trace_stamp.hpp>" in trace_line_code,
+            "moving the header must not remove it from its original callers")
+
+    trace_pub = read(root, "framework/include/imfw/trace_stamp.hpp")
+    c.check("X2-e6: one formatter remains, no private header is resurrected",
+            not (root / (IMM32 + "trace_stamp.h")).exists() and
+            "kTracePath[]" in trace_pub and
+            "unsigned put_uint(char* out, unsigned len, unsigned cap" in trace_pub,
+            "a leftover private copy would split the one-decimal-formatter "
+            "contract that X2-d established")
 
     # ------------------------------------------------------------------
     # X2-e3 (audit A-P1-6): the build configuration itself, not one file in it.

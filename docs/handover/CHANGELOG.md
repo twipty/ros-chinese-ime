@@ -7,6 +7,18 @@
 
 ## 未发布
 
+### 时间戳格式器成为公共服务（X2-e6）
+
+- `trace_stamp.h` 从 `framework/platform/win32/imm32/` 升格为
+  `framework/include/imfw/trace_stamp.hpp`。`dllmain.cpp`、`trace_line.cpp` 与拼音数据源
+  统一包含公共头；`kTracePath` 与 `put_uint` 仍只有一份实现，没有复制。
+- `pinyin/CMakeLists.txt` 删掉指向宿主 imm32 目录的 include 路径。engine 通过
+  `imfw-engine` 的 PUBLIC include 拿到公共头，跨层依赖归零。
+- `check_m1` 100 → 104：公共头归属、engine 无平台 include、宿主调用者仍共享、
+  私有头不复活。3 次变异全红；另做 1 次"写成注释"控制，确认断言匹配调用而非词。
+- 对外面零改动：交叉构建 sha256 仍为 `b0529131…`；trace 版 971,833 B 且三条
+  `dat ...` 诊断串仍在。
+
 ### 版本只有一个真值（X2-e5，达成 G7）
 
 - `CMakeLists.txt` 不再写死 `project(VERSION 0.0.1)`：配置时从 `ime/version.h` 读取

@@ -39,12 +39,10 @@ if(WIN32)
     target_compile_definitions(rospinyin-engine PRIVATE
         ROSPINYIN_REQUIRE_SYSTEM_TABLE)
 
-    # host/dat_source_win.cpp writes the `dat ...` lines of the trace channel,
-    # formatted by the channel's one timestamp header (X2-d). That header lives
-    # in the host layer; the path is the remaining cross-layer debt and X2-e6
-    # replaces it with a minimal public interface.
-    target_include_directories(rospinyin-engine PRIVATE
-        "${PROJECT_SOURCE_DIR}/framework/platform/win32/imm32")
+    # host/dat_source_win.cpp writes the `dat ...` lines of the trace channel.
+    # Since X2-e6 the formatter is an imfw public header, reached through
+    # rospinyin-engine -> imfw-engine's PUBLIC include path; the old direct
+    # framework/platform/win32/imm32 path is gone.
 
     # Same macro the host libraries carry: the `dat ...` lines have to appear in
     # the trace build or a "wrong table" report becomes unattributable.

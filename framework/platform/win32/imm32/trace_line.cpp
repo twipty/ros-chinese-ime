@@ -8,7 +8,7 @@
 
 #if defined(ROSPINYIN_TRACE)
 
-#include "trace_stamp.h"
+#include <imfw/trace_stamp.hpp>
 
 #include <windows.h>
 
@@ -71,7 +71,7 @@ Line& Line::number(long long value, bool hex) {
 void Line::commit() {
     if (len_ == 0) return;
 
-    // Prefix the line with wall clock + tick count (see trace_stamp.h for why
+    // Prefix the line with wall clock + tick count (see trace_stamp.hpp for why
     // both) so interleaved lines keep their order and lines from different
     // boots stay distinguishable.
     char out[400];

@@ -433,6 +433,19 @@ X1 改了代码与 `check_m1` 的 15 处路径却漏了这棵树。
 | 门禁 | — | `ctest` 16/16、`check_m1` **100/100**、`check_docs` 7/7；`check_release_version.py alpha0.0.2 --binary` 全过 |
 | 对外面 | 不变 | 交叉构建前后 sha256 同为 `b0529131…`；资源解析 `FILEVERSION=0.0.2.0`、字符串 `alpha0.0.2`，与 tag 一致 |
 
+**✅ X2-e6 跨层 include 归零（2026-11-19 17:4x）**
+
+计划："`dat_source_win.cpp` 不再引宿主私有头，`trace_stamp.h` 降为 `imfw` 内部可见或复制最小接口"（复核 N / X1 表）。
+
+| 项 | 计划 | 实际 |
+|---|---|---|
+| 归属 | 不再引私有头 | `git mv` 到 `framework/include/imfw/trace_stamp.hpp`，三处调用者统一 `#include <imfw/trace_stamp.hpp>`；没有复制实现，`kTracePath` / `put_uint` 仍只有一份 |
+| CMake | 断开 engine → platform 边 | 删掉 `pinyin/CMakeLists.txt` 中指向 `framework/platform/win32/imm32` 的 include 路径；靠 `imfw-engine` 的 PUBLIC include 传递 |
+| 新增断言 | — | 4 条（100 → 104）：数据源包含公共头 / engine 无平台 include / 宿主调用者仍包含 / 私有头不复活且唯一格式器在公共头；X2-d 旧断言同步改路径 |
+| 变异 | — | 3 次红（旧 include 回来 / 删 dllmain include / 重建私有头）+ 1 次控制（include 路径写成注释仍绿，证明匹配调用而非词） |
+| 门禁 | — | `ctest` 16/16、`check_m1` **104/104**、`check_docs` 7/7；17 TU 语法检查全过 |
+| 对外面 | 不变 | 交叉构建 sha256 仍为 `b0529131…`（947,820 B），依赖面 5 个 DLL 不变；trace 版 971,833 B，三条 `dat ...` 诊断串仍在 |
+
 **X2-e 构建收敛（1.5–2 天）**
 
 | 子项 | 出处 | 做法 |
@@ -583,7 +596,7 @@ Ctrl+Space 与备用热键——**全部改在 `process_key` 里**。先有冒�
 - [x] X2-e3 `CMakePresets.json` + `EXISTS` 硬失败 + 统一根变量 + C 标准 + 静态策略收敛（审计 A-P1-6）— 2026-11-19，见 §3 X2-e3 执行记录
 - [x] X2-e4 28 处 `#ifndef` 平台补丁归位（审计 A-P2-11；实际 47 处 / 5 个 TU）— 2026-11-19，见 §3 X2-e4 执行记录
 - [x] X2-e5 版本收敛到 `ime/version.h` 一处 + CI 断言（审计 A-P1-7 版本部分；达成 G7）— 2026-11-19，见 §3 X2-e5 执行记录
-- [ ] X2-e6 `dat_source_win.cpp` 不再引宿主私有头（复核 N / X1 表）
+- [x] X2-e6 `dat_source_win.cpp` 不再引宿主私有头（复核 N / X1 表）— 2026-11-19，见 §3 X2-e6 执行记录
 - [ ] X2-f `tools/seams.py` + `check_m1` 新增 seam 上限项（含 `UiCanRender`）
 - [ ] X2-w1/w2/w3 临时需求批（状态指示器 / 候选窗稳定性 / 翻页重置）— **排期在 X2 收口后、X3 之前**，见 §3「X2-w」；不阻塞 X2 收口
 

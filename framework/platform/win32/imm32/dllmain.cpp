@@ -12,7 +12,7 @@
 // not loader work.
 
 #include "ime_host.h"
-#include "trace_stamp.h"
+#include <imfw/trace_stamp.hpp>
 
 #include <imfw/scheme.hpp>
 

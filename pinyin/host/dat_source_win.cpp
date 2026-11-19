@@ -17,7 +17,7 @@
 #include <string_view>
 #include <vector>
 
-#include "trace_stamp.h"
+#include <imfw/trace_stamp.hpp>
 
 namespace rospinyin {
 namespace {

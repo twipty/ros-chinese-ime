@@ -15,10 +15,12 @@
 //
 // No CRT: the format is a fixed width, so it is cheaper (and safer inside
 // DllMain) to place the digits by hand than to reach for sprintf. Header-only
-// and inline so both translation units (dllmain.cpp, imm_entry.cpp) produce the
-// same prefix without adding a source file to the .ime build.
-#ifndef IMFW_HOST_TRACE_STAMP_H
-#define IMFW_HOST_TRACE_STAMP_H
+// and inline so every caller (dllmain.cpp, trace_line.cpp and the pinyin data
+// source) produces the same prefix without adding a source file to the .ime
+// build. As an imfw public header it is available to rospinyin-engine through
+// imfw-engine's PUBLIC include path: no engine -> platform/win32 edge (X2-e6).
+#ifndef IMFW_TRACE_STAMP_HPP
+#define IMFW_TRACE_STAMP_HPP
 
 #if defined(ROSPINYIN_TRACE)
 
@@ -102,4 +104,4 @@ inline unsigned stamp(char* out, unsigned len, unsigned cap) {
 
 #endif  // ROSPINYIN_TRACE
 
-#endif  // IMFW_HOST_TRACE_STAMP_H
+#endif  // IMFW_TRACE_STAMP_HPP
