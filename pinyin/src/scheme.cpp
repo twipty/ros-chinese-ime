@@ -5,6 +5,16 @@
 // it builds and is unit-tested on Linux together with the session code.
 // The built-in fallback table moved here from the old ime/dat_loader.cpp —
 // it is pinyin data and therefore belongs to the plugin, not the framework.
+//
+// ROSPINYIN_BUILTIN_TABLE (decision 2026-11-19): the 109-reading embedded
+// table is test/diagnostic infrastructure, not a release safety net — the
+// supported install path already guarantees the .dat. Release builds
+// compile with the switch OFF, so the symbols below stay out of the binary;
+// load_builtin_table() still exists (emptying the table) so host tests that
+// reference it compile in both configurations. What a release build does
+// when the .dat is missing is pinned by tests/builtin_gate_test.cpp: the
+// empty-table contract — letters accumulate, candidates stay empty,
+// Backspace/Esc are the exits, nothing crashes.
 
 #include <rospinyin/scheme.hpp>
 #include <rospinyin/dat_source.hpp>
@@ -19,6 +29,7 @@
 namespace rospinyin {
 namespace {
 
+#if defined(ROSPINYIN_BUILTIN_TABLE)
 // Canonical readings use the digit tone immediately after the vowel and 'v'
 // for the u-umlaut (see docs/milestones/m2/M2-DATA-PLAN.md section 7).
 struct BuiltinReading {
@@ -137,6 +148,7 @@ constexpr BuiltinReading kBuiltin[] = {
     {"jin1",  L"今金"},
     {"nian2", L"年"},
 };
+#endif  // ROSPINYIN_BUILTIN_TABLE
 
 }  // namespace
 
@@ -212,6 +224,10 @@ void add_reading(imfw::CodeTable& table, char32_t codepoint,
     table.add(codepoint, rank, reading, pinyin::syllable_of(reading));
 }
 
+#if defined(ROSPINYIN_BUILTIN_TABLE)
+// Real loader: the 109 embedded readings, indexed. Only this configuration
+// can answer "what does the engine do with no .dat and no fallback" with
+// data; release builds never carry it.
 void load_builtin_table(imfw::CodeTable& out) {
     for (const auto& item : kBuiltin) {
         if (item.chars == nullptr || item.chars[0] == L'\0') continue;
@@ -224,6 +240,17 @@ void load_builtin_table(imfw::CodeTable& out) {
     }
     out.build_index();
 }
+#else
+// Symbol must survive in both configurations so host tests referencing it
+// link either way. With the table compiled out, "loading the built-in
+// table" is exactly "an empty table" — which is also what a release build
+// without a .dat runs on (empty-table contract,
+// tests/builtin_gate_test.cpp).
+void load_builtin_table(imfw::CodeTable& out) {
+    out.clear();
+    out.build_index();
+}
+#endif  // ROSPINYIN_BUILTIN_TABLE
 
 // The framework calls this before rebuilding sessions (ImeConfigure success
 // path): re-read the .dat (a config tool may have replaced it), keeping the

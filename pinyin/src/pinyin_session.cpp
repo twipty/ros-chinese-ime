@@ -60,6 +60,15 @@ bool is_typed_letter(char32_t cp) {
 // Without this branch feed() rejects and drops the separator typed in
 // "xi'an", silently degrading it to "xian".
 bool can_extend(const std::string& text, const imfw::CodeTable& table) {
+    // Empty table (release build with a missing/unreadable .dat): accept
+    // every letter so the composition string stays alive and the user can
+    // backspace out of it (decision 2026-11-19: show something honest at the
+    // caret instead of silently swallowing keys; there are no candidates to
+    // choose from, and Esc/Backspace are the exits). One table.is_code()
+    // probe, no recursion — the table has no prefixes, so every branch below
+    // would return false anyway.
+    if (table.char_count() == 0) return true;
+
     if (table.is_prefix(text)) return true;
 
     const std::size_t apostrophe = text.find('\'');

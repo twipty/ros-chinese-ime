@@ -87,13 +87,18 @@ int main() {
     check(engine->feed(U'n').action == imfw::Action::Absorb,
           "engine must absorb input after on_select");
 
-    // The builtin fallback loader is also directly testable.
+    // The builtin fallback loader is also directly testable. Under the
+    // BUILTIN_TABLE=OFF release configuration the loader exists but empties
+    // the table (scheme.cpp #else branch), so the coverage assertions only
+    // hold when the table is actually compiled in — hence the guard.
+#if defined(ROSPINYIN_BUILTIN_TABLE)
     imfw::CodeTable fallback;
     rospinyin::load_builtin_table(fallback);
     check(fallback.char_count() > 100, "fallback table covers common characters");
     check(fallback.is_code("nv") && fallback.is_code("lv") && fallback.is_code("lve"),
           "v-key syllables present in fallback table");
     check(fallback.is_prefix("zho"), "fallback table exposes prefixes");
+#endif
 
     // Reload swaps in a fresh table generation without breaking anything.
     scheme.reload_data();

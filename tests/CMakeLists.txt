@@ -27,6 +27,16 @@ add_executable(rospinyin-candidate-pager candidate_pager_test.cpp)
 target_link_libraries(rospinyin-candidate-pager PRIVATE imfw-engine)
 add_test(NAME candidate-pager COMMAND rospinyin-candidate-pager)
 
+# Missing-.dat abnormal state (decision 2026-11-19): the empty-table
+# contract. Pins that a release build without the built-in table (and with a
+# missing/unreadable .dat) keeps the session alive: letters accumulate,
+# candidates stay empty, Backspace/Esc exit, nothing crashes. Runs in BOTH
+# configurations: the empty table is built by hand, so the test means the
+# same thing whether or not kBuiltin is compiled in.
+add_executable(rospinyin-builtin-gate builtin_gate_test.cpp)
+target_link_libraries(rospinyin-builtin-gate PRIVATE rospinyin-engine)
+add_test(NAME builtin-gate COMMAND rospinyin-builtin-gate)
+
 # M2.5 framework extraction: the Scheme plugin contract (reuse seam).
 add_executable(rospinyin-scheme scheme_test.cpp)
 target_link_libraries(rospinyin-scheme PRIVATE rospinyin-engine)
