@@ -8,6 +8,12 @@ project(RosPinyin VERSION 0.0.1 LANGUAGES C CXX)
 # option open without committing to it.
 option(ROSPINYIN_IN_TREE     "Build as ReactOS modules/optional component" OFF)
 option(ROSPINYIN_BUILD_TESTS "Build engine unit tests"                     ON)
+# Diagnostic channel: when ON, every IMM32 entry-point call appends a line to
+# C:\rospinyin-trace.log (framework/platform/win32/imm32). Off by default so a
+# shipped .ime carries no trace code at all. Declared here, not in ime/: the
+# platform libraries are added before ime/ and they are the ones that read the
+# macro (X2-e1).
+option(ROSPINYIN_TRACE       "Trace IMM32 entry points to C:\\rospinyin-trace.log" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

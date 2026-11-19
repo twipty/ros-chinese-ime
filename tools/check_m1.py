@@ -180,6 +180,18 @@ def read(root: Path, rel: str) -> str:
     return (root / rel).read_text(encoding="utf-8")
 
 
+def strip_cmake_comments(text: str) -> str:
+    """Drop `#` comments and `#[[ ]]` bracket comments.
+
+    Needed since X2-e1: the platform CMakeLists explains *why* a TU sits in
+    one library and not the other, and those explanations name the very paths
+    the checks below look for. Matching against the commented text would let a
+    file "belong" to a library it is only mentioned in.
+    """
+    text = re.sub(r"#\[\[.*?\]\]", "", text, flags=re.S)
+    return re.sub(r"#[^\n]*", "", text)
+
+
 def run(root: Path) -> int:
     c = Checker()
 
@@ -755,6 +767,53 @@ def run(root: Path) -> int:
             "Crypt" not in rhash_src and
             "%llu" not in rhash_src and
             "FILE_SHARE_DELETE" in rhash_src)
+
+    # X2-e1 (audit A-P1-4): the Windows half became two libraries. The failure
+    # this has to catch is not "a file moved" but "a file is in both lists":
+    # a TU compiled into two libraries means duplicate symbols, and for the
+    # stateful ones (the host's session map, the UI's per-HIMC windows) it
+    # means two copies of the same cache inside one module -- which links
+    # cleanly and misbehaves at runtime. Hence ownership is checked in both
+    # directions, and comments are stripped first (they name the paths too).
+    plat_cmake = strip_cmake_comments(
+        read(root, "framework/platform/win32/CMakeLists.txt"))
+    host_block, _, ui_block = plat_cmake.partition("add_library(imfw-win32-ui")
+    host_tus = ["imm32/dllmain.cpp", "imm32/imm_entry.cpp",
+                "imm32/key_translate.cpp", "imm32/trace_line.cpp",
+                "imm32/win32_host.cpp", "imm32/ui_server.cpp",
+                "imm32/session_store.cpp"]
+    ui_tus = ["ui/ime_ui.cpp", "ui/ui_window.cpp", "ui/composition_window.cpp",
+              "ui/candidate_window.cpp", "ui/toolbar.cpp"]
+    misplaced = ([t for t in host_tus if t not in host_block or t in ui_block] +
+                 [t for t in ui_tus if t not in ui_block or t in host_block])
+    c.check("X2-e1: every platform TU belongs to exactly one library",
+            bool(ui_block) and not misplaced, ", ".join(misplaced))
+
+    # ...and the assembling .ime compiles none of them. The `/../` form is the
+    # one this file used before the split; matching the bare path would also
+    # hit the comment that points at the new CMakeLists.
+    c.check("X2-e1: ime/ assembles the platform layer instead of compiling it",
+            not re.search(r"\.\./framework/platform/win32/", ime_cmake) and
+            "imfw-win32-imm32" in ime_cmake and
+            "imfw-win32-ui" in ime_cmake,
+            "ime/CMakeLists.txt still names platform sources")
+
+    # GNU ld pulls an archive member only for an *undefined reference*, and the
+    # 16 names in rospinyin.def are export entries, not references. Without
+    # whole-archive on the host library the link dies with "cannot export
+    # ImeProcessKey: symbol not defined" -- measured, not guessed (X2-e1).
+    c.check("X2-e1: .def exports force the host archive members in",
+            re.search(r"--whole-archive\"?\s+imfw-win32-imm32", ime_cmake) and
+            "--no-whole-archive" in ime_cmake,
+            "whole-archive missing: ld resolves exports against linked objects only")
+
+    # The trace macro is read by the platform libraries, which are configured
+    # before ime/. Declared in ime/ it would leave the libraries untraced and
+    # the flag would look like it worked.
+    c.check("X2-e1: ROSPINYIN_TRACE is declared before the libraries that read it",
+            "option(ROSPINYIN_TRACE" in read(root, "CMakeLists.txt") and
+            "option(ROSPINYIN_TRACE" not in ime_cmake,
+            "option lives in ime/CMakeLists.txt, i.e. after framework/platform/win32")
 
     return c.summary()
 

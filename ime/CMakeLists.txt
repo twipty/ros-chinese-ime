@@ -39,9 +39,9 @@ else()
 endif()
 
 # Diagnostic channel: when ON, every IMM32 entry-point call appends a line to
-# C:\rospinyin-trace.log (see framework/platform/win32/imm32/imm_entry.cpp). Off by default so
-# a shipped .ime carries no trace code at all.
-option(ROSPINYIN_TRACE "Trace IMM32 entry points to C:\\rospinyin-trace.log" OFF)
+# C:\rospinyin-trace.log. The option is declared at the repository root
+# (X2-e1) because the platform libraries read the macro and they are configured
+# before this directory.
 
 # Version-resource language of rospinyin.ime. This is not cosmetic: imm32's
 # ImmInstallIMEW derives the layout's HKL from the first VarFileInfo\Translation
@@ -53,32 +53,36 @@ option(ROSPINYIN_TRACE "Trace IMM32 entry points to C:\\rospinyin-trace.log" OFF
 set(ROSPINYIN_IME_LANGID "0804" CACHE STRING
     "Version-resource language of rospinyin.ime (0804=zh-CN, 0409=en-US)")
 
+# Assembly only: one scheme + branding + the two framework libraries. The
+# Win32 host and UI are libraries now (framework/platform/win32/CMakeLists.txt,
+# X2-e1), so this file names no platform source file. That is the point of the
+# split: a new input method assembles an .ime without touching the host layer.
 add_library(rospinyin-ime SHARED
     ${ROSPINYIN_SCHEME_SOURCES}
-    ../framework/platform/win32/imm32/dllmain.cpp
-    ../framework/platform/win32/imm32/imm_entry.cpp
-    ../framework/platform/win32/imm32/key_translate.cpp
-    ../framework/platform/win32/imm32/trace_line.cpp
-    ../framework/platform/win32/imm32/win32_host.cpp
-    ../framework/platform/win32/imm32/ui_server.cpp
-    ../framework/platform/win32/imm32/session_store.cpp
-    ../framework/platform/win32/ui/ime_ui.cpp
-    ../framework/platform/win32/ui/ui_window.cpp
-    ../framework/platform/win32/ui/composition_window.cpp
-    ../framework/platform/win32/ui/candidate_window.cpp
-    ../framework/platform/win32/ui/toolbar.cpp
     rospinyin.def
     rospinyin_res.rc)
 
 target_include_directories(rospinyin-ime PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
-    "${PROJECT_SOURCE_DIR}/framework/platform/win32/imm32"
-    "${PROJECT_SOURCE_DIR}/framework/include"
-    "${PROJECT_SOURCE_DIR}/framework/platform/win32/ui"
-    "${ROSPINYIN_SCHEME_INCLUDE}")
+    "${ROSPINYIN_SCHEME_INCLUDE}"
+    # Temporary (X2-e1 → X2-e2): the pinyin scheme's Windows data source is
+    # still compiled here and includes the trace channel's timestamp header.
+    # X2-e2 moves that file into rospinyin-engine and takes this path with it.
+    "${PROJECT_SOURCE_DIR}/framework/platform/win32/imm32")
 
+# imfw-win32-imm32 brings imfw-win32-ui through the (static) dependency cycle;
+# both are named anyway so the link line states what the module contains.
+#
+# --whole-archive on the host library is not belt-and-braces: GNU ld pulls an
+# archive member only to satisfy an *undefined reference*, and the 16 names in
+# rospinyin.def are export entries, not references. Without it the link fails
+# with "cannot export ImeProcessKey: symbol not defined" — the entry points are
+# reachable from imm32.dll at runtime, so nothing in the module references them
+# at link time. The UI library needs no such treatment: the host calls into it.
 target_link_libraries(rospinyin-ime PRIVATE
-    ${ROSPINYIN_SCHEME_LIBS} user32 gdi32 imm32)
+    ${ROSPINYIN_SCHEME_LIBS}
+    "-Wl,--whole-archive" imfw-win32-imm32 "-Wl,--no-whole-archive"
+    imfw-win32-ui)
 
 # Output must be exactly "rospinyin.ime" (no lib prefix, no .dll suffix).
 set_target_properties(rospinyin-ime PROPERTIES

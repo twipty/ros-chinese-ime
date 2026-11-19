@@ -352,6 +352,26 @@ artifact 从未上传，使 `publish-artifacts-branch` 永久失败。补全 `to
 **一处 trace 文本变了**：`ImeSelect` 里 `select state=… engine=…` 改成 `activate state=…`，
 因为这条现在由共享路径打印；前面的 `select imc=…` / `active f=…` 行仍在，日志仍能分清入口点。
 
+**✅ X2-e1 平台层成为两个库（2026-11-19 15:0x）**
+
+计划：`platform/win32/{imm32,ui}` 两个 `add_library`，`ime/` 只 `target_link_libraries`。
+验收：导出面与导入面逐个一致（**不看字节**）。
+
+| 项 | 计划 | 实际 |
+|---|---|---|
+| 库划分 | imm32 / ui 两个 | `imfw-win32-imm32`（7 TU）/ `imfw-win32-ui`（5 TU），定义在 `framework/platform/win32/CMakeLists.txt`；`ime/CMakeLists.txt` 现在只剩 scheme + `.def` + `.rc` |
+| 依赖方向 | 未提 | **两个库互为依赖**（宿主调 `Ui*`，窗口层读 `g_hInst`）。CMake 允许 STATIC 成环，两条边都写出来并在注释里说明；**没有**造第三个 "common" 库去把环藏起来 |
+| 链接 | — | 宿主库必须 `-Wl,--whole-archive`：ld 只为**未定义引用**拉档案成员，而 `.def` 里的 16 个名字是导出条目不是引用。第一次链接报 16 次 `cannot export …: symbol not defined`，这是实测不是推测 |
+| trace 宏 | — | `option(ROSPINYIN_TRACE)` 从 `ime/CMakeLists.txt` 上提到顶层：读它的是平台库，而 `framework/` 在 `ime/` 之前配置，留在原处会**静默变成只影响装配件** |
+| 临时妥协 | — | `dat_source_win.cpp` 仍由 `ime/` 编译（它 `#include "trace_stamp.h"`），所以 `ime/` 暂留一条 imm32 的 include 路径，注释写明 X2-e2 带走；该路径不进任何库目标 |
+| 新增断言 | — | 4 条（82/82）：每个 TU 只属一个库（双向 + 先剥 CMake 注释）/ `ime/` 不许出现 `../framework/platform/win32/` / whole-archive 紧贴宿主库 / trace 宏在根目录声明且 `ime/` 没有 |
+| 变异 | — | 4 次全红：TU 挪进另一个库 / 同一 TU 进两个库 / 删 whole-archive / trace 选项挪回 `ime/` |
+| 门禁 | — | `ctest` 16/16（可移植层一行未动）、`check_m1` **82/82**（+4）、`check_docs` 7/7 |
+| 对外面 | 逐个一致 | 16 导出名及顺序一致；5 个 DLL 依赖一致；每 DLL 导入函数集**逐条同序**一致（GDI32 12 / IMM32 2 / KERNEL32 59 / msvcrt 43 / USER32 22）。i686 拼音 `947,969 → 948,481 B`（+512 = 一个文件对齐块）、trace 版 `971,982 B` 不变、玩具 `875,019 → 876,352 B` |
+
+**顺带修的文档漂移**：HANDOVER §4 目录树里 `framework/host/`、`framework/ui/` 是 X1 之前的布局，
+X1 改了代码与 `check_m1` 的 15 处路径却漏了这棵树。
+
 **X2-e 构建收敛（1.5–2 天）**
 
 | 子项 | 出处 | 做法 |
@@ -497,7 +517,7 @@ Ctrl+Space 与备用热键——**全部改在 `process_key` 里**。先有冒�
 - [x] X2-b `tests/host_smoke_test.cpp`（假 engine/scheme/sink/can_render，5 段键序）（审计 A-P0-1）— 2026-11-19，见 §3 X2-b 执行记录
 - [x] X2-c `route_key` + `Intent` 单测；`host_smoke` 序列不变 — 2026-11-19，见 §3 X2-c 执行记录
 - [x] X2-d `imm_entry` 按职责拆 TU（实际 4 个，候选过滤在 X2-a 已走）+ 合并两条激活路径 + 合并 trace 十进制转换（审计 A-P0-3、复核 N-1）
-- [ ] X2-e1 `platform/win32/{imm32,ui}` 库目标 + `ime` 只 link（审计 A-P1-4）
+- [x] X2-e1 `platform/win32/{imm32,ui}` 库目标 + `ime` 只 link（审计 A-P1-4）— 2026-11-19，见 §3 X2-e1 执行记录
 - [ ] X2-e2 `dat_source_win.cpp` 归 `rospinyin-engine` + 链接期符号断言（审计 A-P1-5）
 - [ ] X2-e3 `CMakePresets.json` + `EXISTS` 硬失败 + 统一根变量 + C 标准 + 静态策略收敛（审计 A-P1-6）
 - [ ] X2-e4 28 处 `#ifndef` 平台补丁归位（审计 A-P2-11）

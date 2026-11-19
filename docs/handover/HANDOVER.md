@@ -186,8 +186,9 @@ ros-pinyin/
 │   ├── README.md               模块地图、Scheme 复用缝、生命周期红线
 │   ├── include/imfw/           引擎契约、Scheme 接口、emit_text、candidate_pager、utf8、code_table、dat_format
 │   ├── src/                    上述纯 C++ 实现（Linux 可单测）
-│   ├── host/                   IMM32 16 导出、ABI 头、会话存储、UI server、DllMain
-│   └── ui/                     组合串窗 / 候选窗 / 工具条 / 窗口基类
+│   ├── platform/win32/CMakeLists.txt  两个静态库：imfw-win32-imm32 / imfw-win32-ui（X2-e1）
+│   ├── platform/win32/imm32/   IMM32 16 导出、ABI 头、会话存储、UI server、DllMain
+│   └── platform/win32/ui/      组合串窗 / 候选窗 / 工具条 / 窗口基类
 ├── pinyin/                     ★拼音插件（框架不含拼音知识）
 │   ├── include/rospinyin/      pinyin.hpp、pinyin_session.hpp、dat_source.hpp、scheme.hpp、version.hpp
 │   ├── src/                    读音归一化、切分、会话、Scheme、宿主兜底数据源
@@ -195,7 +196,7 @@ ros-pinyin/
 ├── ime/                        装配层：rospinyin.def（16 导出）、rospinyin_res.rc、scheme_reg.cpp、图标
 ├── tests/                      16 个宿主测试（ctest）
 ├── tools/
-│   ├── check_m1.py             契约静态检查（77 项，无第三方依赖）
+│   ├── check_m1.py             契约静态检查（82 项，无第三方依赖）
 │   ├── artifact_hashes.py      部署件对账：size + sha256，回答"我到底放出哪一版"
 │   ├── vm_clock.py             guest 时钟对齐：时区 .reg / 手敲 date+time 两个通道
 │   ├── mkdat/                  数据编译器 + fetch_data.py + fixtures
@@ -224,6 +225,7 @@ ros-pinyin/
 | 会话存储 | `framework/platform/win32/imm32/session_store.cpp` | 每 HIMC 一个 `ImeSessionState`；`reload_sessions()` data-first | Win |
 | DllMain | `framework/platform/win32/imm32/dllmain.cpp` | **只注册 UI server 窗口类**（M0 红线 #1） | Win |
 | UI server | `framework/platform/win32/imm32/ui_server.cpp` | 接收 IMM32 的 UI 消息并转发窗口层 | Win |
+| 平台构建 | `framework/platform/win32/CMakeLists.txt` | 两个静态库：`imfw-win32-imm32`（宿主 7 个 TU）/ `imfw-win32-ui`（窗口 5 个 TU）；`ime/` 只装配不编译平台层 | Win |
 | 窗口层 | `framework/platform/win32/ui/*` | 组合串（UTF-8 下划线切分）、候选窗（9 条/页）、工具条 | Win |
 | 引擎契约 | `framework/include/imfw/engine.hpp` | `Action/Candidate/Result/Engine`，composition 为 UTF-8 | 纯 C++ |
 | 上屏发射 | `framework/src/emit_text.cpp` | UTF-32 → UTF-16 码单元 → TRANSMSG 数组（非 BMP 代理对、容量截断不留半对） | 纯 C++ |
@@ -236,7 +238,7 @@ ros-pinyin/
 | 装配 | `ime/scheme_reg.cpp` | 定义 `imfw::scheme_instance()`（唯一的 Scheme 注入点） | Win |
 | 数据编译 | `tools/mkdat/mkdat.cpp` | Unihan + hanziDB → `rospinyin.dat`（确定性输出） | 宿主 |
 | 安装器 | `tools/install-rospinyin/install.cpp` | `/step1..4` 分步注册、动态 HKL 记录、`/i` 串行（仅 Windows 参照机） | Win |
-| 契约检查 | `tools/check_m1.py` | 77 项静态断言（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、ABI、reload 顺序…） | 宿主 |
+| 契约检查 | `tools/check_m1.py` | 82 项静态断言（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、ABI、reload 顺序…） | 宿主 |
 | 部署对账 | `tools/artifact_hashes.py` | 各构建产物与共享副本的 size/sha256 对照，标出"同字节数不同内容"与"共享目录不是这一版" | 宿主 |
 | guest 侧哈希 | `tools/rhash/rhash.c` | 自带 SHA-256 的小 exe：`rhash.exe [文件...]`，无参数时算 system32 的 `.ime`/`.dat`。只依赖 kernel32+msvcrt | Win |
 | guest 时钟 | `tools/vm_clock.py` | 诊断宿主/UTC/guest 显示差值；生成时区 `.reg` 或打印 `date`/`time` 命令（**只打印，不代敲**） | 宿主 |
@@ -255,7 +257,7 @@ cd ros-pinyin
 cmake -S . -B build -DROSPINYIN_BUILD_TESTS=ON
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure        # 11 个测试，应 100% 通过
-python3 tools/check_m1.py                          # 77 项契约检查，应 77/77
+python3 tools/check_m1.py                          # 82 项契约检查，应 82/82
 ```
 
 - 宿主构建**不编译** Windows 专有部分（`ime/`、安装器、`httpdl`、`framework/platform/win32/imm32`、`framework/platform/win32/ui`），只测纯 C++ 层。
@@ -490,7 +492,7 @@ VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
 | 门禁 | 命令 | 通过标准 |
 |---|---|---|
 | 宿单单测 | `ctest --test-dir build` | 11/11（smoke、session、pinyin、pinyin-session、candidate-pager、pinyin-scheme、emit-text、utf8、code-table、m1-contract、mkdat-e2e） |
-| 契约静态检查 | `python3 tools/check_m1.py` | 77/77（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
+| 契约静态检查 | `python3 tools/check_m1.py` | 82/82（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
 | Win32 语法检查 | CI 的第一步，见 §6.3 | 0 error（用 `tools/syntax_stub` 提供的 Windows 头） |
 | PE 导入表 | CI `objdump -p` | 不得出现 Vista+ 导出或非系统 DLL |
 | 真机验收 | `docs/milestones/m2/M2-ACCEPTANCE.md` | 15 项全绿 |
@@ -1906,6 +1908,66 @@ U1（"第一次切到本布局时是关的"）就是这么来的——一段必�
 
 ---
 
+### 11.30 X2-e1 平台层成为两个库：`ime/` 从"编译 12 个 cpp"变成"装配"（2026-11-19 15:0x）
+
+在这之前，"什么是 IMM32 宿主层"只存在于 `ime/CMakeLists.txt` 那张 12 行的源码清单里，
+而"什么属于窗口层"只存在于目录名里——两者没有共同的事实来源。现在平台层是两个静态库：
+
+| 库 | TU | 只负责 |
+|---|---|---|
+| `imfw-win32-imm32` | `dllmain` / `imm_entry` / `key_translate` / `trace_line` / `win32_host` / `ui_server` / `session_store`（7 个） | 16 导出、键翻译、trace、会话存储、UI server 窗口 |
+| `imfw-win32-ui` | `ime_ui` / `ui_window` / `composition_window` / `candidate_window` / `toolbar`（5 个） | 组合串、候选、工具条、窗口基类 |
+
+`ime/CMakeLists.txt` 现在只剩 scheme 源码 + `rospinyin.def` + `rospinyin_res.rc`，一行平台源码都不写。
+
+**两个库互相依赖，这是事实而不是设计缺陷。** 宿主调 `UiShow/UiHide/UiToolbarShow/UiCanRender`，
+窗口层读 `imfw::g_hInst`（`dllmain.cpp` 定义）和 Scheme 的窗口类名。CMake 允许 STATIC 库成环
+（链接时把整个连通分量重复一遍），所以两条 `target_link_libraries` 都写了，并在注释里说明为什么。
+**没有**为了消环去造第三个 "common" 库——那样它的唯一内容就是一个全局变量，等于把环藏起来。
+
+**踩到的第一个真问题：`.def` 不会把静态库的成员拉进来。** 第一次链接直接失败 16 次：
+
+```
+ld: cannot export ImeProcessKey: symbol not defined
+```
+
+因为 GNU ld 只为**未定义引用**去拉档案成员，而 `rospinyin.def` 里的 16 个名字是**导出条目、不是引用**——
+这 16 个入口由 imm32.dll 在运行时调用，模块内部没有任何东西引用它们。解法是给宿主库套
+`-Wl,--whole-archive` / `-Wl,--no-whole-archive`。窗口库不需要（宿主会调它，是普通未定义引用）。
+这条已写成断言：删掉 whole-archive 会红，而不是等到链接期才发现。
+
+**`ROSPINYIN_TRACE` 的声明位置也跟着挪了。** 读这个宏的是平台库，而 `framework/` 在 `ime/` 之前配置——
+选项留在 `ime/CMakeLists.txt` 里的话，库侧永远看不到它，`-DROSPINYIN_TRACE=ON` 会**静默地只影响装配件**。
+所以选项上提到顶层 `CMakeLists.txt`，并加了断言钉住"根目录有、`ime/` 没有"。
+
+**一处临时妥协，如实记**：`pinyin/host/dat_source_win.cpp` 仍由 `ime/` 编译，它 `#include "trace_stamp.h"`
+（宿主私有头），所以 `ime/` 暂时还留了一条 `framework/platform/win32/imm32` 的 include 路径，
+注释写明 X2-e2 会把它带走。这条路径不进任何库目标。
+
+**判据**（这次仍然不看字节，但把对外面钉得更细）：
+
+- 16 个导出名**及顺序**与 X2-d 产物逐字一致；5 个 DLL 依赖一致；每个 DLL 的导入函数集**逐条、同序**一致
+  （GDI32 12 / IMM32 2 / KERNEL32 59 / msvcrt 43 / USER32 22）。
+- i686 拼音版 `947,969 → 948,481 B`（+512，正好一个文件对齐块：对象顺序变了，节对齐跟着变）。
+  trace 版 `971,982 B` 不变（同一量化块内），玩具版 `875,019 → 876,352 B`（+1,333）。
+- `ctest` 16/16（可移植层一行未动）、`check_m1` **82/82**（+4）、`check_docs` 7/7。
+- 变异 4 次全红：把一个 TU 挪进另一个库 / 同一个 TU 进两个库 / 删掉 whole-archive / 把 trace 选项挪回 `ime/`。
+
+**新增的 4 条断言（都按归属双向钉）**：
+
+| 断言 | 双向钉法 |
+|---|---|
+| 每个平台 TU 只属于一个库 | 7 个宿主 TU 必须在 `imfw-win32-imm32` 块**且不在** `imfw-win32-ui` 块；5 个窗口 TU 反之。先剥掉 CMake 注释，否则注释里提到的路径会让"只是被提及"的文件也算归属 |
+| `ime/` 只装配 | `ime/CMakeLists.txt` 里不许出现 `../framework/platform/win32/`，且必须同时链接两个库 |
+| `.def` 能把档案成员拉进来 | `--whole-archive` 必须紧贴 `imfw-win32-imm32`，且必须有配对的 `--no-whole-archive` |
+| trace 宏在读取它的库之前声明 | 顶层 `CMakeLists.txt` 必须有 `option(ROSPINYIN_TRACE`，且 `ime/CMakeLists.txt` 必须没有 |
+
+**顺带修了一处文档漂移**：HANDOVER §4 的目录树里 `framework/host/` 与 `framework/ui/` 还是 X1 之前的布局
+（真实路径是 `framework/platform/win32/{imm32,ui}/`，从 X1 起就是）。X1 改了代码与 `check_m1` 的 15 处路径，
+漏了这棵树。
+
+---
+
 ### 11.2 其他待办
 
 - ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。
@@ -1923,7 +1985,7 @@ U1（"第一次切到本布局时是关的"）就是这么来的——一段必�
 **改代码**
 
 1. `cmake --build build --parallel && ctest --test-dir build` → 16/16；
-2. `python3 tools/check_m1.py` → 77/77（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
+2. `python3 tools/check_m1.py` → 82/82（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
 3. 动了 `framework/platform/win32/imm32` 或 `framework/platform/win32/ui`：跑 CI 那步宿主语法检查（§6.3），确认 `-Wchanges-meaning` / ABI 断言不炸；
 4. 动了 ABI：本地用 zig 真实 MinGW 头编译一次 `framework/platform/win32/imm32/imm_entry.cpp`（`-target x86-windows-gnu -c`）。
 

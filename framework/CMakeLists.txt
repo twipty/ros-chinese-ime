@@ -18,3 +18,10 @@ add_library(imfw-engine STATIC
 target_include_directories(imfw-engine PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>")
 target_compile_features(imfw-engine PUBLIC cxx_std_17)
+
+# The Windows half (imm32 host + UI windows) is two libraries of its own
+# (X2-e1). Windows-only because it includes <windows.h>: the core above stays
+# buildable and testable on Linux CI.
+if(WIN32)
+    add_subdirectory(platform/win32)
+endif()

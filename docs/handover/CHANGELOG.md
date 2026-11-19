@@ -7,6 +7,26 @@
 
 ## 未发布
 
+### 平台层成为两个库（X2-e1）
+
+- **`framework/platform/win32/CMakeLists.txt`（新）**：`imfw-win32-imm32`（宿主 7 个 TU）与
+  `imfw-win32-ui`（窗口 5 个 TU）两个静态库。此前"什么属于宿主层"只存在于 `ime/CMakeLists.txt`
+  那张 12 行源码清单里。
+- **`ime/CMakeLists.txt` 只剩装配**：scheme 源码 + `rospinyin.def` + `rospinyin_res.rc`，
+  一行平台源码都不写。拼音与玩具方案走同一份装配逻辑。
+- **两个库互为依赖**（宿主调 `Ui*`，窗口层读 `imfw::g_hInst`）。CMake 允许 STATIC 成环，两条边都写出来；
+  **没有**造第三个 "common" 库去把环藏起来。
+- **`.def` 不会拉档案成员**：GNU ld 只为未定义引用拉静态库成员，而 16 个导出名是导出条目不是引用，
+  首次链接直接 `cannot export ImeProcessKey: symbol not defined` × 16。给宿主库套
+  `-Wl,--whole-archive` / `--no-whole-archive`，并写成断言（删掉即红）。
+- **`option(ROSPINYIN_TRACE)` 上提到顶层 `CMakeLists.txt`**：读它的是平台库，而 `framework/`
+  在 `ime/` 之前配置——留在原处会让 `-DROSPINYIN_TRACE=ON` 只影响装配件，且**无声**。
+- **`check_m1` 78 → 82 项**：每个平台 TU 只属一个库（双向 + 先剥 CMake 注释）/ `ime/` 不许出现
+  `../framework/platform/win32/` / whole-archive 紧贴宿主库 / trace 宏的声明位置。变异 4 次全红。
+- 对外面：16 导出名及顺序、5 个 DLL 依赖、每 DLL 导入函数集**逐条同序**一致。
+  i686 拼音 `947,969 → 948,481 B`（+512，一个文件对齐块）；trace 版 `971,982 B` 不变；玩具 `+1,333 B`。
+- 顺带修 HANDOVER §4 目录树：`framework/host/`、`framework/ui/` 是 X1 之前的布局。
+
 ### 拆 god object（X2-d）
 
 - **`imm_entry.cpp` 613 → 314 行**，按职责拆出三个 TU（`imfw` 宿主层现在是一张能一眼看完的地图）：
