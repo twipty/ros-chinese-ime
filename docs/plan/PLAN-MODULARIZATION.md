@@ -348,6 +348,7 @@ artifact 从未上传，使 `publish-artifacts-branch` 永久失败。补全 `to
 | 门禁 | — | `ctest` 16/16（可移植层一行未动，`host_smoke` 输出逐字一致）、`check_m1` **77/77**、`check_docs` 7/7 |
 | 变异 | — | 6 次全红：入口点抄回 `AlignOpenStatus` / `ImeSetActiveContext` 绕过 `activate_session` / vk 表回落 / 手写十进制回归 / `set_open` 改名 / 文件长到 405 行 |
 | 对外面 | 不看字节 | 16 导出名及顺序、5 个 DLL 依赖、每个 DLL 的导入函数集**逐个一致**；i686 `947,148 → 947,969 B`（+821，只记录不判定） |
+| 真机验收 | `nihao` 冒烟一次 | **通过**（2026-11-19 14:3x，用户手动操作，结论「X2D 确认全部正常」）：`dir` = **947,969 B**；组合串 5 字母、候选 9 条（首选「你」）、页码 `1/4`、无残窗；选字 / 翻页 / Backspace / Esc / Shift 逐项正常。证据 `m0/vm/evidence/x2d/`（整屏 + 候选窗 2×）。抓图用 QEMU monitor `screendump`，不代用户敲键 |
 
 **一处 trace 文本变了**：`ImeSelect` 里 `select state=… engine=…` 改成 `activate state=…`，
 因为这条现在由共享路径打印；前面的 `select imc=…` / `active f=…` 行仍在，日志仍能分清入口点。
