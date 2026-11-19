@@ -46,7 +46,8 @@ endif()
 # ImmInstallIMEW derives the layout's HKL from the first VarFileInfo\Translation
 # entry (imm32_install.c: `pInfoEx->hkl = UlongToHandle(*pw)`), so it decides
 # which "keyboard" the layout lands under — 0804 -> Chinese keyboard,
-# 0409 -> English keyboard, which is where the system's mzimeja.ime lives.
+# 0409 -> English keyboard, which is where the reference Japanese IME ships
+# under on a stock system.
 # 0409 exists purely to build a control binary for A/B comparisons; the product
 # default stays 0804 (a Simplified Chinese IME must sit under a zh-CN layout).
 set(ROSPINYIN_IME_LANGID "0804" CACHE STRING

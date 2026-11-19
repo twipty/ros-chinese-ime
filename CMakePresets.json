@@ -35,17 +35,19 @@
         "CMAKE_C_COMPILER": "gcc",
         "CMAKE_CXX_COMPILER": "g++",
         "CMAKE_RC_COMPILER": "windres",
-        "ROSPINYIN_BUILD_TESTS": "OFF"
+        "ROSPINYIN_BUILD_TESTS": "OFF",
+        "ROSPINYIN_BUILTIN_TABLE": "OFF"
       }
     },
     {
       "name": "win32-trace",
       "displayName": "MinGW-w64 i686: standalone with the trace channel",
-      "description": "Same product plus C:\\rospinyin-trace.log lines. Bigger binary; never shipped.",
+      "description": "Same product plus C:\\rospinyin-trace.log lines. Bigger binary; never shipped. Keeps the built-in fallback table: a diagnostic build with a missing .dat must still fall back to real data.",
       "inherits": "win32-mingw",
       "binaryDir": "${sourceDir}/build-trace",
       "cacheVariables": {
-        "ROSPINYIN_TRACE": "ON"
+        "ROSPINYIN_TRACE": "ON",
+        "ROSPINYIN_BUILTIN_TABLE": "ON"
       }
     },
     {
@@ -77,7 +79,8 @@
       "binaryDir": "${sourceDir}/build-cross",
       "toolchainFile": "$env{ROSPINYIN_MINGW_TOOLCHAIN}",
       "cacheVariables": {
-        "ROSPINYIN_BUILD_TESTS": "OFF"
+        "ROSPINYIN_BUILD_TESTS": "OFF",
+        "ROSPINYIN_BUILTIN_TABLE": "OFF"
       }
     }
   ],

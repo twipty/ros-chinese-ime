@@ -311,6 +311,13 @@ cmake --build --preset win32-cross --parallel
 
 ### 6.4 安装到 ReactOS
 
+> **发布渠道纪律（决策 2026-11-19）**：下一个 release **必须以安装器版本发布**，
+> `install-rospinyin.exe /step1..4` 是首选路径——它的 `/step1` 把 `.ime + .dat`
+> 作为同一个带 size 校验的载荷拷贝，二者同生同死，不存在"装了 ime 没带 dat"的半安装态。
+> 下面的 wget+copy 手工路径**降级为备选**，仅用于诊断/开发机场景；用它时装漏 `.dat`
+> 会进入空表异常态（字母上屏进组合串、候选恒空、退格/Esc 退出——见
+> `tests/builtin_gate_test.cpp`），不再有内置表兜底（release 构建已去除）。
+
 在 guestOS 命令行执行（**系统目录是 `C:\ReactOS\system32`，不是 `C:\windows\system32`**）：
 
 ```bat

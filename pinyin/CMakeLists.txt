@@ -18,6 +18,17 @@ target_include_directories(rospinyin-engine PUBLIC
 target_link_libraries(rospinyin-engine PUBLIC imfw-engine)
 target_compile_features(rospinyin-engine PUBLIC cxx_std_17)
 
+# Built-in fallback table switch (decision 2026-11-19). The option lives at
+# the repository root; scheme.cpp compiles its kBuiltin data (and the real
+# load_builtin_table body) only when the switch is ON, so the ~3 KB of
+# embedded table bytes leave the release binary with the switch. The empty-
+# table contract (tests/builtin_gate_test.cpp) is what both configurations
+# share: OFF builds rely on it when the .dat is missing, ON builds pin it as
+# the reference behaviour.
+if(ROSPINYIN_BUILTIN_TABLE)
+    target_compile_definitions(rospinyin-engine PRIVATE ROSPINYIN_BUILTIN_TABLE)
+endif()
+
 # The plug-in owns its data end to end, including the Win32 half of the read
 # (audit A-P1-5, X2-e2).
 #

@@ -207,6 +207,13 @@ def run(root: Path) -> int:
                 head = "\n".join(p.read_text(encoding="utf-8").splitlines()[:6])
                 if "SPDX-License-Identifier: MIT" not in head:
                     missing_spdx.append(str(p.relative_to(root)))
+    # CMakeLists.txt files are source too (2026-11-19): the residue check
+    # below must see them, but they carry no SPDX header line, so they join
+    # the residue scan only — the SPDX check above stays suffix-gated.
+    for d in SCAN_DIRS:
+        for p in sorted((root / d).rglob("CMakeLists.txt")):
+            if p.is_file() and p not in source_files:
+                source_files.append(p)
     c.check("MIT SPDX header on all source files", not missing_spdx,
             ", ".join(missing_spdx[:5]))
 

@@ -43,6 +43,20 @@ option(ROSPINYIN_BUILD_TESTS "Build engine unit tests"                     ON)
 # macro (X2-e1).
 option(ROSPINYIN_TRACE       "Trace IMM32 entry points to C:\\rospinyin-trace.log" OFF)
 
+# Built-in fallback table (decision 2026-11-19): release builds ship WITHOUT
+# it. The supported install path is the installer, whose /step1 copies
+# .ime + .dat as one size-verified payload, so on that path a missing .dat
+# means a failed install -- not a degraded IME. A missing table is an
+# abnormal state handled by the empty-table contract
+# (tests/builtin_gate_test.cpp): letters accumulate in the composition,
+# candidates stay empty, Backspace/Esc are the exits. Trace builds keep the
+# table (a diagnostic build with an unreadable .dat must still fall back to
+# real data, otherwise its own report is untestable) and host test builds
+# keep it (the loader has contract tests). The presets pin the exact value
+# per product form; the ON default below serves plain host builds.
+option(ROSPINYIN_BUILTIN_TABLE
+       "Compile the built-in fallback reading table into the engine" ON)
+
 # Language levels are stated once, for both languages (X2-e3). Before this the
 # C++ level was pinned and C was left to the compiler default, which is gnu17
 # on GCC 11+ and gnu11 on older ones: a C tool that compiles today could stop
