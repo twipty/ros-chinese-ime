@@ -1,10 +1,30 @@
 # 字形分级与全字形开关 · 实施方案
 
 - 状态：**方案评审稿，未实现**。评审日期：2026-11-19。
-- 关联：`XINGMA-PLAN.md`（v1.1）、`TABLE-IMPORT-SPEC.md`（v1.1）、`DATA-PACK-SPEC.md`、`docs/font/MINIMAL-FONT-SET-PLAN.md`、`docs/font/FULL-GLYPH-COVERAGE-PLAN.md`
+- 关联：`XINGMA-PLAN.md`（v1.3）、`TABLE-IMPORT-SPEC.md`（v1.1）、`DATA-PACK-SPEC.md`、`docs/glyph-tier/UNIFIED-DAT-FORMAT.md`、`docs/font/MINIMAL-FONT-SET-PLAN.md`、`docs/font/FULL-GLYPH-COVERAGE-PLAN.md`
 - 交付范围：**本文只做评估与设计，不改任何代码**。Implementation 需另行授权（涉及 `framework/` 与 `tools/install-rospinyin/`，超出 `xingma/` 目录）。
 - 已确认决策（2026-11-19）：① 仅出方案文档；② 文档存 `xingma/docs/glyph-tier/`；③ "全字形"开关关闭时按 **Droid Sans Fallback 保底覆盖**口径过滤。
-- **后续更新（2026-11-19）**：开关状态决策已变更——由 §4.2 的 HKCU 注册表持久化改为**会话级 `[快]/[全]`、默认 `[快]`、不存注册表**；framework 侧接口也随之调整（`show_all_glyphs()` / `toggle_glyph_mode()` 替代 `Host::can_render`）。**以 `FRAMEWORK-REQ.md` 为准**，本文 §4.2/§4.3/§6 中涉及注册表与接口签名的描述 retirement 为历史设计，不再执行。
+- **后续更新（2026-11-19）**：开关状态决策已变更——由 §4.2 的 HKCU 注册表持久化改为**会话级 `[快]/[全]`、默认 `[快]`、不存注册表**；framework 侧接口也随之调整（`show_all_glyphs()` / `toggle_glyph_mode()` 替代 `Host::can_render`）。以 `FRAMEWORK-REQ.md` 为准，本文 §4.2/§4.3/§6 中涉及注册表与接口签名的描述 retirement 为历史设计，不再执行。
+- **v1.2 合并更新（2026-11-19，用户决策）**：**取消 2 bit `glyph_tier` 三档分级**，与 `[快]/[全]` 合并为**单一 1 bit `visible`**（`Entry.flags` bit1）：1=Droid 保底可显示、0=需扩展字体。`[快]` = 只显示 `visible=1`，`[全]` = 全部显示——开关只决定「是否按这一位过滤」，不再是独立的第二套机制。`Candidate` 相应改为 `bool glyph_visible`。原 §3.1/§3.2 的 tier0/1/2 与汇总计数作废，以本文开头的「合并后模型」为准；`FRAMEWORK-REQ.md` 同步（FR-1/FR-3）。
+- **v1.3 格式统一更新（2026-11-20，用户决策）**：dat 可见性位由 `visible`（1=可见）改名 `tier` 并**反转极性**为 `0=可见 / 1=需扩展`（按拼音口径，见 `UNIFIED-DAT-FORMAT.md`）；Entry 由 20B 扩为统一 24B 骨架。`Candidate.glyph_visible` 的 true=可见 谓词不变，引擎读 dat 时取反 `tier==0`。下方「合并后模型」表已按新极性改写；§1 重码数据里的「保底可显示」统计口径不变（仍指 cmap 全覆盖的字）。
+
+---
+
+## 合并后模型（v1.3，现行）
+
+| 概念 | 定义 |
+|---|---|
+| `tier` 位 | 每条 Entry 1 bit（统一 v2 的 slot5.flags bit1），构建期按 Droid cmap 固化：**0 = Droid 保底可显示**（字的所有汉字码点都在 cmap 内；纯标点/假名固定 0），**1 = 需扩展字体** |
+| `[快]`（默认） | 只显示 `tier=0` 的候选；新会话默认此态，不持久化 |
+| `[全]` | 显示所有候选；扩展字能否显示取决于用户是否装字体，framework 不探测 |
+| 可见候选 | 当前模式下实际呈现的候选集合。`[快]` 下即 `tier=0` 的子集；`Candidate.glyph_visible = (tier==0)` |
+| 自动上屏 | 「**唯一可见候选**」才触发，判据与策略见 `XINGMA-PLAN.md` v1.3 §5.1 规则 5；控制字段为码表头 `auto_commit` |
+
+**为什么合并**：三档 tier（保底/扩展/其它）与 `[快]/[全]` 开关是两套正交机制，但实际上「其它」档从未有独立用途，扩展区与其它非保底在运行时行为完全一致（都只在 `[全]` 出现）。压缩为 1 bit 后，数据模型、接口、提示统计全部简化，且不损失任何用户可感知的能力。
+
+**保留的统计**：安装器/导入工具仍给出「保底覆盖 N / 需扩展字体 M」两档计数（原 tier0 与 tier12 合并计数），提示文案不变。
+
+> **旧正文的效力范围**：本文 §3.1/§3.2 及后续 §4–§10 中所有含 `glyph_tier`、`AutoCommitUnique`、`show_all_glyphs()`、HKCU 注册表、`tier0/tier1/tier2`、`tier12` 的接口与数据描述均为 v1.0 历史设计，随 v1.2 合并决策（及 v1.3 格式统一）一并作废，**不得作为实现依据**。现行接口与判据以 `FRAMEWORK-REQ.md`（FR-1/FR-3/FR-5/FR-8）、`UNIFIED-DAT-FORMAT.md`（dat 骨架与 tier 极性）与 `XINGMA-PLAN.md` v1.3 §4.1/§5.1 为准。§1 重码评估数据与 §2 现状链路（改造基线）仍然有效。
 
 ---
 
@@ -108,6 +128,7 @@ host_key.cpp:109 / 216 / 243   （feed / commit 续打 / 其他路径重建 page
   - `Entry (20B): text_off, text_len, rank, entry_type, flags`；`flags` 目前 bit0=仅组词，`bit1` 起空闲。
   - `Code (16B)` flags bit0–bit4 已用于简码级别提示。
   - → **Entry.flags 的 bit1–bit2 可作为字形分级位**（见 §3.1）。
+  - **v1.3 注**：上述为改造前基线；现行已改为统一格式 v2（Entry 24B、槽5 flags、tier 0=可见），见 `UNIFIED-DAT-FORMAT.md`。
 - `RawEntry`（TABLE-IMPORT-SPEC §1）：已有 `uint8_t flags`，bit0 占用，可扩展。
 - 安装器：`tools/install-rospinyin/install.cpp`，分步 `/step1`–`/step4` + `/status` + `/u`，写 `HKCU\SOFTWARE\RosPinyin\Install`；有 `log_error` 与 `MessageBox` 先例，可复用做提示。
 - 配置工具：`rosxingma-config.exe`（规划中，W3/P4），导入向导与主界面都还没实现——提示机制可在规划时一次性纳入。
@@ -116,7 +137,9 @@ host_key.cpp:109 / 216 / 243   （feed / commit 续打 / 其他路径重建 page
 
 ## 3. 需求 1：导入期字形分级，形成分级码表
 
-### 3.1 分级模型
+### 3.1 分级模型（已作废，保留供追溯）
+
+> ⚠️ 本节为 v1.0 历史设计，**v1.2 已作废**。现行模型见文首「合并后模型」：单一 1 bit `visible`（`Entry.flags` bit1），`glyph_tier` 三档分级取消。以下内容仅用于解释重码评估里 tier 口径的由来。
 
 在 `shape.dat` 的每条 `Entry` 上打 **2 bit 的 `glyph_tier`**（存 `Entry.flags` bit1–bit2）：
 
@@ -130,7 +153,9 @@ host_key.cpp:109 / 216 / 243   （feed / commit 续打 / 其他路径重建 page
 
 > 为什么用 2 bit 而不是布尔：保留"扩展区"与"其它"的区分，未来若按字库家族细化（如仅文津 P2 覆盖）不必改 dat 结构。tier 只表示"相对 Droid 的覆盖情况"，**不代表字形在任何字体下都能显示**。
 
-### 3.2 dat 头汇总（供安装器提示用）
+### 3.2 dat 头汇总（已作废，保留供追溯）
+
+> ⚠️ 本节 v1.2 已作废。现行：码表头不存 tier 汇总，改为 1 bit `visible`（Entry.flags bit1）+ `auto_commit`（Header）；安装器提示仍按「保底覆盖 / 需扩展字体」两档，但由导入器现场按 visible 位统计，不再读 tier 计数字段。
 
 在 `shape.dat` v3 Header 新增（复用现有 `reserved[3]` 中的两个，保持 52B 不变，或在 v3 扩展区写入）：
 
@@ -273,7 +298,7 @@ CandidatePager → candidate_window.cpp 单一字体 TextOutW（不变）
 | 子项 | 人日 |
 |---|---:|
 | 重码评估与字形分级器（含 cmap 位图、v2 兼容） | 3–4 |
-| dat v3 格式与 `check_shape_dat.py` | 2–3 |
+| 统一格式 v2 dat 与 `check_shape_dat.py`（含槽位复用、tier 极性） | 2–3 |
 | 全字形开关（注册表、Host/Scheme 接口、运行时链重构） | 3–4 |
 | 安装器提示 + 配置工具/CLI 提示 | 2–3 |
 | 文档同步 + 门禁验证 + VM 冒烟 | 3–5 |

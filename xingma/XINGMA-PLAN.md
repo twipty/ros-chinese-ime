@@ -1,15 +1,17 @@
-# RosXingMa 形码输入法 · 实施计划（正式版 1.1）
+# RosXingMa 形码输入法 · 实施计划（正式版 1.3）
 
 > 本文件是 RosXingMa 项目的**唯一实施依据**。开发、评审、验收均以本文件为准。
 > 方案调整直接修订本文件并递增版本号；历史版本存入 `xingma/archive/`，不再作为依据。
 >
 > **修订记录**
+> - **v1.3（2026-11-20，dat 格式与拼音统一）**：`shape.dat` 与拼音 `rospinyin.dat` 采用统一二进制骨架（Header 64B / Entry 24B / Code 16B，`magic` 作 tag），见 `docs/glyph-tier/UNIFIED-DAT-FORMAT.md`。可见性位由 `visible`（1=可见）改名 `tier` 并**反转极性为 0=可见**（按拼音口径），Entry 由 20B 扩到 24B 使 rank/flags 与拼音同偏移。Candidate 的 `glyph_visible=true` 谓词不变，读取时取反 `tier==0`。拼音侧需同步的改动清单见统一规范 §7（xingma 外，由 owner 执行）。四项目标、阶段划分、Q6（auto_commit=2 保留）结论不变。
+> - **v1.2（2026-11-19，字形可见性与自动上屏合并）**：① 取消 `glyph_tier` 三档分级与独立 `[快]/[全]` 开关的并置设计，合并为单一「字形可见性」标志——码表构建期按 `DroidSansFallback` cmap 给每条 Entry 打 1 bit `visible`，运行时 `[快]/[全]` 只决定「是否按该位过滤」，不再有 tier0/1/2；`Candidate` 加 `bool glyph_visible` 而非 2 bit tier。② 唯一候选自动上屏判据改为「**唯一可见候选**」：过滤后可见候选恰好 1 条才提交，`AutoCommitUnique` 默认由「码表头 `auto_commit` 字段」控制（ibus-table 先例），不再用 HKCU 独立开关。③ 未满定长时的处理确立为「不自动上屏」（主流形码共识：形码编码是前缀树，短码唯一即上屏会吃掉续打），详见 `xingma/docs/glyph-tier/FRAMEWORK-REQ.md` §11 调研附录。四项目标、阶段划分与合规结论不变。
 > - **v1.1（2026-11-18，现状对齐）**：按 ros-pinyin 主线现状重排实施阶段——框架侧新增前置门禁 **P0**，W1–W5 顺延为 P1–P5；细化见 `xingma/docs/phase0/PHASE0-PLAN.md`。同步五处事实：① X1 目录归位（`framework/host|ui` → `framework/platform/win32/{imm32,ui}`），本计划全部框架路径改指新位置；② M2 VM 验收 15/15 通过、G1 ABI 修复获真机证据；③ M0 红线 #2 降级为部署偏好、约束改为「登录路径零失败初始化」；④ `Scheme::ui_server_class()` 类名 ≤15 字符硬约束（拼音侧 17 字符曾致 IME 从不加载）；⑤ 架构审计新增「注入缝未落地 / 全局单例未隔离」两项风险。产品定义、数据模型、工具链、合规结论不变。
 > - v1.0（2026-11-16）：正式版，12 章 + 2 附录。
 
 | 项 | 内容 |
 |---|---|
-| 版本 | 1.1（正式版） |
+| 版本 | 1.3（正式版） |
 | 适用范围 | `rosxingma.ime`、`rosxingma-config.exe`、`rosxingma-table.exe`、可选数据包及其文档 |
 | 上游依赖 | ros-pinyin 的共用框架层 `framework/`（命名空间 `imfw`）；拼音产品 `pinyin/` 只读参照 |
 | 实施范围 | `xingma/` 目录内的全部代码、工具与文档 |
@@ -193,30 +195,26 @@ rosxingma.ime
 
 ## 4. 数据模型
 
-### 4.1 `shape.dat` v2
+### 4.1 `shape.dat` v2（与拼音统一格式）
 
-沿用 v1 的「定长头 + 定长记录数组 + 字符串池」与字节级确定性，仅改语义与 magic：
+与拼音 `rospinyin.dat` **共用二进制骨架**（2026-11-20 决策，见 `docs/glyph-tier/UNIFIED-DAT-FORMAT.md`）：定长头 + 定长记录数组 + 字符串池，`magic` 作为 tagged union 的 tag（`ROSSHDAT` vs `ROSPYDAT`），字节级确定性不变。
 
 ```
 magic "ROSSHDAT" (8B), version = 2
-Header (64B):
-  magic[8], version, flags, entry_count, code_count,
-  entry_table_off, code_table_off, pool_off, pool_size,
-  name_off,            // 池内偏移：显示名，空串非法
-  alphabet_off,        // 池内偏移：编码字母表，如 "abcdefghijklmnopqrstuvwxy"
-  source_off,          // 池内偏移："sha256:<hex>;format:<csv|tsv|fcitx|ibus|pack>;name:<utf8>"，0=无
-  max_code_len,        // 1..8
-  reserved[2]
-Entry (20B): text_off, text_len, rank, entry_type, flags
-  // text: 池内 UTF-8 字符串，单字或词；text_len 为字节数
-  // rank: 越小越靠前（导入期由各来源权重归一化）
-  // entry_type: 0=单字, 1=词
+Header (64B):  magic[8], version, flags, entry_count, code_count,
+               entry_table_off, code_table_off, pool_off, pool_size,
+               name_off, alphabet_off, source_off, max_code_len, auto_commit, reserved[10]
+Entry (24B):   slot0=text_off, slot1=rank, slot2=text_len, slot3=entry_type, slot4=reserved(0), slot5=flags
+  // slot1(rank) 与 slot5(flags) 与拼音同偏移真共用；其余槽按 magic 解释
   // flags: bit0 = 仅用于组词，不参与直接上屏（fcitx `^` / ibus 特殊条目）
-Code (16B): code_off, first_entry, entry_count, flags
-  // code: 池内编码串；对应 Entry 按 (rank, text 码点) 升序且连续
+  //        bit1 = tier：0=Droid 保底字体可显示，1=需扩展字体（与拼音同极性，导入期按 cmap 固化）
+  //        注：原 visible 位本次改名 tier 并反转极性（原 1=可见 → 现 0=可见）；见 UNIFIED-DAT-FORMAT.md §3
+Code (16B):    key_off(code_off), first_entry, entry_count, flags
   // flags: bit0 一级简码 / bit1 二级 / bit2 三级 / bit3 全码 / bit4 含识别码（导入期推断，仅作界面提示）
-static_assert(Header == 64, Entry == 20, Code == 16)
+static_assert(Header == 64, Entry == 24, Code == 16)
 ```
+
+> 运行时谓词：`glyph_visible = (tier == 0)`（dat 位 0=可见 → Candidate bool true=可见）。拼音侧无 tier 概念、槽4/5 语义不同，但 rank/flags 偏移一致，公共过滤代码只读 flags bit1。
 
 `ShapeTable::load_dat()` 必须校验：magic、version、`max_code_len ∈ [1,8]`、`alphabet` 非空且全为 ASCII 字母、各偏移不越界、`count × size` 不溢出、字符串池 NUL 终止、`Code` 严格升序不重复、`first_entry + entry_count ≤ entry_count`。任一失败整体拒绝，**不做部分加载**。
 
@@ -248,7 +246,6 @@ HKCU\SOFTWARE\RosXingMa\
     ActiveTable       REG_SZ    当前表 id；空串 = 无表
     Revision          REG_DWORD 表集合或当前选择变化时 +1（自检依据）
     SwitchMode        REG_DWORD 0=auto（默认）/ 1=仅下次加载生效
-    AutoCommitUnique  REG_DWORD 唯一候选自动上屏，默认 0
     EmitRawOnNoMatch  REG_DWORD 无候选且码长已满时上屏原文，默认 1
     FirstRunShown     REG_DWORD 首启合规提示是否已读
   Tables\<id>\
@@ -287,7 +284,12 @@ HKCU\SOFTWARE\RosXingMa\
 2. 每次输入后取**存在精确候选的最长前缀**：`q` 有简码即显示；续打 `r` 后 `qr` 无候选则回退显示 `q` 的候选，组合串仍显示 `qr`。
 3. 空格、`1`–`9`、翻页键、退格、Esc 由框架处理，引擎不重复实现；引擎只负责 `feed` / `backspace` / `cancel` 的状态。
 4. 无候选且组合已达 `max_code_len`：按 `EmitRawOnNoMatch` 提交原文（`Action::Commit`），避免用户输入丢失。这是「空格上屏原文」的替代路径（见 G4；框架已保证无候选时空格/标点直达应用）。
-5. 唯一候选：码长已满且仅 1 个候选时按 `AutoCommitUnique` 决定是否直接提交，默认关闭。
+5. **唯一可见候选自动上屏**：过滤后**可见候选恰好 1 条**时，按码表头 `auto_commit` 决定是否直接提交：
+   - `auto_commit = 0`（默认）：不自动上屏，等用户按空格/数字。
+   - `auto_commit = 1`（推荐）：**仅在组合码长已达 `max_code_len`** 且唯一可见候选时提交。这是主流形码共识（极点/QQ/搜狗五笔「四码唯一上屏」、Rime `auto_select` + `max_code_length`、ibus-table `AUTO_COMMIT`）。
+   - `auto_commit = 2`：任意长度的唯一可见候选都提交。**已决保留为显式逃生口（2026-11-20）**——仅供确认无更长前缀词条、明确需要「简码盲打」的表，由 `pack.ini` 显式声明且导入时给「可能吃掉续打」告警；默认仍为 0，不从源格式推断。形码编码是前缀树，短码唯一即上屏会吃掉续打（`q` 有简码即提交 → 用户永远打不出 `qr`），故不设默认。
+   - 「唯一」必须按**过滤后可见候选**判定（即 `[快]` 模式下先剔除 `tier=1`（dat 位，需扩展字体），再数剩余条数），不是 Engine 原始候选数；这是 v1.2 的核心修正，避免把不可见字自动送进文档。dat 位 0=可见 → Candidate `glyph_visible=true`。
+   - 控制字段在**码表头**（`auto_commit`），不再用 HKCU 设置：与 `max_code_len`/`alphabet`/`wildcard` 一样属于码表作者声明的策略（`ibus-table` 的 `AUTO_COMMIT` / fcitx5 的 `AUTO_SELECT` 均为码表级字段）。
 6. 通配键：先按普通字母参与查表；P5（原 W4）实现运行时区间扫描（遍历前缀全部编码做后缀匹配），**不做构建期笛卡尔展开**。
 7. 上屏多字词依赖 G1；**G1 已在框架侧解决**（`imfw::emit_text`，见 3.4），`ShapeSession` 完整返回词的 `commit_text` 即可全量上屏，无需降级。
 
@@ -504,7 +506,7 @@ RosXingMa-Pack-Shape86-v1.0.0/
 | **P2**（原 W1） | 引擎与 dat 内核 | `shape_dat_format.hpp`、`ShapeTable`、`ShapeSession`；`libtableio` 的 CSV/TSV 读取与 `dat_writer`；`mkdat-shape`；自造样例表跑通全链路 | `ctest` 全绿；CSV→dat 两次构建字节一致；自造表可查表并在 host 测试中上屏（含词） | 12–16 |
 | **P3**（原 W2） | 装配与宿主集成 | `rosxingma.ime` 装配（scheme_reg、def、资源）；`ShapeScheme`、`ShapeStore`、`ShapeDatLoader`（G1 由框架解决，直接复用共享宿主层，无自建 `imm_entry_shape`；**前置门禁**：P0 全部通过，含 X1 路径归位、注入缝可用、UI 类名断言、G1 词组上屏 VM 用例）；自带安装器（`.ime` 进 system32、工具进程序文件夹）与 `HKLM` 安装信息，**遵循登录路径零失败初始化口径** | VM 中可安装；无表不吞键不崩溃；导入演示表后可输入、可选词上屏（**≥2 字词组完整上屏**是 G1 ABI 修复的真机验证用例）；开始菜单能拉起配置工具 | 6–9 |
 | **P4**（原 W3） | 配置工具与切换 | `rosxingma-config.exe`（列表/导入向导/预览/详情/移除/排序）、`rosxingma-table.exe`（全子命令）、注册表模型、revision 自检与延迟换表、LRU；数据包安装流程 | 导入多张表并来回切换；装数据包一次点击完成；组合中途切换不丢字；CLI 退出码矩阵符合规范 | 14–20 |
-| **P5**（原 W4） | 格式兼容与完整度 | fcitx 5、ibus-table 适配器；PC 端 `rime2csv.py` / `ibusdb2csv.py` / `bz2csv.py`；反导出；`z` 通配；唯一候选自动上屏；标点与全半角 | 三类文本格式各导入一份真实表并正确上屏；Rime 文件得到明确引导；导出可被 fcitx 5 / ibus 回读 | 10–15 |
+| **P5**（原 W4） | 格式兼容与完整度 | fcitx 5、ibus-table 适配器；PC 端 `rime2csv.py` / `ibusdb2csv.py` / `bz2csv.py`；反导出；`z` 通配；唯一可见候选自动上屏（码表头 `auto_commit`）；标点与全半角 | 三类文本格式各导入一份真实表并正确上屏；Rime 文件得到明确引导；导出可被 fcitx 5 / ibus 回读 | 10–15 |
 | **P6**（原 W5） | 验收与发布 | VM 端到端、CI 扩展、文档定稿、构建并发布 86/98 数据包、安装包与发布说明 | 主包无码表可安装；两份数据包可导入/卸载/溯源；全仓库无旧名残留 | 7–11 |
 | | | | **合计** | **52–76 人日**（P0 新增 2–4，其余不变） |
 
@@ -571,7 +573,7 @@ xingma/tests/{shape_table_test,shape_session_test,shape_switch_test,
 | 测试 | 内容 |
 |---|---|
 | `shape_table_test` | 非法 magic / 版本 / `max_code_len=0` / 字母表含非字母 / 偏移越界 / `Code` 非升序 → 全部拒绝；`lookup` 排序；`is_prefix` 边界（最长码、无后继）；词条目与单字条目共存 |
-| `shape_session_test` | 逐码输入、最长前缀回退、达码长不再吃键、无候选达码长自动上屏原文、唯一候选自动上屏开关、退格、取消、通配键关闭态、**多字词 `commit_text` 完整性** |
+| `shape_session_test` | 逐码输入、最长前缀回退、达码长不再吃键、无候选达码长自动上屏原文、**唯一可见候选自动上屏（auto_commit=0/1/2 三态 + tier=1（dat 位，需扩展字体）候选不计入「唯一」）**、未满定长不上屏（auto_commit=1）、退格、取消、通配键关闭态、**多字词 `commit_text` 完整性** |
 | `shape_switch_test` | seqlock 读到不一致时重试、组合中切换不换表、组合结束后换表、LRU 淘汰后可重载、缺文件/损坏表的降级顺序 |
 | `table_io_test` | 同一份**自造**数据写成 CSV/TSV/fcitx5/ibus 四种文本 → `(code,text,rank)` 集合完全一致；权重归一化；无表头列序猜测；GB18030 与 UTF-16 BOM；超长行与非法行进入 rejects；Rime 与 `.mb` 返回退出码 6 且给出命令提示 |
 | `check_shape_dat.py` | 解码 dat v2、断言头字段、两次构建字节一致、Entry 区间连续且与 Code 对应 |
@@ -641,6 +643,7 @@ xingma/tests/{shape_table_test,shape_session_test,shape_switch_test,
 | Q3 | 便携模式优先级 | P4（原 W3）必做 / 延至 P6（原 W5） | 影响工具参数与测试矩阵 |
 | Q4 | ~~是否请求框架开放 `ImeConfigure` 回调~~ | ~~请求（体验最佳） / 维持开始菜单入口~~ | **已决（2026-11-16）**：框架已开放 `Scheme::configure`，形码 P3/P4（原 W2/W3）接入，开始菜单入口保留为冗余 |
 | Q5 | ~~框架 G1 TRANSMSGLIST ABI 缺陷的修复时机~~（2026-11-17 审计新增，见 `docs/FRAMEWORK-AUDIT-2026-11-17.md` §2.1） | ~~框架侧立即修 / 与 W1 并行修 / W2 开工前修~~ | **已决**：框架侧 2026-11-17 修复并提交；2026-11-18 M2 VM 验收 15/15 通过；形码侧 P0.3 补一次自身词组用例即可 |
+| Q6 | ~~`auto_commit=2`（任意长度唯一可见候选上屏）是否保留~~（2026-11-20） | ~~保留为显式逃生口 / 彻底移除~~ | **已决（2026-11-20）**：保留。仅对确认无更长前缀词条的码表由 `pack.ini` 显式启用，导入时告警；默认 0，不从源格式推断。见本文 §5.1 规则 5 与 `docs/glyph-tier/FRAMEWORK-REQ.md` §11.4 |
 
 ---
 
@@ -662,4 +665,4 @@ xingma/tests/{shape_table_test,shape_session_test,shape_switch_test,
 - 本文件为唯一实施依据；章节编号稳定，新增内容追加到末尾或明确子节，避免打乱既有交叉引用。
 - 版本号递增规则：结构性调整（目标、模型、**阶段**）升次版本；文字修订升修订号。
 - 每次修订同步检查 `xingma/README.md`、`docs/*.md`、`docs/phase0/*.md`、`NOTICE.txt` 中对本文件章节号与阶段编号的引用。
-- 当前版本 1.1 的阶段编号为 **P0（前置门禁）/ P1–P6**（原 W0–W5）；引用时写「P3（原 W2）」以便对照历史文档。
+- 当前版本 1.3 的阶段编号为 **P0（前置门禁）/ P1–P6**（原 W0–W5）；引用时写「P3（原 W2）」以便对照历史文档。
