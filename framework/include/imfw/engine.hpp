@@ -25,6 +25,12 @@ enum class Action : std::uint8_t {
 struct Candidate {
     std::u32string text;
     int score = 0;
+    // Whether the bundled font can draw this candidate. Engines fill it from
+    // the code table's tier bit (glyph_visible = (tier == 0)): false means an
+    // extra font is required. Schemes that do not grade glyphs leave it true,
+    // so existing callers and the pinyin engine keep their current behaviour.
+    // It is data, not policy: filtering by it is the host's decision (FR-3/F-T2).
+    bool glyph_visible = true;
 };
 
 struct Result {

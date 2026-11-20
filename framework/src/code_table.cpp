@@ -82,7 +82,8 @@ bool validate_lexicon(std::string_view bytes, const dat::Header& header) {
             const std::size_t word_offset = header.lex_entry_table_off +
                 static_cast<std::size_t>(index) * sizeof(dat::LexEntry);
             if (!read_record(bytes, word_offset, word)) return false;
-            if ((word.flags & ~dat::kFlagsMask) != 0) return false;
+            // Base magic: bit0 (composition-only, a shape concept) is not legal.
+            if ((word.flags & ~dat::kBaseFlagsMask) != 0) return false;
             if (word.alt_off != 0) return false;
             if (word.rank == 0) return false;
             if (word.syl_count < 2) return false;
@@ -213,11 +214,12 @@ std::size_t CodeTable::load_dat(std::string_view bytes,
         }
         // rank is either a 1-based order or the "no order" sentinel; zero is
         // neither, and a reserved flag bit is a format we do not know.
+        // The base loader rejects bit0 (composition-only is a shape concept).
         if (record.rank == 0) {
             clear();
             return 0;
         }
-        if ((record.flags & ~dat::kFlagsMask) != 0) {
+        if ((record.flags & ~dat::kBaseFlagsMask) != 0) {
             clear();
             return 0;
         }
@@ -236,6 +238,11 @@ std::size_t CodeTable::load_dat(std::string_view bytes,
         entry.rank = record.rank;
         entry.reading = std::move(reading);
         entry.key = key_names[record.syl_id];
+        // Preserve the tier bit (0 = bundled font, 1 = extra font needed).
+        // Filtering is the engine's job, not the parser's; dropping the bit
+        // here would leave even a graded dat indistinguishable from an
+        // ungraded one and make "visible candidate" unenforceable.
+        entry.tier = (record.flags & dat::kFlagTier) ? 1u : 0u;
 
         if (key_of_reading != nullptr && record.alt_off != 0) {
             std::string alts;
@@ -275,12 +282,13 @@ std::size_t CodeTable::load_dat(std::string_view bytes,
 }
 
 void CodeTable::add(char32_t codepoint, std::uint32_t rank,
-                    std::string reading, std::string key) {
+                    std::string reading, std::string key, std::uint8_t tier) {
     Entry entry;
     entry.codepoint = codepoint;
     entry.rank = rank;
     entry.reading = std::move(reading);
     entry.key = std::move(key);
+    entry.tier = tier ? 1u : 0u;
     entries_.push_back(std::move(entry));
 }
 
@@ -333,7 +341,8 @@ std::vector<TableEntry> CodeTable::lookup(std::string_view key) const {
     result.reserve(it->second.size());
     for (const std::size_t index : it->second) {
         const Entry& entry = entries_[index];
-        result.push_back(TableEntry{entry.codepoint, entry.rank, entry.reading});
+        result.push_back(TableEntry{entry.codepoint, entry.rank, entry.reading,
+                                    entry.tier});
     }
     return result;
 }

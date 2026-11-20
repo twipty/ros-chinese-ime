@@ -62,12 +62,26 @@ constexpr std::uint32_t kVersion = 2;
 // one of them, so the sentinel is a legal value, not a corruption.
 constexpr std::uint32_t kUnknownRank = 0xFFFFFFFFu;
 
-// Entry slot 5, shared by both products: bit1 = tier, 0 = the bundled font
-// (Droid Sans Fallback) can draw the glyph, 1 = an extra font is required.
-// Every other bit is reserved and must be zero; a reader rejects a non-zero
+// Entry slot 5, shared skeleton but product-specific bit semantics.
+//   bit1 = tier (BOTH products): 0 = bundled font (Droid Sans Fallback) can
+//          draw the glyph, 1 = an extra font is required. This is the only
+//          bit common code may read.
+//   bit0 = composition-only (SHAPE only): a shape entry flagged here is for
+//          building other characters and must never be offered as a direct
+//          candidate (fcitx '^' / ibus special entry). Pinyin writes 0 here.
+// Any other bit is reserved and must be zero; a reader rejects a non-zero
 // reserved bit rather than guessing at a newer format.
+//
+// The two allowed-bit masks are deliberately separate. A shape loader that
+// reused the base mask would reject every composition-only entry; a base
+// loader that used the shape mask would silently accept a bit it cannot
+// honour. Pick the mask by the magic you are loading.
 constexpr std::uint32_t kFlagTier = 0x00000002u;
-constexpr std::uint32_t kFlagsMask = kFlagTier;
+constexpr std::uint32_t kFlagCompositionOnly = 0x00000001u;  // shape entry bit0
+// Base mask: only the shared tier bit is legal (the loader for the base magic
+// rejects bit0). Shape's mask additionally permits the composition-only bit.
+constexpr std::uint32_t kBaseFlagsMask = kFlagTier;
+constexpr std::uint32_t kShapeFlagsMask = kFlagTier | kFlagCompositionOnly;
 
 struct Header {
     char magic[8];                 // ROSPYDAT (pinyin) / ROSSHDAT (shape)
@@ -100,7 +114,9 @@ struct CharEntry {
     std::uint32_t syl_id;         // slot 2: index into the syllable table
     std::uint32_t reading_off;    // slot 3: pool offset, canonical reading "zho1ng"
     std::uint32_t alt_off;        // slot 4: pool offset, space-separated alt readings, 0 if none
-    std::uint32_t flags;          // slot 5: bit1 = tier (see kFlagTier)
+    std::uint32_t flags;          // slot 5: bit1 = tier; bit0 = composition-only
+                                  // (shape only). Validate with kShapeFlagsMask
+                                  // for shape, kBaseFlagsMask for the base magic.
 };
 
 // A syllable. Slot 3 is named `flags` in the unified skeleton (shape stores its
@@ -122,7 +138,8 @@ struct LexEntry {
     std::uint32_t syl_count;      // slot 2: syllables in the word, >= 2
     std::uint32_t reading_off;    // slot 3: pool offset "ni3 hao3"; 0 = derive from key
     std::uint32_t alt_off;        // slot 4: reserved, must be 0
-    std::uint32_t flags;          // slot 5: bit1 = tier; bit0 and the rest must be 0
+    std::uint32_t flags;          // slot 5: bit1 = tier; bit0 composition-only
+                                  // (shape only); the rest must be 0
 };
 
 // A word's lookup key: the concatenated toned syllables ("ni3hao3"). Keys are

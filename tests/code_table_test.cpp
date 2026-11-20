@@ -313,11 +313,25 @@ int main() {
         // bit1 marks "needs a font beyond the bundled one". The loader must
         // accept it: filtering on it is the engine's job (F-T2), not the
         // parser's, and a parser that rejected it would reject half the table.
+        // More: the bit must SURVIVE into lookup() (the earlier bug was that
+        // load_dat validated it then threw it away), otherwise an engine can
+        // never build Candidate::glyph_visible from a graded table.
         std::string b = make_dat();
-        put_u32(b, read_u32(b, kOffEntryTableOff) + 20,
-                imfw::dat::kFlagTier);
+        // 中 is char 0 (entry_table_off + 0*24), 钟 is char 1 (+1*24).
+        const std::uint32_t entry_off = read_u32(b, kOffEntryTableOff);
+        put_u32(b, entry_off + 1 * kCharEntrySize + 20,
+                imfw::dat::kFlagTier);  // mark 钟 as tier=1
         imfw::CodeTable table;
         check(table.load_dat(b) == 4, "tier bit is accepted by the loader");
+        const auto zhong = table.lookup("zhong");
+        if (zhong.size() == 2) {
+            check(zhong[0].tier == 0, "unmarked char keeps tier 0 (baseline)");
+            check(zhong[1].tier == 1,
+                  "tier bit survives load_dat -> lookup on the marked char");
+        }
+        const auto guo = table.lookup("guo");
+        check(guo.size() == 1 && guo[0].tier == 0,
+              "unaffected entries keep tier 0");
     }
 
     // ---- builder API: rank order, codepoint tie-break, clear ------------
@@ -352,6 +366,16 @@ int main() {
         check(table.lookup("zhong").empty() && !table.is_code("zhong") &&
                   !table.is_prefix("z"),
               "clear resets the indexes");
+
+        // Builder tier argument defaults to 0 and is preserved when given.
+        table.add(U'中', 7, "zho1ng", "zhong");
+        table.add(U'钟', 500, "zho1ng", "zhong", 1);
+        table.build_index();
+        const auto graded = table.lookup("zhong");
+        if (graded.size() == 2) {
+            check(graded[0].tier == 0, "builder default tier is 0");
+            check(graded[1].tier == 1, "builder preserves an explicit tier");
+        }
     }
 
     // ---- word list: present, well formed, not indexed yet ---------------

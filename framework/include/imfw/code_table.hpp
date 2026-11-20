@@ -34,6 +34,11 @@ struct TableEntry {
     char32_t codepoint = 0;
     std::uint32_t rank = dat::kUnknownRank;
     std::string reading;  // full canonical reading, e.g. "zho1ng" / "wqvb"
+    // Glyph tier copied verbatim from the record's slot-5 bit1:
+    // 0 = the bundled font can draw it, 1 = an extra font is required.
+    // The loader reads the bit but does not filter on it; an engine turns
+    // this into Candidate::glyph_visible (glyph_visible = (tier == 0)).
+    std::uint8_t tier = 0;
 };
 
 // Maps an alternative reading ("zho4ng") to the lookup key it should answer to
@@ -55,9 +60,10 @@ public:
     // Small-builder API used by host tests, fallback tables and embedded
     // data. `key` is the lookup key (the Scheme decides how to derive it
     // from `reading`, e.g. pinyin::syllable_of). Call build_index() after
-    // adding all entries.
+    // adding all entries. `tier` defaults to 0 (bundled font), so callers
+    // that do not grade glyphs are unaffected.
     void add(char32_t codepoint, std::uint32_t rank, std::string reading,
-             std::string key);
+             std::string key, std::uint8_t tier = 0);
     void clear();
     void build_index();
 
@@ -77,6 +83,8 @@ private:
         std::uint32_t rank = dat::kUnknownRank;
         std::string reading;
         std::string key;
+        // dat slot-5 bit1, preserved so lookup() can hand it to the engine.
+        std::uint8_t tier = 0;
         // Additional keys this character answers to, derived from the dat's
         // alt readings. Empty unless load_dat() was given a key deriver.
         std::vector<std::string> alt_keys;
