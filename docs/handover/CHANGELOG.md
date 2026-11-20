@@ -27,6 +27,10 @@ owner 三条指令（① 不考虑 v1 兼容 ② 调整 header ③ 补齐缺口�
 - **产物**：`rospinyin.dat` 902,776 → **1,080,224 B**（+177 KB），44,355 字 / 418 音节 / 118 多音 /
   首屏覆盖 96.8% 全部不变（容器变了、载荷没变）；`build_dat.sh` 指纹更新为 `3bf4d5fa…`，
   端到端重建（含原始输入 sha256）逐字节一致。
+- **顺带修掉一个已被新格式放大的老坑**：`m0/share/rospinyin.dat` 与 `build/m2-data/` 两份副本一直靠手工
+  `cp` 同步（M2-REMAINING / M2-REPORT 都登记过）。v2 落地当天它就真的发作了——`m0/share/` 还是 v1 表，
+  v2-only 加载器会拒载并静默回退内置数组，VM 验收会看到"候选突然变少"却查不出原因。
+  `build_dat.sh` 新增 `--install`（默认 `m0/share/`，只在指纹闸通过后拷贝），并已用它把该目录刷新为 v2。
 - 影响面：`dat_format.hpp`（80B 契约、删 v1 结构与 `HeaderV2`）、`code_table.cpp`（v2-only 加载器）、
   `mkdat.cpp`（80B 头 + 前缀和段）、`code_table_test.cpp`、`check_mkdat.py`、`coverage_report.py`、
   `build_dat.sh`；文档 `DAT-FORMAT-V2.md` 全文重写，统一文本与 `XINGMA-PLAN.md` §4.1 同步为 80B。

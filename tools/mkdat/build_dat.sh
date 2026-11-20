@@ -6,14 +6,29 @@
 #   1. fetch pinned raw inputs (sha256 verified)  2. run mkdat
 #
 # Usage:
-#   tools/mkdat/build_dat.sh [build-dir] [mkdat-binary]
-# Defaults: build/m2-data and build/tools/mkdat/mkdat
+#   tools/mkdat/build_dat.sh [build-dir] [mkdat-binary] [--install[=dir]]
+# Defaults: build/m2-data and build/tools/mkdat/mkdat; --install copies the
+# verified table to m0/share (the VM/release staging dir).
+#
+# --install exists because that copy used to be a manual `cp`, and the two
+# copies silently diverged: on 2026-11-20 m0/share still held a v1 table while
+# the loader had become v2-only, so every VM run would have fallen back to the
+# built-in array without saying why.
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-OUT_DIR="${1:-$ROOT/build/m2-data}"
-MKDAT="${2:-$ROOT/build/tools/mkdat/mkdat}"
+INSTALL_TO=""
+POSITIONAL=()
+for arg in "$@"; do
+    case "$arg" in
+        --install)     INSTALL_TO="$ROOT/m0/share" ;;
+        --install=*)   INSTALL_TO="${arg#--install=}" ;;
+        *)             POSITIONAL+=("$arg") ;;
+    esac
+done
+OUT_DIR="${POSITIONAL[0]:-$ROOT/build/m2-data}"
+MKDAT="${POSITIONAL[1]:-$ROOT/build/tools/mkdat/mkdat}"
 
 if [[ ! -x "$MKDAT" ]]; then
     echo "mkdat not found at $MKDAT" >&2
@@ -54,3 +69,15 @@ if [[ "$ACTUAL_DAT_SHA256" != "$EXPECTED_DAT_SHA256" ]]; then
 fi
 
 echo "rospinyin.dat ready at $OUT_DIR/rospinyin.dat (sha256 ${ACTUAL_DAT_SHA256:0:12}...)"
+
+# Only install after the fingerprint gate, so a wrong table can never reach the
+# staging dir and masquerade as "the build worked".
+if [[ -n "$INSTALL_TO" ]]; then
+    if [[ "$OUT_DIR/rospinyin.dat" -ef "$INSTALL_TO/rospinyin.dat" ]]; then
+        echo "install target is the build output itself, nothing to copy"
+    else
+        mkdir -p "$INSTALL_TO"
+        cp -f "$OUT_DIR/rospinyin.dat" "$INSTALL_TO/rospinyin.dat"
+        echo "installed to $INSTALL_TO/rospinyin.dat"
+    fi
+fi

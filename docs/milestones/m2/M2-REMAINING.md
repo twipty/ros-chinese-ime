@@ -219,7 +219,7 @@ if (SystemParametersInfoW(SPI_GETWORKAREA, 0, &work, 0))
 |---|---|
 | `codes=419` vs 表头 `syls=418` | 差的 1 个是 alt 别名键（不在音节表里）。指纹行已把标签从 `syls=` 改为 `codes=`，但 `M2-DATA-PLAN.md` 未说明这个口径 |
 | `.ime` 被常驻进程映射 | 验证期靠 `rospinyindev.ime` 换名绕过；安装器已加改名退让，但用户更新时仍需重启 |
-| `m0/share/` 与 `build/m2-data/` 数据一致性 | 两处都有 `rospinyin.dat`，靠手工 `cp` 同步，容易再次出现"改了没生效" |
+| `m0/share/` 与 `build/m2-data/` 数据一致性 | **已闭合（2026-11-20）**：`tools/mkdat/build_dat.sh --install` 在指纹闸之后自动拷贝到 `m0/share/`。此前靠手工 `cp`，而 dat v2 落地当天就踩了：`m0/share/` 里还是 v1 表，v2-only 加载器会拒载并静默回退内置数组 |
 | `IMN_SETCOMPOSITIONWINDOW` 每键 1–3 次 | ReactOS `EDIT_SetCaretPos` 的行为，属系统侧；我们不再因此重绘 |
 
 ---
