@@ -40,27 +40,37 @@ import struct
 import sys
 from pathlib import Path
 
-HEADER = struct.Struct("<8sIIIIIIII3I")  # 52 B: magic + 8 fields + reserved[3]
-CHAR_ENTRY = struct.Struct("<IIIII")
-SYL_ENTRY = struct.Struct("<IIII")
+# 80 B: magic + 17 u32 + max_code_len/auto_commit/reserved[2]. The format has
+# one version only; a version 1 table (52-byte header) is rejected rather than
+# guessed at, because its entries carry no tier bit.
+HEADER = struct.Struct("<8s17I4B")
+CHAR_ENTRY = struct.Struct("<IIIIII")   # 24 B: codepoint/rank/syl/reading/alt/flags
+SYL_ENTRY = struct.Struct("<IIII")      # 16 B: name_off/first_entry/entry_count/flags
 K_UNKNOWN_RANK = 0xFFFFFFFF
+K_TIER_BIT = 0x2
 PAGE_SIZE = 9
 
 
 def read_dat(path: Path):
     data = path.read_bytes()
-    (magic, version, _flags, char_count, syl_count, char_off, syl_off,
-     pool_off, _pool_size, _r0, _r1, _r2) = HEADER.unpack_from(data, 0)
+    (magic, version, _flags, char_count, syl_count, _lex_count, _lex_key_count,
+     char_off, syl_off, _lex_off, _lex_key_off, pool_off, _pool_size,
+     _name_off, _alphabet_off, _source_off, entry_size, code_size,
+     _max_code_len, _auto_commit, _r0, _r1) = HEADER.unpack_from(data, 0)
     if magic != b"ROSPYDAT":
         raise SystemExit(f"{path}: not a ROSPYDAT file")
-    if version != 1:
-        raise SystemExit(f"{path}: unsupported version {version}")
+    if version != 2:
+        raise SystemExit(
+            f"{path}: unsupported version {version} (this build reads v2 only; "
+            f"rebuild the table with tools/mkdat/build_dat.sh)")
+    if entry_size != CHAR_ENTRY.size or code_size != SYL_ENTRY.size:
+        raise SystemExit(f"{path}: header record sizes disagree with the layout")
 
     chars = []
     for i in range(char_count):
-        cp, rank, syl_id, reading_off, _alt = CHAR_ENTRY.unpack_from(
+        cp, rank, syl_id, reading_off, _alt, flags = CHAR_ENTRY.unpack_from(
             data, char_off + i * CHAR_ENTRY.size)
-        chars.append((cp, rank, syl_id, reading_off))
+        chars.append((cp, rank, syl_id, reading_off, flags))
 
     syllables = []
     for i in range(syl_count):
@@ -109,7 +119,7 @@ def main() -> int:
     first_choice = 0
     first_page = 0
     misses = []
-    for cp, rank, syl_id, _reading in top:
+    for cp, rank, syl_id, _reading, _flags in top:
         pos = position.get(cp, 0)
         name = pinyin_of.get(cp, "?")
         if pos == 1:
@@ -123,6 +133,12 @@ def main() -> int:
     print(f"dat: {a.dat}")
     print(f"characters: {len(chars)} ({len(ranked)} ranked, "
           f"{len(chars) - len(ranked)} unranked/hidden by default)")
+    # Tier is a build-time fact, not a coverage metric: tier1 characters need a
+    # font beyond the bundled one, so a table that is all tier0 is one the
+    # default (glyphs = common) mode can render end to end.
+    tier1 = sum(1 for c in chars if c[4] & K_TIER_BIT)
+    print(f"tier: {len(chars) - tier1} rendable by the bundled font, "
+          f"{tier1} need an extra font")
     print(f"scoring the {n} highest-frequency characters (rank 1..{top[-1][1]})\n")
     print(f"  first-choice  {first_choice:5d} / {n}  "
           f"= {first_choice * 100.0 / n:5.1f}%")

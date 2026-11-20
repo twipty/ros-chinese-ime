@@ -150,7 +150,7 @@ static const wchar_t* const kGlyphFontFiles[] = {
 
 ## 5. 实测方法与数据可复现
 
-- `.dat` 码点：`m0/share/rospinyin.dat`，按 `dat_format.hpp` 解析 Header + 44,355×20 B `CharEntry`。
+- `.dat` 码点：`m0/share/rospinyin.dat`，按 `dat_format.hpp` 解析 Header + 44,355 × `entry_size`（v2 为 24 B）`CharEntry`。
 - 字体：
   - 文津宋体 v2.100 `WenJinMincho-TTF.7z`，SHA256 `22ab30a4d175f9aa0da3cc4303fedb666081c9f6bdbce267b8d9572f94231f49`（官方一致）。
   - Jigmo 2025-09-12 `Jigmo-20250912.zip`，35,559,738 B（与官网大小一致）；本地实测 SHA256 `5744c7386d129475d87607ca66d043c8793c65448adeaedc921b6931890e5d0b`——**与官网页面标注的 `2fb963ee…` 不一致**，疑为官网页面标注更新滞后，落地时须重新核对官方校验值。

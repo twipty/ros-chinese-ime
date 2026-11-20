@@ -45,6 +45,84 @@ bool is_dat_reading(std::string_view s) {
     return true;
 }
 
+// The word list is not indexed yet (that is M4), but a file that declares one
+// must still hold a coherent one: the key runs tile the word table exactly,
+// every key is a legal reading string, and every word has text, at least two
+// syllables and no reserved bits. Checking here means a corrupt lexicon fails
+// at load time instead of at the first lookup once M4 lands -- and it keeps
+// "declared but empty" from passing as "no word list".
+bool validate_lexicon(std::string_view bytes, const dat::Header& header) {
+    if (header.lex_entry_count == 0) return header.lex_code_count == 0;
+    // Words with no key can never be reached: that is a builder bug, not data.
+    if (header.lex_code_count == 0) return false;
+
+    std::uint32_t index = 0;
+    for (std::uint32_t i = 0; i < header.lex_code_count; ++i) {
+        dat::LexCode code{};
+        const std::size_t code_offset = header.lex_code_table_off +
+            static_cast<std::size_t>(i) * sizeof(dat::LexCode);
+        if (!read_record(bytes, code_offset, code)) return false;
+        if (code.flags != 0) return false;
+        if (code.first_entry != index) return false;
+
+        std::string key;
+        if (!pool_string(bytes, header.pool_off, header.pool_size,
+                         code.key_off, key)) {
+            return false;
+        }
+        if (!is_dat_reading(key)) return false;
+
+        if (code.entry_count == 0) return false;
+        if (static_cast<std::uint64_t>(index) + code.entry_count >
+            header.lex_entry_count) {
+            return false;
+        }
+        for (std::uint32_t j = 0; j < code.entry_count; ++j, ++index) {
+            dat::LexEntry word{};
+            const std::size_t word_offset = header.lex_entry_table_off +
+                static_cast<std::size_t>(index) * sizeof(dat::LexEntry);
+            if (!read_record(bytes, word_offset, word)) return false;
+            if ((word.flags & ~dat::kFlagsMask) != 0) return false;
+            if (word.alt_off != 0) return false;
+            if (word.rank == 0) return false;
+            if (word.syl_count < 2) return false;
+
+            std::string text;
+            if (!pool_string(bytes, header.pool_off, header.pool_size,
+                             word.text_off, text)) {
+                return false;
+            }
+            if (text.empty()) return false;
+
+            if (word.reading_off != 0) {
+                std::string reading;
+                if (!pool_string(bytes, header.pool_off, header.pool_size,
+                                 word.reading_off, reading)) {
+                    return false;
+                }
+                std::uint32_t parts = 1;
+                std::size_t begin = 0;
+                bool ok = true;
+                while (begin <= reading.size()) {
+                    std::size_t end = reading.find(' ', begin);
+                    if (end == std::string::npos) end = reading.size();
+                    if (!is_dat_reading(
+                            std::string_view(reading.data() + begin, end - begin))) {
+                        ok = false;
+                        break;
+                    }
+                    if (end == reading.size()) break;
+                    ++parts;
+                    begin = end + 1;
+                }
+                if (!ok || parts != word.syl_count) return false;
+            }
+        }
+    }
+    // Every declared word must be reachable through some key.
+    return index == header.lex_entry_count;
+}
+
 }  // namespace
 
 std::size_t CodeTable::load_dat(std::string_view bytes,
@@ -56,42 +134,90 @@ std::size_t CodeTable::load_dat(std::string_view bytes,
     }
     if (header.version != dat::kVersion || header.flags != 0) return 0;
 
-    const std::uint64_t char_end = static_cast<std::uint64_t>(header.char_table_off) +
-        static_cast<std::uint64_t>(header.char_count) * sizeof(dat::CharEntry);
-    const std::uint64_t syl_end = static_cast<std::uint64_t>(header.syl_table_off) +
-        static_cast<std::uint64_t>(header.syl_count) * sizeof(dat::SylEntry);
-    const std::uint64_t pool_end = static_cast<std::uint64_t>(header.pool_off) +
-        header.pool_size;
+    // A version 1 table (52-byte header, no tier bit, no word list) is not
+    // readable here on purpose: see the version note in dat_format.hpp.
+    if (header.entry_size != sizeof(dat::CharEntry) ||
+        header.code_size != sizeof(dat::SylEntry)) {
+        return 0;
+    }
 
-    if (header.char_table_off != sizeof(dat::Header)) return 0;
-    if (header.syl_table_off != char_end) return 0;
-    if (header.pool_off != syl_end) return 0;
+    // Shape-only header fields: pinyin writes zero and a non-zero value means
+    // this is somebody else's table (or a mispacked one), not a pinyin one.
+    if (header.name_off != 0 || header.alphabet_off != 0 ||
+        header.source_off != 0 || header.max_code_len != 0 ||
+        header.auto_commit != 0 || header.reserved[0] != 0 ||
+        header.reserved[1] != 0) {
+        return 0;
+    }
+
+    // The four tables butt against each other with no gaps and no overlap.
+    const std::uint64_t entry_end =
+        static_cast<std::uint64_t>(header.entry_table_off) +
+        static_cast<std::uint64_t>(header.entry_count) * header.entry_size;
+    const std::uint64_t code_end =
+        static_cast<std::uint64_t>(header.code_table_off) +
+        static_cast<std::uint64_t>(header.code_count) * header.code_size;
+    const std::uint64_t lex_entry_end =
+        static_cast<std::uint64_t>(header.lex_entry_table_off) +
+        static_cast<std::uint64_t>(header.lex_entry_count) * header.entry_size;
+    const std::uint64_t lex_code_end =
+        static_cast<std::uint64_t>(header.lex_code_table_off) +
+        static_cast<std::uint64_t>(header.lex_code_count) * header.code_size;
+    const std::uint64_t pool_end =
+        static_cast<std::uint64_t>(header.pool_off) + header.pool_size;
+
+    if (header.entry_table_off != sizeof(dat::Header)) return 0;
+    if (header.code_table_off != entry_end) return 0;
+    if (header.lex_entry_table_off != code_end) return 0;
+    if (header.lex_code_table_off != lex_entry_end) return 0;
+    if (header.pool_off != lex_code_end) return 0;
     if (pool_end > bytes.size()) return 0;
 
     // Key names come from the dat's own key table; no pinyin knowledge here.
-    std::vector<std::string> key_names(header.syl_count);
-    for (std::uint32_t i = 0; i < header.syl_count; ++i) {
+    // The character segments must tile [0, entry_count) in syllable order:
+    // mkdat writes them as a prefix sum, so any other arrangement means the
+    // file was not produced by this toolchain.
+    std::vector<std::string> key_names(header.code_count);
+    std::uint32_t next_entry = 0;
+    for (std::uint32_t i = 0; i < header.code_count; ++i) {
         dat::SylEntry record{};
-        const std::size_t offset = header.syl_table_off +
+        const std::size_t offset = header.code_table_off +
             static_cast<std::size_t>(i) * sizeof(dat::SylEntry);
         if (!read_record(bytes, offset, record)) return 0;
+        if (record.flags != 0) return 0;
+        if (record.first_entry != next_entry) return 0;
+        next_entry += record.entry_count;
+        if (next_entry > header.entry_count) return 0;
         if (!pool_string(bytes, header.pool_off, header.pool_size,
                          record.name_off, key_names[i])) {
             return 0;
         }
         if (!is_dat_reading(key_names[i])) return 0;
     }
+    if (next_entry != header.entry_count) return 0;
+
+    if (!validate_lexicon(bytes, header)) return 0;
 
     clear();
-    for (std::uint32_t i = 0; i < header.char_count; ++i) {
+    for (std::uint32_t i = 0; i < header.entry_count; ++i) {
         dat::CharEntry record{};
-        const std::size_t offset = header.char_table_off +
+        const std::size_t offset = header.entry_table_off +
             static_cast<std::size_t>(i) * sizeof(dat::CharEntry);
         if (!read_record(bytes, offset, record)) {
             clear();
             return 0;
         }
         if (record.syl_id >= key_names.size()) {
+            clear();
+            return 0;
+        }
+        // rank is either a 1-based order or the "no order" sentinel; zero is
+        // neither, and a reserved flag bit is a format we do not know.
+        if (record.rank == 0) {
+            clear();
+            return 0;
+        }
+        if ((record.flags & ~dat::kFlagsMask) != 0) {
             clear();
             return 0;
         }

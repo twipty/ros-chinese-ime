@@ -488,16 +488,19 @@ BuiltData build(const std::map<std::uint32_t, UniReading>& unihan,
                   return a.codepoint < b.codepoint;
               });
 
-    // Build syllable ranges from the sorted char array.
+    // Build syllable ranges from the sorted char array. first_entry is a
+    // prefix sum even for empty syllables, so the ranges tile [0, entry_count)
+    // exactly -- which is what lets the loader verify the table with one
+    // running counter instead of trusting it.
     std::vector<SylEntry> syllables(syllable_vector.size());
     std::vector<std::uint32_t> counts(syllable_vector.size(), 0);
-    for (std::uint32_t i = 0; i < working.size(); ++i) {
-        const std::uint32_t id = working[i].syl_id;
-        if (counts[id] == 0) syllables[id].first_char = i;
-        ++counts[id];
-    }
+    for (const auto& item : working) ++counts[item.syl_id];
+    std::uint32_t next_entry = 0;
     for (std::uint32_t id = 0; id < syllables.size(); ++id) {
-        syllables[id].char_count = counts[id];
+        syllables[id].first_entry = next_entry;
+        syllables[id].entry_count = counts[id];
+        syllables[id].flags = 0;
+        next_entry += counts[id];
     }
 
     // Build the deduplicated string pool in a deterministic order.
@@ -543,16 +546,31 @@ bool write_dat(const std::string& path, const BuiltData& data) {
     std::copy(std::begin(kMagic), std::end(kMagic), header.magic);
     header.version = kVersion;
     header.flags = 0;
-    header.char_count = static_cast<std::uint32_t>(data.chars.size());
-    header.syl_count = static_cast<std::uint32_t>(data.syllables.size());
-    header.char_table_off = imfw::dat::kHeaderSize;
-    header.syl_table_off =
-        static_cast<std::uint32_t>(header.char_table_off +
+    header.entry_count = static_cast<std::uint32_t>(data.chars.size());
+    header.code_count = static_cast<std::uint32_t>(data.syllables.size());
+    // No word list yet: M4 fills these in, and the loader validates them as
+    // soon as they are non-zero.
+    header.lex_entry_count = 0;
+    header.lex_code_count = 0;
+    header.entry_table_off = imfw::dat::kHeaderSize;
+    header.code_table_off =
+        static_cast<std::uint32_t>(header.entry_table_off +
                                    data.chars.size() * sizeof(CharEntry));
-    header.pool_off =
-        static_cast<std::uint32_t>(header.syl_table_off +
+    header.lex_entry_table_off =
+        static_cast<std::uint32_t>(header.code_table_off +
                                    data.syllables.size() * sizeof(SylEntry));
+    header.lex_code_table_off = header.lex_entry_table_off;
+    header.pool_off = header.lex_code_table_off;
     header.pool_size = static_cast<std::uint32_t>(data.pool.size());
+    header.name_off = 0;
+    header.alphabet_off = 0;
+    header.source_off = 0;
+    header.entry_size = static_cast<std::uint32_t>(sizeof(CharEntry));
+    header.code_size = static_cast<std::uint32_t>(sizeof(SylEntry));
+    header.max_code_len = 0;
+    header.auto_commit = 0;
+    header.reserved[0] = 0;
+    header.reserved[1] = 0;
 
     std::vector<unsigned char> buffer(header.pool_off + data.pool.size(), 0);
     std::copy(reinterpret_cast<const unsigned char*>(&header),
@@ -561,12 +579,12 @@ bool write_dat(const std::string& path, const BuiltData& data) {
     std::copy(reinterpret_cast<const unsigned char*>(data.chars.data()),
               reinterpret_cast<const unsigned char*>(data.chars.data()) +
                   data.chars.size() * sizeof(CharEntry),
-              buffer.begin() + header.char_table_off);
+              buffer.begin() + header.entry_table_off);
     if (!data.syllables.empty()) {
         std::copy(reinterpret_cast<const unsigned char*>(data.syllables.data()),
                   reinterpret_cast<const unsigned char*>(data.syllables.data()) +
                       data.syllables.size() * sizeof(SylEntry),
-                  buffer.begin() + header.syl_table_off);
+                  buffer.begin() + header.code_table_off);
     }
     std::copy(data.pool.begin(), data.pool.end(),
               buffer.begin() + header.pool_off);

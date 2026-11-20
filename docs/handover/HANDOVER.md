@@ -276,7 +276,7 @@ bash tools/mkdat/build_dat.sh            # 默认输出 build/m2-data/rospinyin.
 
 - 输入源由 `tools/mkdat/fetch_data.py` 按 **sha256 固定版本**拉取（Unihan 18.0.0 `kMandarin` + hanziDB 字频），可离线复用已下载文件。
 - 输出确定性（同输入字节级一致），44,355 字 / 418 音节。
-- 数据格式见 `framework/include/imfw/dat_format.hpp`（magic `ROSPYDAT`、v1、header + CharEntry[] + SylEntry[] + 字符串池，无指针、可 mmap）。
+- 数据格式见 `framework/include/imfw/dat_format.hpp` 与 `docs/plan/DAT-FORMAT-V2.md`（magic `ROSPYDAT`、**v2 唯一版本**、80B header + CharEntry[24] + SylEntry[16] + 词组两表（可为空）+ 字符串池，无指针、可 mmap）。**v1 表已不可读**：旧表会被拒载并回退内置数组，故 `.ime` 与 `.dat` 必须同源发布。
 
 ### 6.3 Win32 / ReactOS 目标（MinGW-w64 i686）
 

@@ -24,14 +24,19 @@ import tempfile
 from pathlib import Path
 
 MAGIC = b"ROSPYDAT"
-VERSION = 1
-HEADER_FMT = "<8sIIIIIIII3I"   # 52 bytes
-CHAR_FMT = "<IIIII"            # 20 bytes
+VERSION = 2
+# 80 bytes: magic + 17 u32 + max_code_len/auto_commit/reserved[2].
+HEADER_FMT = "<8s17I4B"
+CHAR_FMT = "<IIIIII"           # 24 bytes
 SYL_FMT = "<IIII"              # 16 bytes
+LEX_FMT = "<IIIIII"            # 24 bytes, same shape as CHAR_FMT
+LEXCODE_FMT = "<IIII"          # 16 bytes, same shape as SYL_FMT
 HEADER_SIZE = struct.calcsize(HEADER_FMT)
 CHAR_SIZE = struct.calcsize(CHAR_FMT)
 SYL_SIZE = struct.calcsize(SYL_FMT)
 UNKNOWN_RANK = 0xFFFFFFFF
+LEX_FMT_SIZE = struct.calcsize(LEX_FMT)
+LEXCODE_FMT_SIZE = struct.calcsize(LEXCODE_FMT)
 
 
 def fail(message):
@@ -41,21 +46,32 @@ def fail(message):
 
 def decode(path: Path) -> dict:
     blob = path.read_bytes()
-    (magic, version, flags, char_count, syl_count,
-     char_off, syl_off, pool_off, pool_size,
-     r0, r1, r2) = struct.unpack_from(HEADER_FMT, blob, 0)
+    (magic, version, flags, char_count, syl_count, lex_entry_count,
+     lex_code_count, char_off, syl_off, lex_off, lex_code_off,
+     pool_off, pool_size, name_off, alphabet_off, source_off,
+     entry_size, code_size, max_code_len, auto_commit, r0, r1) = \
+        struct.unpack_from(HEADER_FMT, blob, 0)
 
     if magic != MAGIC:
         fail(f"bad magic {magic!r}")
     if version != VERSION:
-        fail(f"bad version {version}")
-    if (flags, r0, r1, r2) != (0, 0, 0, 0):
-        fail("reserved fields must be zero")
+        hint = " (version 1 is the retired 52-byte-header layout; rebuild the table)" \
+            if version == 1 else ""
+        fail(f"bad version {version}{hint}")
+    if (flags, name_off, alphabet_off, source_off, max_code_len,
+            auto_commit, r0, r1) != (0, 0, 0, 0, 0, 0, 0, 0):
+        fail("reserved / shape-only header fields must be zero for pinyin")
+    if entry_size != CHAR_SIZE or code_size != SYL_SIZE:
+        fail(f"header record sizes {entry_size}/{code_size} disagree with the layout")
     if char_off != HEADER_SIZE:
-        fail(f"bad char table offset {char_off}")
+        fail(f"bad entry table offset {char_off}")
     if syl_off != char_off + char_count * CHAR_SIZE:
         fail("bad syllable table offset")
-    if pool_off != syl_off + syl_count * SYL_SIZE:
+    if lex_off != syl_off + syl_count * SYL_SIZE:
+        fail("bad word table offset")
+    if lex_code_off != lex_off + lex_entry_count * LEX_FMT_SIZE:
+        fail("bad word-key table offset")
+    if pool_off != lex_code_off + lex_code_count * LEXCODE_FMT_SIZE:
         fail("bad pool offset")
     if pool_off + pool_size != len(blob):
         fail("pool size does not match file length")
@@ -72,14 +88,17 @@ def decode(path: Path) -> dict:
 
     chars = []
     for i in range(char_count):
-        cp, rank, syl_id, reading_off, alt_off = struct.unpack_from(
+        cp, rank, syl_id, reading_off, alt_off, entry_flags = struct.unpack_from(
             CHAR_FMT, blob, char_off + i * CHAR_SIZE)
+        if entry_flags & ~0x2:
+            fail(f"U+{cp:04X}: reserved flag bits are set")
         chars.append({
             "cp": cp,
             "rank": rank,
             "syl_id": syl_id,
             "reading": string_at(reading_off),
             "alt": string_at(alt_off) if alt_off else "",
+            "tier": (entry_flags >> 1) & 1,
         })
 
     syllables = []
@@ -94,7 +113,24 @@ def decode(path: Path) -> dict:
             "count": count,
         })
 
-    return {"chars": chars, "syllables": syllables, "pool_size": pool_size}
+    # mkdat emits no word list yet; M4 will. Validate whatever is there so the
+    # checker keeps working on the day the table gains words.
+    words = []
+    expected = 0
+    for i in range(lex_code_count):
+        key_off, first, count, key_flags = struct.unpack_from(
+            LEXCODE_FMT, blob, lex_code_off + i * LEXCODE_FMT_SIZE)
+        if key_flags != 0:
+            fail("word-key flags must be zero")
+        if first != expected:
+            fail("word-key runs do not tile the word table")
+        expected += count
+        words.append({"key": string_at(key_off), "first": first, "count": count})
+    if expected != lex_entry_count:
+        fail(f"word keys cover {expected} of {lex_entry_count} words")
+
+    return {"chars": chars, "syllables": syllables, "words": words,
+            "pool_size": pool_size}
 
 
 def main() -> int:

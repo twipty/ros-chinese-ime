@@ -7,7 +7,33 @@
 
 ## 未发布
 
+### dat v2 重做：单文件 + Header 80B + 不再兼容 v1（2026-11-20，已实现）
+
+owner 三条指令（① 不考虑 v1 兼容 ② 调整 header ③ 补齐缺口、修正 bug）触发格式重做。
+此前的 64B 两文件方案（`ROSPYLEX`）尚未落地过任何文件，因此原地替换，不另起版本号。
+
+- **Header 52→80B**：新增 `entry_size`/`code_size` 自描述尺寸，以及词组两套表的
+  `lex_entry_count`/`lex_code_count`/`lex_entry_table_off`/`lex_code_table_off`；
+  四张定长表（字 / 音节段 / 词 / 词组键段）首尾相接。**词组并入同一文件，取消第三种 magic**。
+- **v1 不再兼容**：`version != 2` 一律拒载，不做「按 tier 0 降级读」——v1 条目没有 tier 位，
+  降级读等于骗用户。运行时后果是降级不是失败：外部表被拒即回退 `pinyin/src/scheme.cpp` 的
+  内置数组（`kBuiltin[]` 是 C++ 数组，不经 dat）。**`.ime` 与 `.dat` 必须同源发布**。
+- **补齐的校验**（每条都有对应用例）：音节/词组键段改为**前缀和 tiling** 并强制校验（原实现空音节
+  `first_entry` 写 0，契约根本无法检查）；`rank == 0` 由静默接受改为拒载；`flags` 保留位由不查改为拒载；
+  词组表「声明了就必须自洽」（无键、跳词、单音节词均拒）；偏移链改 **64 位算术**防回绕；
+  `entry_size`/`code_size` 与记录宽度不符即拒（抓半升级文件）。
+- **修正的 bug**：`tests/code_table_test.cpp` 原用 `kVersion + 1` 表示「未知版本」，而它就是下一个合法版本
+  ——一旦该版本落地，用例会从「拒载」静默变成「解析」。改为 `0x7F7F`。
+- **产物**：`rospinyin.dat` 902,776 → **1,080,224 B**（+177 KB），44,355 字 / 418 音节 / 118 多音 /
+  首屏覆盖 96.8% 全部不变（容器变了、载荷没变）；`build_dat.sh` 指纹更新为 `3bf4d5fa…`，
+  端到端重建（含原始输入 sha256）逐字节一致。
+- 影响面：`dat_format.hpp`（80B 契约、删 v1 结构与 `HeaderV2`）、`code_table.cpp`（v2-only 加载器）、
+  `mkdat.cpp`（80B 头 + 前缀和段）、`code_table_test.cpp`、`check_mkdat.py`、`coverage_report.py`、
+  `build_dat.sh`；文档 `DAT-FORMAT-V2.md` 全文重写，统一文本与 `XINGMA-PLAN.md` §4.1 同步为 80B。
+
 ### dat v2 七项裁决关闭 + 词组表同骨架方案（2026-11-20，规范 + 头文件契约，零行为变更）
+
+> 本节记录当时的裁决过程；**Header 尺寸与词组承载方式已被上一节取代**，七项裁决结论仍有效。
 
 - 上一版留下的 7 项待裁决**全部关闭**（`DAT-FORMAT-V2.md` §10 现为裁决记录表）：
   ① 共享校验按调用方传入的 magic 做白名单（拼音只认 `ROSPYDAT`，拒绝 `ROSSHDAT`）；
@@ -27,6 +53,8 @@
   与 static_assert；v1/v2 结构与加载器行为一字未动（无读取方）。
 
 ### 码表 dat 统一格式 v2 冻结（2026-11-20，规范 + 头文件契约，零行为变更）
+
+> 本节为首次冻结记录；布局细节已被上方两节迭代取代（Header 52→64→80、词组从独立文件到同文件）。
 
 - owner 裁定：接收 `xingma/docs/glyph-tier/UNIFIED-DAT-FORMAT.md` 为**新版 dat 的唯一冻结版本**——
   拼音 `rospinyin.dat` 与形码 `shape.dat` 同骨架、分 magic（`ROSPYDAT` / `ROSSHDAT`）。

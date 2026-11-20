@@ -1,9 +1,10 @@
-# RosXingMa 形码输入法 · 实施计划（正式版 1.3）
+# RosXingMa 形码输入法 · 实施计划（正式版 1.4）
 
 > 本文件是 RosXingMa 项目的**唯一实施依据**。开发、评审、验收均以本文件为准。
 > 方案调整直接修订本文件并递增版本号；历史版本存入 `xingma/archive/`，不再作为依据。
 >
 > **修订记录**
+> - **v1.4（2026-11-20，跟随拼音修订 B）**：Header 由 64B 扩到 **80B**（加自描述 `entry_size`/`code_size` 与词组两套表的计数/偏移），拼音侧同时放弃 v1 兼容——两产品仍同骨架、分 magic。
 > - **v1.3（2026-11-20，dat 格式与拼音统一）**：`shape.dat` 与拼音 `rospinyin.dat` 采用统一二进制骨架（Header 64B / Entry 24B / Code 16B，`magic` 作 tag），见 `docs/glyph-tier/UNIFIED-DAT-FORMAT.md`。可见性位由 `visible`（1=可见）改名 `tier` 并**反转极性为 0=可见**（按拼音口径），Entry 由 20B 扩到 24B 使 rank/flags 与拼音同偏移。Candidate 的 `glyph_visible=true` 谓词不变，读取时取反 `tier==0`。拼音侧需同步的改动清单见统一规范 §7（xingma 外，由 owner 执行）。四项目标、阶段划分、Q6（auto_commit=2 保留）结论不变。
 > - **v1.2（2026-11-19，字形可见性与自动上屏合并）**：① 取消 `glyph_tier` 三档分级与独立 `[快]/[全]` 开关的并置设计，合并为单一「字形可见性」标志——码表构建期按 `DroidSansFallback` cmap 给每条 Entry 打 1 bit `visible`，运行时 `[快]/[全]` 只决定「是否按该位过滤」，不再有 tier0/1/2；`Candidate` 加 `bool glyph_visible` 而非 2 bit tier。② 唯一候选自动上屏判据改为「**唯一可见候选**」：过滤后可见候选恰好 1 条才提交，`AutoCommitUnique` 默认由「码表头 `auto_commit` 字段」控制（ibus-table 先例），不再用 HKCU 独立开关。③ 未满定长时的处理确立为「不自动上屏」（主流形码共识：形码编码是前缀树，短码唯一即上屏会吃掉续打），详见 `xingma/docs/glyph-tier/FRAMEWORK-REQ.md` §11 调研附录。四项目标、阶段划分与合规结论不变。
 > - **v1.1（2026-11-18，现状对齐）**：按 ros-pinyin 主线现状重排实施阶段——框架侧新增前置门禁 **P0**，W1–W5 顺延为 P1–P5；细化见 `xingma/docs/phase0/PHASE0-PLAN.md`。同步五处事实：① X1 目录归位（`framework/host|ui` → `framework/platform/win32/{imm32,ui}`），本计划全部框架路径改指新位置；② M2 VM 验收 15/15 通过、G1 ABI 修复获真机证据；③ M0 红线 #2 降级为部署偏好、约束改为「登录路径零失败初始化」；④ `Scheme::ui_server_class()` 类名 ≤15 字符硬约束（拼音侧 17 字符曾致 IME 从不加载）；⑤ 架构审计新增「注入缝未落地 / 全局单例未隔离」两项风险。产品定义、数据模型、工具链、合规结论不变。
@@ -201,9 +202,12 @@ rosxingma.ime
 
 ```
 magic "ROSSHDAT" (8B), version = 2
-Header (64B):  magic[8], version, flags, entry_count, code_count,
-               entry_table_off, code_table_off, pool_off, pool_size,
-               name_off, alphabet_off, source_off, max_code_len, auto_commit, reserved[10]
+Header (80B):  magic[8], version, flags, entry_count, code_count,
+               lex_entry_count, lex_code_count,
+               entry_table_off, code_table_off, lex_entry_table_off, lex_code_table_off,
+               pool_off, pool_size,
+               name_off, alphabet_off, source_off, entry_size, code_size,
+               max_code_len, auto_commit, reserved[2]
 Entry (24B):   slot0=text_off, slot1=rank, slot2=text_len, slot3=entry_type, slot4=reserved(0), slot5=flags
   // slot1(rank) 与 slot5(flags) 与拼音同偏移真共用；其余槽按 magic 解释
   // flags: bit0 = 仅用于组词，不参与直接上屏（fcitx `^` / ibus 特殊条目）
@@ -211,7 +215,8 @@ Entry (24B):   slot0=text_off, slot1=rank, slot2=text_len, slot3=entry_type, slo
   //        注：原 visible 位本次改名 tier 并反转极性（原 1=可见 → 现 0=可见）；见 UNIFIED-DAT-FORMAT.md §3
 Code (16B):    key_off(code_off), first_entry, entry_count, flags
   // flags: bit0 一级简码 / bit1 二级 / bit2 三级 / bit3 全码 / bit4 含识别码（导入期推断，仅作界面提示）
-static_assert(Header == 64, Entry == 24, Code == 16)
+LexEntry (24B) / LexCode (16B): 词组表，与 Entry/Code 同宽；形码首版不用则两计数置 0
+static_assert(Header == 80, Entry == 24, Code == 16)
 ```
 
 > 运行时谓词：`glyph_visible = (tier == 0)`（dat 位 0=可见 → Candidate bool true=可见）。拼音侧无 tier 概念、槽4/5 语义不同，但 rank/flags 偏移一致，公共过滤代码只读 flags bit1。

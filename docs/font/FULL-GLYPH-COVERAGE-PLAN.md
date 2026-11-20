@@ -32,7 +32,7 @@
 
 ## 1. 实测：`.dat` 到底含哪些字（这是所有决策的基础）
 
-数据：`m0/share/rospinyin.dat`（902,776 B，magic `ROSPYDAT`，44,355 条 `CharEntry`，20 B/条），解析 `dat_format.hpp` 布局后逐条取 `codepoint`。
+数据：`m0/share/rospinyin.dat`（分析时为 902,776 B / 20 B 条；2026-11-20 格式改 v2 后为 1,080,224 B / 24 B 条，见 `DAT-FORMAT-V2.md`。结论不受影响），解析 `dat_format.hpp` 布局后逐条取 `codepoint`。
 
 | 区块 | 码点数 | 占比 |
 |---|---:|---:|
@@ -197,7 +197,7 @@
 
 ## 9. 实测方法（可复现）
 
-1. `.dat` 码点：按 `framework/include/imfw/dat_format.hpp` 解析 52 B Header → 44,355 × 20 B `CharEntry`，取每个 `codepoint` 字段。
+1. `.dat` 码点：按 `framework/include/imfw/dat_format.hpp` 解析 Header → 44,355 × `entry_size`（v2 为 24 B）`CharEntry`，取每个 `codepoint` 字段。
 2. 字体 cmap：`fontTools.ttLib.TTFont(path, lazy=True)`（TTC 用 `TTCollection`），合并所有 `table.isUnicode()` 的 `cmap.keys()`。
 3. 覆盖率：对每个 dat 码点查 `cp in cmap`，按 `BLOCKS` 区间统计。
 4. 本次数据文件：

@@ -35,7 +35,11 @@ python3 "$ROOT/tools/mkdat/fetch_data.py" --out-dir "$OUT_DIR"
 # two different dat sizes (902,768 and 902,776) both ended up in the docs.
 # Changing the table on purpose now costs one deliberate edit here, which is the
 # point: a data change becomes a reviewable act.
-EXPECTED_DAT_SHA256="f28b2606338431d2e7a9adc089f8f053728c2be18061bc066d8fdaba23e9b921"
+#
+# Bumped 2026-11-20 with the v2 container (80-byte header, 24-byte entries, word
+# tables). Same 44,355 characters and 418 syllables as before -- the payload did
+# not change, only the layout, so a differing count here would mean a data bug.
+EXPECTED_DAT_SHA256="3bf4d5fa6f8471f8868a946d83c1d5e9f321c20b489ef117b454f69d65dc0438"
 ACTUAL_DAT_SHA256="$(sha256sum "$OUT_DIR/rospinyin.dat" | cut -d' ' -f1)"
 if [[ "$ACTUAL_DAT_SHA256" != "$EXPECTED_DAT_SHA256" ]]; then
     echo "rospinyin.dat fingerprint mismatch" >&2
