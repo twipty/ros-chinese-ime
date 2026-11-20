@@ -8,6 +8,7 @@ tools/mkdat/dat_format.hpp's layout and asserts:
   * the v-key normalization happened in the data layer (nv3/lv4/lve4)
   * tone digits sit immediately after the vowel (zho1ng, not zhong1)
   * kHanyuPinlu breaks polyphonic ties (重 -> chong)
+  * tier bit is graded from the checked-in Droid cmap (中 -> 0, 嗯 -> 1)
   * syllable ranges are contiguous and ordered, readings are canonical
   * repeated runs are byte-for-byte deterministic
 
@@ -137,10 +138,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mkdat", required=True, type=Path)
     parser.add_argument("--root", required=True, type=Path)
+    parser.add_argument("--cmap", type=Path, default=None,
+                        help="Droid cmap list (default: tools/mkdat/data/droid_cmap.txt)")
     args = parser.parse_args()
 
     if not args.mkdat.exists():
         fail(f"mkdat not found: {args.mkdat}")
+
+    cmap = args.cmap or (args.root / "tools" / "mkdat" / "data" /
+                         "droid_cmap.txt")
+    if not cmap.exists():
+        fail(f"Droid cmap list not found: {cmap}")
 
     fixtures = args.root / "tools" / "mkdat" / "fixtures"
     unihan = fixtures / "unihan_mini.txt"
@@ -155,6 +163,7 @@ def main() -> int:
             str(args.mkdat),
             "--unihan", str(unihan),
             "--frequency", str(frequency),
+            "--cmap", str(cmap),
             "--quiet",
         ]
         for out in (out1, out2):
@@ -205,6 +214,13 @@ def main() -> int:
     if by_cp[0x4E48]["rank"] != UNKNOWN_RANK:
         fail("么 (Unihan-only) should have unknown rank")
 
+    # Tier is graded from the real cmap at build time: 中 is covered, 嗯 is
+    # not. These two fixtures would both flip to 0 if --cmap were ignored.
+    if by_cp[0x4E2D]["tier"] != 0:
+        fail("中 should be tier0 (Droid cmap covers U+4E2D)")
+    if by_cp[0x54EF]["tier"] != 1:
+        fail("嗯 should be tier1 (Droid cmap misses U+54EF)")
+
     # Syllable ranges must be contiguous, cover all chars, and be sorted.
     covered = 0
     previous_name = ""
@@ -230,7 +246,7 @@ def main() -> int:
     print(
         f"check_mkdat OK: {len(data['chars'])} chars, "
         f"{len(data['syllables'])} syllables, "
-        f"{data['pool_size']}-byte pool; v-key + tone positions verified"
+        f"{data['pool_size']}-byte pool; v-key + tone positions + tier verified"
     )
     return 0
 

@@ -22,4 +22,9 @@ std::wstring toolbar_text(const Scheme& scheme, bool open) {
     return text;
 }
 
+std::wstring toolbar_text_with_mode(const Scheme& scheme, bool open,
+                                    bool full_glyph) {
+    return toolbar_text(scheme, open) + (full_glyph ? L"[全]" : L"[快]");
+}
+
 }  // namespace imfw

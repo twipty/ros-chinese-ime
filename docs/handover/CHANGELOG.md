@@ -7,6 +7,30 @@
 
 ## 未发布
 
+### pinyin dat v2 分级落地 + framework 探测链移除（2026-11-20，已实现）
+
+上一节留下的「tier 全 0」残留已关闭，并把 `FRAMEWORK-REQ.md` 的 FR-1~FR-6 一次落地：
+
+- **数据层**：新增 `tools/mkdat/export_cmap.py` 与 `tools/mkdat/data/droid_cmap.txt`（29,622 码点，
+  从 ReactOS 自带 `DroidSansFallback.ttf` 导出，源字体 sha256 写在文件头）。`mkdat` 新增必填
+  `--cmap`，按码点集写 `CharEntry.flags` bit1；`build_dat.sh` 钉死 cmap sha256，产物指纹
+  `3bf4d5fa…` → **`8f8cdb33…`**。44,355 字 / 418 音节不变，**tier0=16,500 / tier1=27,855**；
+  有频序的 9,898 字里 9,092 是 tier0，首屏 500 字 96.8% 不变（tier 不进排序键）。
+  用 `--install` 刷新了 `m0/share/rospinyin.dat`，避免两份副本分叉。
+- **引擎**：`PinyinSession::recompute()` 从 `TableEntry.tier == 0` 填 `Candidate.glyph_visible`；
+  rank 与 tier 是两个独立维度（常用字也可能需扩展字体，生僻字也可能可绘）。
+- **framework**：`Host` 删 `can_render`、加 `show_all_glyphs`/`toggle_glyph_mode`；
+  `renderable_candidates` 改按 `glyph_visible` 过滤（`[快]` 只留可见、`[全]` 原样放行、
+  全组不可见或过半不可见时 fail-open）；`ImeSessionState.full_glyph` 为 per-HIMC 会话态，
+  默认 `[快]`，不写注册表；`Ctrl+Shift+G` 翻转并即时刷新工具栏 `拼:开[快]` / `拼:开[全]`；
+  彻底删除 `GlyphProbe` / `UiCanRender` / `GetGlyphIndicesW`（含语法桩声明）。
+- **门禁**：ctest 18/18（`ROSPINYIN_BUILTIN_TABLE` ON/OFF 两配置各一遍）、
+  check_m1 111/111、check_docs 7/7、mkdat-e2e（中= tier0 / 嗯= tier1 断言）、
+  MinGW i686 交叉编译通过；全仓 `can_render|UiCanRender|GlyphProbe|GetGlyphIndicesW`
+  grep 无代码残留。
+- **边界**：FR-8「唯一可见候选自动上屏」的策略数据 `auto_commit` 属形码码表头，形码尚未开工、
+  拼音头恒 0；本次只落实 framework 侧「判据必须作用在过滤后可见集」的契约，不新增上屏通道。
+
 ### dat v2 重做：单文件 + Header 80B + 不再兼容 v1（2026-11-20，已实现）
 
 owner 三条指令（① 不考虑 v1 兼容 ② 调整 header ③ 补齐缺口、修正 bug）触发格式重做。

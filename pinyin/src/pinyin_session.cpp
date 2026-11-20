@@ -187,6 +187,11 @@ void PinyinSession::recompute() {
         candidate.score = entry.rank == kUnknownRank
                               ? 0
                               : static_cast<int>(1000000u - entry.rank);
+        // The dat's tier bit is a build-time fact; the engine only translates
+        // its polarity (0 = bundled font covers it) into the host's predicate.
+        // Rank and tier are independent: a common character may still need an
+        // extra font, and a rare one may be perfectly drawable.
+        candidate.glyph_visible = (entry.tier == 0);
         if (entry.rank == kUnknownRank && !show_rare_) {
             rare.push_back(std::move(candidate));
         } else {

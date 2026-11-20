@@ -59,30 +59,23 @@ void adopt_result(ImeSessionState& state, const Result& result) {
     state.segments = result.segments;
 }
 
-// P1-2: keep only candidates the candidate font can draw. Without this,
-// `shi` offered a ranked extension-A character that painted as a tofu box and
-// inserted a box into the document when picked.
-//
-// Two guards make a wrong font harmless:
-//   * everything dropped (or more than half) means the font has no CJK at all
-//     — that is a font problem, not a candidate problem, so keep the list;
-//   * the probe fails open (see UiCanRender), so a GDI without
-//     GetGlyphIndicesW behaves exactly as before.
+// Glyph visibility is a build-time fact on each Candidate, not something to
+// probe while typing. [快] (the default) keeps only candidates the bundled
+// font can draw; [全] keeps everything. Two guards keep a wrong font from
+// hiding every word:
+//   * everything dropped (or more than half) means the table is misgraded --
+//     that is a data problem, so keep the list (fail-open, as before);
+//   * [全] never calls the filter at all, so the caller's list comes back
+//     untouched.
 std::vector<Candidate> renderable_candidates(Host& host,
                                              const std::vector<Candidate>& input) {
     if (input.empty()) return input;
+    if (host.show_all_glyphs()) return input;
 
     std::vector<Candidate> kept;
     kept.reserve(input.size());
     for (const auto& candidate : input) {
-        bool drawable = true;
-        for (const char32_t codepoint : candidate.text) {
-            if (codepoint != 0 && !host.can_render(codepoint)) {
-                drawable = false;
-                break;
-            }
-        }
-        if (drawable) kept.push_back(candidate);
+        if (candidate.glyph_visible) kept.push_back(candidate);
     }
 
     const std::size_t dropped = input.size() - kept.size();
@@ -157,6 +150,15 @@ bool wants_key(ImeSessionState& session, const KeyEvent& event, Host& host) {
 
     session.shift_latched = false;  // Shift was a modifier
 
+    // Ctrl+Shift+G flips the session's [快]/[全] mode. It is handled before
+    // the is_open()/modifier gates: switching modes is meaningful in English
+    // mode too, and the modifier itself must never be mistaken for input.
+    // Key-up is already rejected above, so one press toggles exactly once.
+    if (event.kind == KeyKind::ModeToggle) {
+        host.toggle_glyph_mode();
+        return true;  // claim it: the application must not also see Ctrl+Shift+G
+    }
+
     // Closed = English: every key belongs to the application. This is the whole
     // point of the Shift toggle; without it "switching to English" would leave
     // the IME swallowing letters and inserting Chinese.
@@ -196,10 +198,10 @@ KeyResult handle_key(ImeSessionState& session, const KeyEvent& event, Host& host
         // candidate 10 and space picks the first candidate of the page.
         const Candidate* chosen = session.pager.select(intent.slot);
         if (chosen == nullptr || chosen->text.empty()) return {};
-        // The pager holds a *filtered* copy of the candidate list (P1-2 drops
-        // characters the font cannot draw), so its index means nothing to the
-        // engine — hand the text back instead and let the engine decide what
-        // is left to convert.
+        // The pager holds a *filtered* copy of the candidate list ([快] drops
+        // tier-1 characters), so its index means nothing to the engine -- hand
+        // the text back instead and let the engine decide what is left to
+        // convert.
         return {apply_commit(host, session,
                              session.engine->commit_text(chosen->text))};
     }

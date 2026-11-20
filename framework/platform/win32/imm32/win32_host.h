@@ -4,8 +4,8 @@
 // The platform half of the key policy (X2-a). imfw::Host is the port through
 // which the *portable* policy (framework/src/host_key.cpp) does the four
 // things it cannot do by itself: read/write the Chinese/English flag, put text
-// on screen, ask the font whether it can draw a code point, and write the
-// trace channel. This class is the only implementation of that port.
+// on screen, read/flip the session's glyph mode, and write the trace channel.
+// This class is the only implementation of that port.
 
 #pragma once
 
@@ -32,7 +32,8 @@ public:
               const std::vector<std::string>& segments,
               const imfw::CandidatePager& pager) override;
     void hide() override;
-    bool can_render(char32_t codepoint) override;
+    bool show_all_glyphs() const override;
+    void toggle_glyph_mode() override;
 
     void on_feed(char32_t input, const imfw::Result& result) override;
     void on_candidates_filtered(std::size_t dropped, std::size_t total,

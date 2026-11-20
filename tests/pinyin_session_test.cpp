@@ -313,6 +313,40 @@ int main() {
               "set_show_rare(true) restores the full list");
     }
 
+    // Tier -> glyph_visible: the engine translates the dat bit's polarity, and
+    // rank stays an independent axis (a frequent character can still need an
+    // extra font, a rare one can be perfectly drawable).
+    {
+        imfw::CodeTable table;
+        table.add(U'中', 7, "zho1ng", "zhong", 0);
+        table.add(U'钟', 500, "zho1ng", "zhong", 1);
+        table.add(U'\u3968', imfw::dat::kUnknownRank, "zho1ng", "zhong", 1);
+        table.build_index();
+        auto shared = std::make_shared<const imfw::CodeTable>(std::move(table));
+
+        rospinyin::PinyinSession session(shared);
+        session.on_select(true);
+        feed_string(session, "zhong");
+        check(session.candidates().size() == 2,
+              "graded table keeps the two ranked candidates");
+        if (session.candidates().size() == 2) {
+            check(session.candidates()[0].text == U"中" &&
+                      session.candidates()[0].glyph_visible,
+                  "tier 0 becomes glyph_visible=true");
+            check(session.candidates()[1].text == U"钟" &&
+                      !session.candidates()[1].glyph_visible,
+                  "tier 1 becomes glyph_visible=false");
+        }
+
+        rospinyin::PinyinSession with_rare(shared);
+        with_rare.on_select(true);
+        with_rare.set_show_rare(true);
+        feed_string(with_rare, "zhong");
+        check(with_rare.candidates().size() == 3 &&
+                  !with_rare.candidates()[2].glyph_visible,
+              "an unranked tier-1 character keeps its visibility bit");
+    }
+
     // When a syllable has *only* unranked characters the filter must not leave
     // the user with nothing to pick.
     {

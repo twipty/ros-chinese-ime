@@ -8,6 +8,7 @@
 #include "win32_host.h"
 
 #include "ime_ui.h"
+#include "session_store.hpp"
 #include "trace_line.h"
 
 // IMM32 client API (ImmGetOpenStatus / ImmSetOpenStatus). The IME-side ABI in
@@ -60,8 +61,18 @@ void Win32Host::show(const std::string& composition,
 
 void Win32Host::hide() { imfw::UiHide(hIMC_); }
 
-bool Win32Host::can_render(char32_t codepoint) {
-    return imfw::UiCanRender(codepoint);
+bool Win32Host::show_all_glyphs() const {
+    ImeSessionState* state = imfw::acquire_session(hIMC_);
+    return state != nullptr && state->full_glyph;
+}
+
+void Win32Host::toggle_glyph_mode() {
+    ImeSessionState* state = imfw::acquire_session(hIMC_);
+    if (state == nullptr) return;
+    state->full_glyph = !state->full_glyph;
+    // [快]/[全] is visible in the toolbar, and the flip must be immediate --
+    // the user is looking at the label when they press Ctrl+Shift+G.
+    imfw::UiToolbarRefresh(hIMC_, state->full_glyph);
 }
 
 void Win32Host::on_feed(char32_t input, const imfw::Result& result) {
@@ -84,8 +95,8 @@ void Win32Host::on_candidates_filtered(std::size_t dropped, std::size_t total,
                                        bool kept_all) {
     IMFW_TRACE("cand-filter dropped ").d(static_cast<long long>(dropped))
         .s(" of ").d(static_cast<long long>(total))
-        .s(kept_all ? " -> font cannot draw CJK, keeping all"
-                    : " (no glyph)");
+        .s(kept_all ? " -> tier data suspect, keeping all"
+                    : " (tier=1)");
 }
 
 }  // namespace win32

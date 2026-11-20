@@ -113,7 +113,8 @@ void activate_session(rpimm::InputContext hIMC) {
     // being involved, so every key path re-syncs it (see ImeProcessKey and
     // ImeToAsciiEx below).
     imfw::UiToolbarShow(hIMC,
-        ImmGetOpenStatus(reinterpret_cast<HIMC>(hIMC)) != FALSE);
+        ImmGetOpenStatus(reinterpret_cast<HIMC>(hIMC)) != FALSE,
+        state != nullptr && state->full_glyph);
 }
 
 }  // namespace

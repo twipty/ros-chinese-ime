@@ -264,13 +264,10 @@ BOOL     WINAPI TextOutW(HDC, int, int, LPCWSTR, int);
 BOOL     WINAPI GetTextExtentPoint32W(HDC, LPCWSTR, int, SIZE*);
 BOOL     WINAPI InvalidateRect(HWND, const RECT*, BOOL);
 
-// Glyph-presence probe (ui/ime_ui.cpp GlyphProbe): a private memory DC plus
-// the font currently selected, asked which code points it actually has.
+// Device contexts for GDI text measurement (toolbar width). The old glyph
+// probe is gone: visibility is a build-time tier bit in the dat now (FR-4).
 HDC      WINAPI CreateCompatibleDC(HDC);
 BOOL     WINAPI DeleteDC(HDC);
-DWORD    WINAPI GetGlyphIndicesW(HDC, LPCWSTR, int, WORD*, DWORD);
-#define GGI_MARK_NONEXISTING_GLYPHS 0x0001
-#define GDI_ERROR 0xFFFFFFFFu
 
 // Work area for the floating toolbar (ui/toolbar.cpp).
 BOOL     WINAPI SystemParametersInfoW(UINT, UINT, LPVOID, UINT);

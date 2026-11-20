@@ -48,6 +48,12 @@ void check(bool condition, const char* what) {
 // the composition, which is what makes the "keep composing" branch reachable.
 class FakeEngine final : public imfw::Engine {
 public:
+    // Candidate indices >= invisible_from carry glyph_visible=false; -1 means
+    // every candidate is visible (the pre-grading behaviour). Lets the filter
+    // tests grade a whole list without touching the text it emits.
+    explicit FakeEngine(int invisible_from = -1)
+        : invisible_from_(invisible_from) {}
+
     imfw::Result feed(char32_t codepoint) override {
         typed_.push_back(codepoint);
         return snapshot(imfw::Action::Absorb);
@@ -95,6 +101,7 @@ private:
             imfw::Candidate candidate;
             candidate.text = typed_ + U"#" + static_cast<char32_t>(U'A' + i);
             candidate.score = 11 - i;
+            candidate.glyph_visible = i < invisible_from_;
             out.push_back(candidate);
         }
         return out;
@@ -110,6 +117,7 @@ private:
     }
 
     std::u32string typed_;
+    int invisible_from_ = -1;
 };
 
 // A scheme with a letter alphabet; digits select, `-`/`=` page (the defaults of
@@ -150,7 +158,8 @@ public:
     std::size_t filter_dropped = 0;
     std::size_t filter_total = 0;
     bool filter_kept_all = false;
-    std::vector<char32_t> unrenderable;
+    bool full_glyph = false;
+    int mode_toggles = 0;
 
     bool is_open() override { return open; }
     void set_open(bool value) override {
@@ -168,11 +177,10 @@ public:
     }
     void hide() override { ++hide_calls; }
 
-    bool can_render(char32_t codepoint) override {
-        for (const char32_t blocked : unrenderable) {
-            if (blocked == codepoint) return false;
-        }
-        return true;
+    bool show_all_glyphs() const override { return full_glyph; }
+    void toggle_glyph_mode() override {
+        full_glyph = !full_glyph;
+        ++mode_toggles;
     }
 
     void on_feed(char32_t input, const imfw::Result& result) override {
@@ -367,45 +375,62 @@ int main() {
     }
 
     {
-        // ---- candidate filtering (P1-2 guards) -------------------------
+        // ---- candidate filtering ([快]/[全] + fail-open guards) ---------
         imfw::ImeSessionState session;
-        session.engine = std::make_unique<FakeEngine>();
+        session.engine = std::make_unique<FakeEngine>(0);  // every candidate tier=1
         SpyHost host;
 
-        // One letter whose candidates all carry '#'; marking '#' unrenderable
-        // drops all 11 — that is the "font cannot draw CJK" guard, and the list
-        // must survive untouched.
-        host.unrenderable.push_back(U'#');
         imfw::handle_key(session, letter_event('A'), host);
         check(host.filter_events == 1, "the filter reports once");
-        check(host.filter_kept_all, "dropping everything is treated as a font problem");
+        check(host.filter_kept_all, "dropping everything is treated as a data problem");
         check(host.filter_dropped == 11 && host.filter_total == 11, "all 11 were dropped");
-        check(session.pager.total() == 11, "the list is kept when the font cannot draw CJK");
+        check(session.pager.total() == 11, "the list is kept when nothing is visible");
 
-        // Exactly one candidate is undrawable: it is dropped, the rest stay.
+        // Exactly one hidden candidate: it is dropped, the other ten stay.
         imfw::ImeSessionState one;
-        one.engine = std::make_unique<FakeEngine>();
+        one.engine = std::make_unique<FakeEngine>(10);
         SpyHost one_host;
-        one_host.unrenderable.push_back(U'A');  // only "a#A" uses this letter
         imfw::handle_key(one, letter_event('A'), one_host);
         check(one_host.filter_events == 1, "a partial drop is reported");
-        check(!one_host.filter_kept_all, "a partial drop is not a font problem");
+        check(!one_host.filter_kept_all, "a partial drop is not a data problem");
         check(one_host.filter_dropped == 1, "exactly one candidate was dropped");
-        check(one.pager.total() == 10, "the remaining candidates are kept");
+        check(one.pager.total() == 10, "the visible candidates are kept");
 
-        // More than half dropped is still a font problem (11 -> 5 is < 50%):
-        // a font that draws 5 of 11 CJK candidates is not a font that should
-        // silently shrink the list.
+        // More than half hidden: a misgraded table, keep the whole list.
         imfw::ImeSessionState half;
-        half.engine = std::make_unique<FakeEngine>();
+        half.engine = std::make_unique<FakeEngine>(5);
         SpyHost half_host;
-        for (char32_t letter = U'A'; letter <= U'F'; ++letter) {
-            half_host.unrenderable.push_back(letter);
-        }
         imfw::handle_key(half, letter_event('A'), half_host);
         check(half_host.filter_dropped == 6, "6 of 11 were dropped");
-        check(half_host.filter_kept_all, "losing more than half is a font problem");
-        check(half.pager.total() == 11, "the list is kept when most of it is undrawable");
+        check(half_host.filter_kept_all, "losing more than half is a data problem");
+        check(half.pager.total() == 11, "the list is kept when most of it is hidden");
+
+        // [全]: no filtering at all, even when every candidate is hidden.
+        imfw::ImeSessionState full;
+        full.engine = std::make_unique<FakeEngine>(0);
+        SpyHost full_host;
+        full_host.full_glyph = true;
+        imfw::handle_key(full, letter_event('A'), full_host);
+        check(full_host.filter_events == 0, "[全] never invokes the filter");
+        check(full.pager.total() == 11, "[全] keeps every candidate");
+
+        // Ctrl+Shift+G flips the session once; key-up is never claimed or
+        // toggled (the same rule that keeps Shift+A a capital A).
+        imfw::ImeSessionState toggle_session;
+        toggle_session.engine = std::make_unique<FakeEngine>();
+        SpyHost toggle_host;
+        imfw::KeyEvent toggle;
+        toggle.kind = imfw::KeyKind::ModeToggle;
+        toggle.vk = 'G';
+        toggle.ctrl = true;
+        check(imfw::wants_key(toggle_session, toggle, toggle_host),
+              "the mode key is owned by the IME");
+        check(toggle_host.mode_toggles == 1 && toggle_host.full_glyph,
+              "one press flips to [全]");
+        toggle.key_up = true;
+        check(!imfw::wants_key(toggle_session, toggle, toggle_host),
+              "key-up is never claimed");
+        check(toggle_host.mode_toggles == 1, "key-up does not toggle again");
     }
 
     if (failures == 0) {

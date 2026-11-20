@@ -36,6 +36,9 @@ struct ImeSessionState {
     // After that the flag belongs to the user: re-aligning would undo an
     // English toggle on the next focus change.
     bool open_initialized = false;
+    // [快] (false, default) vs [全] (true). Per-HIMC, reset when the session
+    // is released; never persisted to registry, config or any other store.
+    bool full_glyph = false;
 };
 
 }  // namespace imfw

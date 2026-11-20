@@ -17,6 +17,8 @@ namespace {
 
 constexpr BYTE kCtrlBit = 0x80;
 constexpr BYTE kAltBit = 0x80;
+constexpr BYTE kShiftBit = 0x80;
+constexpr UINT kModeToggleVk = 'G';  // Ctrl+Shift+G -> [快]/[全]
 
 // lParam bit 31 of WM_KEYDOWN/WM_KEYUP: 1 = the key is being released. The
 // same lParam is handed to ImeProcessKey, and it is the only transition
@@ -54,13 +56,21 @@ KeyEvent key_event_from(UINT vk, unsigned long lParam,
     KeyEvent event;
     event.vk = vk;
     event.ch = framework_key_char(vk);
-    event.kind = vk == VK_BACK     ? KeyKind::Backspace
-                 : vk == VK_ESCAPE ? KeyKind::Escape
-                 : vk == VK_SHIFT  ? KeyKind::Shift
-                                   : KeyKind::Other;
+    const bool ctrl = modifier_down(lpbKeyState, KeyIndex::Control, kCtrlBit);
+    const bool alt = modifier_down(lpbKeyState, KeyIndex::Alt, kAltBit);
+    const bool shift = modifier_down(lpbKeyState, KeyIndex::Shift, kShiftBit);
+    // Ctrl+Shift+G is the framework-owned mode switch (FR-D5). Alt+G and a
+    // bare Shift+G are ordinary application keys and stay untouched.
+    const bool mode_toggle =
+        vk == kModeToggleVk && ctrl && shift && !alt;
+    event.kind = mode_toggle ? KeyKind::ModeToggle
+                 : vk == VK_BACK     ? KeyKind::Backspace
+                 : vk == VK_ESCAPE   ? KeyKind::Escape
+                 : vk == VK_SHIFT    ? KeyKind::Shift
+                                     : KeyKind::Other;
     event.key_up = (lParam & kKeyUpBit) != 0;
-    event.ctrl = modifier_down(lpbKeyState, KeyIndex::Control, kCtrlBit);
-    event.alt = modifier_down(lpbKeyState, KeyIndex::Alt, kAltBit);
+    event.ctrl = ctrl;
+    event.alt = alt;
     return event;
 }
 

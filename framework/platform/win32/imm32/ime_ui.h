@@ -32,9 +32,11 @@ void UiHide(rpimm::InputContext hIMC);
 void UiDestroy(rpimm::InputContext hIMC);
 
 // Show the floating toolbar (bottom-right of the screen) with the scheme's
-// label plus the IME state ("拼:开" / "拼:关"). `ime_open` is fOpen as the
-// IMM32 layer reads it -- the UI layer never queries IMM32 itself.
-void UiToolbarShow(rpimm::InputContext hIMC, bool ime_open);
+// label, the IME state ("拼:开" / "拼:关") and the session's glyph mode
+// ("[快]" / "[全]"). `ime_open` is fOpen as the IMM32 layer reads it and
+// `full_glyph` is ImeSessionState::full_glyph -- the UI layer never queries
+// either itself.
+void UiToolbarShow(rpimm::InputContext hIMC, bool ime_open, bool full_glyph);
 
 // Repaint the toolbar if `ime_open` differs from what it currently shows.
 // Cheap enough for a key path (one bool compare) and necessary there: fOpen
@@ -44,6 +46,10 @@ void UiToolbarSetOpen(rpimm::InputContext hIMC, bool ime_open);
 
 // Hide the toolbar (IME deselected / context deactivated).
 void UiToolbarHide(rpimm::InputContext hIMC);
+
+// Repaint after a [快]/[全] flip (Ctrl+Shift+G). The caller owns the mode
+// state; this function only renders it and updates the remembered caption.
+void UiToolbarRefresh(rpimm::InputContext hIMC, bool full_glyph);
 
 // Window-operation counters for the diagnostic trace. Kept here (instead of
 // exposing framework/platform/win32/ui/ui_window.h) so the IMM32 layer never depends on UI
@@ -69,11 +75,5 @@ struct UiGeometry {
     int anchor_from_caret;
 };
 UiGeometry UiLastGeometry();
-
-// P1-2: can the candidate font actually draw this code point? Uses
-// GetGlyphIndicesW against the same font the candidate window paints with,
-// cached per process. Fails OPEN (returns true) when GDI cannot answer, so a
-// missing implementation can never hide candidates.
-bool UiCanRender(char32_t codepoint);
 
 }  // namespace imfw

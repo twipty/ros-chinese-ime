@@ -596,13 +596,27 @@ def run(root: Path) -> int:
         read(root, "framework/platform/win32/ui/ime_ui.cpp"))
     entry_win32 = strip_cpp_comments(
         read(root, "framework/platform/win32/imm32/imm_entry.cpp"))
-    c.check("状态指示器: the toolbar caption carries fOpen (拼:开 / 拼:关)",
-            "imfw::toolbar_text(scheme, ime_open)" in ime_ui_win32 and
+    c.check("状态指示器: the toolbar caption carries fOpen + glyph mode",
+            "imfw::toolbar_text_with_mode(scheme, ime_open, full_glyph)" in ime_ui_win32 and
             "scheme.toolbar_label()" not in ime_ui_win32 and
             "add_test(NAME toolbar-text" in read(root, "tests/CMakeLists.txt"))
     c.check("状态指示器: the key path syncs the toolbar (per message + after Shift)",
             entry_win32.count("imfw::UiToolbarSetOpen(") >= 2,
             f"call sites={entry_win32.count('imfw::UiToolbarSetOpen(')}")
+
+    # FR-3/FR-4: the runtime glyph probe is gone. Both halves must hold -- the
+    # Host interface no longer offers per-codepoint probing, and the Win32 UI
+    # no longer contains the GDI implementation. Keeping only one would leave a
+    # dead declaration or an unreachable singleton.
+    host_header = read(root, "framework/include/imfw/host.hpp")
+    c.check("字形分级: Host exposes mode read/write, not can_render",
+            "show_all_glyphs()" in host_header and
+            "toggle_glyph_mode()" in host_header and
+            "can_render" not in host_header)
+    c.check("字形分级: no GDI glyph probe remains in the UI layer",
+            not any(token in ime_ui_win32 for token in
+                    ("GlyphProbe", "UiCanRender", "GetGlyphIndicesW")),
+            "GlyphProbe / UiCanRender / GetGlyphIndicesW must all be removed")
     # And the other half of the model: nothing may switch the layout. The
     # shell's red 中 follows the layout, so any ActivateKeyboardLayout on the
     # Shift path would move the tray indicator the user explicitly wants left

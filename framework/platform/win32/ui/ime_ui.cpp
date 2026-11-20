@@ -43,6 +43,7 @@ struct UiContext {
     // remembered here: that is what makes the per-key sync a bool compare
     // instead of a repaint.
     bool toolbar_open = true;
+    bool toolbar_full = false;
     bool toolbar_shown = false;
 };
 
@@ -205,23 +206,30 @@ void UiDestroy(rpimm::InputContext hIMC) {
     store().erase(hIMC);
 }
 
-void UiToolbarShow(rpimm::InputContext hIMC, bool ime_open) {
+void UiToolbarShow(rpimm::InputContext hIMC, bool ime_open, bool full_glyph) {
     UiContext* ctx = store().get(hIMC);
     if (ctx == nullptr) return;
     const Scheme& scheme = scheme_instance();
-    // "拼:开" / "拼:关" -- composed in imfw/toolbar_text.cpp so the exact
-    // caption is pinned by a host test, not by a screenshot from the guest.
-    const std::wstring text = imfw::toolbar_text(scheme, ime_open);
+    const std::wstring text =
+        imfw::toolbar_text_with_mode(scheme, ime_open, full_glyph);
     ctx->toolbar_open = ime_open;
+    ctx->toolbar_full = full_glyph;
     ctx->toolbar_shown = true;
     ctx->toolbar.update(g_hInst, scheme.toolbar_class(), text.c_str());
+}
+
+void UiToolbarRefresh(rpimm::InputContext hIMC, bool full_glyph) {
+    UiContext* ctx = store().find(hIMC);
+    if (ctx == nullptr || !ctx->toolbar_shown) return;
+    if (ctx->toolbar_full == full_glyph) return;
+    UiToolbarShow(hIMC, ctx->toolbar_open, full_glyph);
 }
 
 void UiToolbarSetOpen(rpimm::InputContext hIMC, bool ime_open) {
     UiContext* ctx = store().find(hIMC);
     if (ctx == nullptr || !ctx->toolbar_shown) return;
     if (ctx->toolbar_open == ime_open) return;
-    UiToolbarShow(hIMC, ime_open);
+    UiToolbarShow(hIMC, ime_open, ctx->toolbar_full);
 }
 
 void UiToolbarHide(rpimm::InputContext hIMC) {
@@ -238,76 +246,5 @@ UiCounters UiCountersSnapshot() {
 }
 
 UiGeometry UiLastGeometry() { return g_last_geometry; }
-
-namespace {
-
-// Glyph probe for the candidate font. The shipped subset is U+4E00-U+9FA5, so
-// a ranked character from another block (extension A, compatibility) used to
-// reach the candidate list and paint as a tofu box; picking it inserted a box
-// into the document. GetGlyphIndicesW answers the question with the *same*
-// font the window paints with, and the answer is cached: `shi` alone has 95
-// candidates.
-class GlyphProbe {
-public:
-    GlyphProbe() {
-        InitializeCriticalSection(&cs_);
-        dc_ = CreateCompatibleDC(nullptr);
-        font_ = ui::CreateUiFont(16);
-        if (dc_ != nullptr && font_ != nullptr) {
-            previous_ = SelectObject(dc_, font_);
-        }
-    }
-
-    ~GlyphProbe() {
-        if (dc_ != nullptr) {
-            if (previous_ != nullptr) SelectObject(dc_, previous_);
-            DeleteDC(dc_);
-        }
-        if (font_ != nullptr) DeleteObject(font_);
-        DeleteCriticalSection(&cs_);
-    }
-
-    bool has(char32_t codepoint) {
-        // Anything outside the BMP is not in our data set; and a probe that
-        // cannot run at all must not hide text.
-        if (dc_ == nullptr || font_ == nullptr || codepoint > 0xFFFF) return true;
-
-        EnterCriticalSection(&cs_);
-        const auto cached = cache_.find(codepoint);
-        if (cached != cache_.end()) {
-            const bool value = cached->second;
-            LeaveCriticalSection(&cs_);
-            return value;
-        }
-        LeaveCriticalSection(&cs_);
-
-        const wchar_t wide = static_cast<wchar_t>(codepoint);
-        WORD index = 0;
-        const DWORD result =
-            GetGlyphIndicesW(dc_, &wide, 1, &index, GGI_MARK_NONEXISTING_GLYPHS);
-        const bool present = result != GDI_ERROR && index != 0xFFFF;
-
-        EnterCriticalSection(&cs_);
-        cache_[codepoint] = present;
-        LeaveCriticalSection(&cs_);
-        return present;
-    }
-
-private:
-    CRITICAL_SECTION cs_;
-    HDC dc_ = nullptr;
-    HFONT font_ = nullptr;
-    HGDIOBJ previous_ = nullptr;
-    std::map<char32_t, bool> cache_;
-};
-
-GlyphProbe& glyph_probe() {
-    static GlyphProbe instance;  // first use, never in DllMain
-    return instance;
-}
-
-}  // namespace
-
-bool UiCanRender(char32_t codepoint) { return glyph_probe().has(codepoint); }
 
 }  // namespace imfw

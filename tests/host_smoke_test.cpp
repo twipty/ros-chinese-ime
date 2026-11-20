@@ -145,7 +145,7 @@ class RecordingHost final : public imfw::Host {
 public:
     bool open = true;
     std::vector<std::string> log;
-    std::vector<char32_t> unrenderable;
+    bool full_glyph = false;
     int filter_calls = 0;
     std::size_t filtered_dropped = 0;
     std::size_t filtered_total = 0;
@@ -171,12 +171,8 @@ public:
 
     void hide() override { log.push_back("hide"); }
 
-    bool can_render(char32_t codepoint) override {
-        for (const char32_t blocked : unrenderable) {
-            if (blocked == codepoint) return false;
-        }
-        return true;
-    }
+    bool show_all_glyphs() const override { return full_glyph; }
+    void toggle_glyph_mode() override { full_glyph = !full_glyph; }
 
     void on_candidates_filtered(std::size_t dropped, std::size_t total,
                                 bool kept_all) override {
@@ -215,10 +211,12 @@ imfw::KeyEvent shift_event(bool key_up) {
 }
 
 // ---- script helpers -----------------------------------------------------
-imfw::Candidate candidate(const char32_t* text, int score) {
+imfw::Candidate candidate(const char32_t* text, int score,
+                          bool glyph_visible = true) {
     imfw::Candidate out;
     out.text = text;
     out.score = score;
+    out.glyph_visible = glyph_visible;
     return out;
 }
 
@@ -464,9 +462,9 @@ int main() {
     }
 
     // ------------------------------------------------------------------
-    // P1-2 inside the smoke: the host drops candidates the font cannot draw,
-    // and keeps the list anyway when it would drop too many (a font problem
-    // is not a candidate problem).
+    // Glyph mode inside the smoke: [快] drops tier-1 candidates and keeps the
+    // list anyway when it would drop too many (a grading problem is not a
+    // candidate problem); [全] passes everything through.
     // ------------------------------------------------------------------
     {
         imfw::ImeSessionState session;
@@ -474,10 +472,10 @@ int main() {
         ScriptedEngine* script = engine.get();
         session.engine = std::move(engine);
         script->feed_script = {absorb("a", {"a"},
-                                      {candidate(U"甲", 1), candidate(U"龘", 0)})};
+                                      {candidate(U"甲", 1),
+                                       candidate(U"龘", 0, false)})};
 
         RecordingHost host;
-        host.unrenderable = {U'龘'};
 
         check(imfw::wants_key(session, letter_event('A'), host),
               "the letter is claimed");
@@ -486,18 +484,34 @@ int main() {
         check(host.filter_calls == 1, "the filter reported once");
         check(host.filtered_dropped == 1 && host.filtered_total == 2 &&
                   !host.filtered_kept_all,
-              "one undrawable candidate is dropped");
+              "one tier-1 candidate is dropped");
         check(session.pager.total() == 1, "one candidate survives the filter");
 
-        // Two of three undrawable: more than half gone means the font has no
-        // CJK at all, so the list is kept (fails open).
-        host.unrenderable = {U'龘', U'乙'};
+        // Two of three hidden: more than half gone means the table is
+        // misgraded, so the list is kept (fails open).
         script->feed_script = {absorb("ab", {"ab"},
-                                      {candidate(U"甲", 1), candidate(U"龘", 0),
-                                       candidate(U"乙", 0)})};
+                                      {candidate(U"甲", 1),
+                                       candidate(U"龘", 0, false),
+                                       candidate(U"乙", 0, false)})};
         imfw::handle_key(session, letter_event('B'), host);
-        check(host.filtered_kept_all, "a mostly-undrawable list is kept");
-        check(session.pager.total() == 3, "no candidate is lost to a font bug");
+        check(host.filtered_kept_all, "a mostly-hidden list is kept");
+        check(session.pager.total() == 3, "no candidate is lost to a grading bug");
+
+        // [全]: the next feed keeps all three, and the filter is not called.
+        imfw::KeyEvent toggle;
+        toggle.kind = imfw::KeyKind::ModeToggle;
+        toggle.vk = 'G';
+        toggle.ctrl = true;
+        check(imfw::wants_key(session, toggle, host), "Ctrl+Shift+G is claimed");
+        check(host.full_glyph, "the mode key flips the host to [全]");
+        const int calls_before = host.filter_calls;
+        script->feed_script = {absorb("abc", {"abc"},
+                                      {candidate(U"甲", 1),
+                                       candidate(U"龘", 0, false),
+                                       candidate(U"乙", 0, false)})};
+        imfw::handle_key(session, letter_event('C'), host);
+        check(host.filter_calls == calls_before, "[全] never calls the filter");
+        check(session.pager.total() == 3, "[全] keeps every candidate");
     }
 
     if (failures != 0) {

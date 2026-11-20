@@ -6,10 +6,12 @@
 //
 // Usage:
 //   mkdat --unihan <Unihan_Readings.txt> --frequency <hanziDB.csv>
-//         --out <rospinyin.dat> [--stats] [--quiet]
+//         --cmap <droid_cmap.txt> --out <rospinyin.dat> [--stats] [--quiet]
 //
-// Both input files are fetched reproducibly by fetch_data.py (fixed URLs +
-// sha256). mkdat itself never touches the network.
+// The first two input files are fetched reproducibly by fetch_data.py (fixed
+// URLs + sha256); the cmap is a checked-in codepoint list exported from the
+// bundled font by export_cmap.py. build_dat.sh verifies all three sha256s.
+// mkdat itself never touches the network or a font file.
 
 #include <rospinyin/pinyin.hpp>
 #include <imfw/dat_format.hpp>
@@ -36,6 +38,7 @@ namespace {
 using imfw::dat::CharEntry;
 using imfw::dat::Header;
 using imfw::dat::SylEntry;
+using imfw::dat::kFlagTier;
 using imfw::dat::kMagic;
 using imfw::dat::kUnknownRank;
 using imfw::dat::kVersion;
@@ -54,6 +57,7 @@ struct FreqEntry {
 struct Options {
     std::string unihan_path;
     std::string frequency_path;
+    std::string cmap_path;
     std::string out_path;
     bool stats = false;
     bool quiet = false;
@@ -62,8 +66,8 @@ struct Options {
 int usage(const char* argv0) {
     std::fprintf(stderr,
                  "usage: %s --unihan <Unihan_Readings.txt> "
-                 "--frequency <hanziDB.csv> --out <rospinyin.dat> "
-                 "[--stats] [--quiet]\n",
+                 "--frequency <hanziDB.csv> --cmap <droid_cmap.txt> "
+                 "--out <rospinyin.dat> [--stats] [--quiet]\n",
                  argv0);
     return 2;
 }
@@ -80,6 +84,8 @@ bool parse_args(int argc, char** argv, Options& out) {
             if (!value(out.unihan_path)) return false;
         } else if (arg == "--frequency") {
             if (!value(out.frequency_path)) return false;
+        } else if (arg == "--cmap") {
+            if (!value(out.cmap_path)) return false;
         } else if (arg == "--out") {
             if (!value(out.out_path)) return false;
         } else if (arg == "--stats") {
@@ -91,7 +97,7 @@ bool parse_args(int argc, char** argv, Options& out) {
         }
     }
     return !out.unihan_path.empty() && !out.frequency_path.empty() &&
-           !out.out_path.empty();
+           !out.cmap_path.empty() && !out.out_path.empty();
 }
 
 std::string read_whole_file(const std::string& path) {
@@ -102,6 +108,40 @@ std::string read_whole_file(const std::string& path) {
     }
     return std::string(std::istreambuf_iterator<char>(input),
                        std::istreambuf_iterator<char>());
+}
+
+// Parse the checked-in Droid cmap: one uppercase hex codepoint per line,
+// ascending, with '#' comments. A hand-edited or truncated list must fail
+// loudly -- silently grading against a partial cmap would put tofu boxes in
+// the "visible" set, which is exactly the bug this bit exists to prevent.
+bool load_cmap(const std::string& text, std::set<std::uint32_t>& out) {
+    std::size_t start = 0;
+    std::uint32_t previous = 0;
+    bool have_previous = false;
+    while (start <= text.size()) {
+        const std::size_t end = text.find('\n', start);
+        std::string line = text.substr(
+            start, end == std::string::npos ? std::string::npos : end - start);
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (end == std::string::npos) start = text.size() + 1;
+        else start = end + 1;
+
+        if (line.empty() || line[0] == '#') continue;
+        std::size_t consumed = 0;
+        unsigned long value = 0;
+        try {
+            value = std::stoul(line, &consumed, 16);
+        } catch (...) {
+            return false;
+        }
+        if (consumed != line.size() || value > 0x10FFFF) return false;
+        const std::uint32_t cp = static_cast<std::uint32_t>(value);
+        if (have_previous && cp <= previous) return false;
+        out.insert(cp);
+        previous = cp;
+        have_previous = true;
+    }
+    return !out.empty();
 }
 
 std::uint32_t codepoint_from_uplus(const std::string& token) {
@@ -412,6 +452,7 @@ bool choose_primary(const UniReading* uni, const FreqEntry* freq,
 
 BuiltData build(const std::map<std::uint32_t, UniReading>& unihan,
                 const std::map<std::uint32_t, FreqEntry>& frequency,
+                const std::set<std::uint32_t>& cmap,
                 std::size_t& skipped) {
     struct Working {
         std::uint32_t codepoint = 0;
@@ -531,6 +572,10 @@ BuiltData build(const std::map<std::uint32_t, UniReading>& unihan,
         entry.syl_id = item.syl_id;
         entry.reading_off = intern(item.reading);
         entry.alt_off = item.alts.empty() ? 0 : intern(item.alts);
+        // One bit of build-time grading: 0 = the bundled font can draw this
+        // character, 1 = an extra font is needed. The cmap is authoritative;
+        // no runtime GDI probe will second-guess it (FR-3/FR-4).
+        entry.flags = cmap.count(item.codepoint) != 0 ? 0 : kFlagTier;
         result.chars.push_back(entry);
     }
     for (std::uint32_t id = 0; id < syllables.size(); ++id) {
@@ -617,8 +662,16 @@ int main(int argc, char** argv) {
     if (frequency_text.empty()) return 1;
     if (!parse_frequency(frequency_text, frequency, warnings)) return 1;
 
+    std::set<std::uint32_t> cmap;
+    const std::string cmap_text = read_whole_file(options.cmap_path);
+    if (cmap_text.empty() || !load_cmap(cmap_text, cmap)) {
+        std::fprintf(stderr, "mkdat: cannot parse Droid cmap %s\n",
+                     options.cmap_path.c_str());
+        return 1;
+    }
+
     std::size_t skipped = 0;
-    const BuiltData data = build(unihan, frequency, skipped);
+    const BuiltData data = build(unihan, frequency, cmap, skipped);
     if (!write_dat(options.out_path, data)) return 1;
 
     if (!options.quiet) {
@@ -633,12 +686,16 @@ int main(int argc, char** argv) {
     if (options.stats) {
         std::size_t ranked = 0;
         std::size_t with_alt = 0;
+        std::size_t tier1 = 0;
         for (const auto& c : data.chars) {
             if (c.rank != kUnknownRank) ++ranked;
             if (c.alt_off != 0) ++with_alt;
+            if ((c.flags & kFlagTier) != 0) ++tier1;
         }
         std::printf("mkdat stats: ranked=%zu unknown=%zu polyphonic=%zu\n",
                     ranked, data.chars.size() - ranked, with_alt);
+        std::printf("mkdat stats: tier0=%zu tier1=%zu (cmap=%zu codepoints)\n",
+                    data.chars.size() - tier1, tier1, cmap.size());
     }
     return 0;
 }

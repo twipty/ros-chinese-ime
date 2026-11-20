@@ -39,9 +39,23 @@ fi
 mkdir -p "$OUT_DIR"
 python3 "$ROOT/tools/mkdat/fetch_data.py" --out-dir "$OUT_DIR"
 
+# The cmap is a checked-in data file (exported from the ReactOS bundled font
+# by export_cmap.py), not a network input. Pin it here so a font swap is a
+# deliberate, reviewable act -- the tier bit is only as honest as this list.
+CMAP="$ROOT/tools/mkdat/data/droid_cmap.txt"
+EXPECTED_CMAP_SHA256="cdee3c06bffba5114498ae25cd8182a927996ca1c2eb1fb2cb2d0e1f63f908d9"
+ACTUAL_CMAP_SHA256="$(sha256sum "$CMAP" | cut -d' ' -f1)"
+if [[ "$ACTUAL_CMAP_SHA256" != "$EXPECTED_CMAP_SHA256" ]]; then
+    echo "droid_cmap.txt fingerprint mismatch" >&2
+    echo "  expected $EXPECTED_CMAP_SHA256" >&2
+    echo "  actual   $ACTUAL_CMAP_SHA256" >&2
+    exit 1
+fi
+
 "$MKDAT" \
     --unihan "$OUT_DIR/Unihan_Readings.txt" \
     --frequency "$OUT_DIR/hanziDB.csv" \
+    --cmap "$CMAP" \
     --out "$OUT_DIR/rospinyin.dat" \
     --stats
 
@@ -52,9 +66,10 @@ python3 "$ROOT/tools/mkdat/fetch_data.py" --out-dir "$OUT_DIR"
 # point: a data change becomes a reviewable act.
 #
 # Bumped 2026-11-20 with the v2 container (80-byte header, 24-byte entries, word
-# tables). Same 44,355 characters and 418 syllables as before -- the payload did
-# not change, only the layout, so a differing count here would mean a data bug.
-EXPECTED_DAT_SHA256="3bf4d5fa6f8471f8868a946d83c1d5e9f321c20b489ef117b454f69d65dc0438"
+# tables). Second bump the same day carries the first real tier grading: 44,355
+# characters stay, but slot-5 bit1 is now set for the 27,855 codepoints outside
+# Droid's cmap instead of being all zero. A differing count here is a data bug.
+EXPECTED_DAT_SHA256="8f8cdb332b425a460eb25e1e016ce06871c9eec0dd7f6de750f59521142756d3"
 ACTUAL_DAT_SHA256="$(sha256sum "$OUT_DIR/rospinyin.dat" | cut -d' ' -f1)"
 if [[ "$ACTUAL_DAT_SHA256" != "$EXPECTED_DAT_SHA256" ]]; then
     echo "rospinyin.dat fingerprint mismatch" >&2

@@ -1,13 +1,16 @@
 # 对 framework 的需求：字形分级、会话级模式开关与运行时探测链移除
 
-- 状态：**需求评审稿，待 framework owner 确认**。提出日期：2026-11-19。
+- 状态：**FR-1~FR-6 已实现（2026-11-20，owner 授权后由 framework 实施）**，ctest 18/18
+  （两种 `ROSPINYIN_BUILTIN_TABLE` 配置）、check_m1 111/111、MinGW 交叉编译均通过；
+  FR-8 的策略部分待形码侧开工（framework 侧「过滤后可见集」契约已就绪）。提出日期：2026-11-19。
 - 提出方：`xingma`（形码产品线）。接收方：`framework`（imfw 公共框架）维护方。
 - 关联：
   - `xingma/docs/glyph-tier/GLYPH-TIER-PLAN.md`（xingma 侧实施方案与重码/覆盖实测）
   - `xingma/XINGMA-PLAN.md`（v1.3）、`xingma/docs/phase0/PHASE0-PLAN.md`（P0 门禁）
   - `xingma/docs/glyph-tier/UNIFIED-DAT-FORMAT.md`（2026-11-20 统一格式：dat 骨架、槽位复用、可见性极性）
   - `docs/font/MINIMAL-FONT-SET-PLAN.md`（扩展字体方案，独立工程）
-- 写边界：**本文件在 `xingma/` 内；`framework/` 当前零改动**。下文所有变更均为「期望 framework 实现的变更」，需 framework owner 授权后另行实施，xingma 侧不自行修改框架文件。
+- 写边界：本文件在 `xingma/` 内；下文变更在 owner 授权后由 framework 侧实施，
+  xingma 侧不自行修改框架文件。2026-11-20 的授权与实施结果见 `docs/handover/CHANGELOG.md`。
 - **v1.3 格式统一更新（2026-11-20，用户决策）**：形码与拼音 dat 采用统一骨架（见 `UNIFIED-DAT-FORMAT.md`）。**dat 里的可见性位由 `visible`（1=可见）改名 `tier` 并反转极性为 `0=可见 / 1=需扩展`**（按拼音口径）；但 **`Candidate.glyph_visible` 这个 bool 谓词不变（true=可见）**，引擎读 dat 时取反 `tier==0` 再填入。本文 FR-1/FR-3/FR-8 中的 Candidate bool 语义与接口签名不受影响；仅 §4 数据流图里 dat 侧字段名按新规范更新。
 - 相对 `GLYPH-TIER-PLAN.md` 的更新：开关状态由「HKCU 注册表持久化」改为 **会话级 `[快]/[全]`、每次新建输入上下文默认 `[快]`、全程不读不写注册表**（§3 FR-5）。
 - **v1.2 合并更新（2026-11-19，用户决策）**：`glyph_tier` 三档分级与 `[快]/[全]` 合并为**单一 `bool glyph_visible`**（1 bit：Droid 保底可见 / 需扩展字体）。本文 FR-1/FR-3 已按此改写；`GLYPH-TIER-PLAN.md` §3.1/§3.2 的三档 tier 设计作废。另新增 FR-8「唯一可见候选自动上屏」的接口需求与 §11 调研附录。

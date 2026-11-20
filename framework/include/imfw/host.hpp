@@ -18,7 +18,7 @@
 //     produces, which modifiers are down — and turns the returned
 //     KeyResult::commit back into WM_IME_CHAR messages;
 //   * this layer decides, and calls Host for the four things it cannot do
-//     alone (open flag, two popup windows, glyph probe).
+//     alone (open flag, two popup windows, glyph-mode state, trace channel).
 //
 // Nothing below includes <windows.h>; tests/host_key_test.cpp is the proof.
 
@@ -43,6 +43,7 @@ enum class KeyKind : std::uint8_t {
     Backspace,
     Escape,
     Shift,
+    ModeToggle,  // Ctrl+Shift+G: flip [快]/[全], owned by the framework
 };
 
 // One key message, already translated.
@@ -97,8 +98,12 @@ public:
                       const CandidatePager& pager) = 0;
     virtual void hide() = 0;
 
-    // P1-2: can the candidate font draw this code point? Fails open.
-    virtual bool can_render(char32_t codepoint) = 0;
+    // P1-2 used to ask the font per code point. Grading now happens once at
+    // build time (Candidate::glyph_visible); the host only exposes the
+    // session-scoped [快]/[全] choice. The state lives in ImeSessionState --
+    // Host is an accessor, never the owner (FR-2/FR-5).
+    virtual bool show_all_glyphs() const = 0;
+    virtual void toggle_glyph_mode() = 0;
 
     // ---- diagnostics (optional) ------------------------------------------
     // The Win32 host writes these lines to C:\rospinyin-trace.log when

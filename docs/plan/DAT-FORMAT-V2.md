@@ -134,7 +134,11 @@ NUL 终止 UTF-8。读音/键的字符集为 `[a-z0-9']`（`is_dat_reading`）�
 | bit2..31 | 恒 0 | 恒 0 | 保留；读取器见到非零即整体拒载（宁死不猜） |
 
 - 拼音构建口径：字的码点 **全部** ∈ Droid Sans Fallback cmap ⇒ bit1 = 0，否则 = 1。
-  （cmap 提取随 F-T1；今天的表全是 0，因为还没有分级数据。）
+  cmap 由 [`tools/mkdat/export_cmap.py`](../../tools/mkdat/export_cmap.py) 从 ReactOS 自带字体导出为
+  [`tools/mkdat/data/droid_cmap.txt`](../../tools/mkdat/data/droid_cmap.txt)（29,622 码点，
+  sha256 钉在 `build_dat.sh`），mkdat 构建期写入。**2026-11-20 分级已落实**：
+  44,355 字中 tier0 = 16,500、tier1 = 27,855；有频序的 9,898 字里 9,092 是 tier0，
+  首屏 500 字覆盖 96.8% 不受影响（tier 不进排序键）。
 - 拼音不借 bit0 区分字/词：区分由**所在的表**承担（§2.3），所以 bit0 在拼音两张表里都是 0，
   「公共代码禁止读 bit0」这条公约不需要为拼音开例外。
 
@@ -240,9 +244,11 @@ LexCode 段按**键串字节序**升序（不是按池偏移），运行时可�
 | 1 | `framework/include/imfw/dat_format.hpp` | `kVersion = 2`；`Header` 80B（含词组两表）；`CharEntry` 24B + `flags`；`SylEntry` 槽名统一为 `first_entry`/`entry_count`/`flags`；新增 `LexEntry`/`LexCode`；删掉 v1 结构与 `HeaderV2`/`CharEntryV2`/`kMagicLexicon`；static_assert 钉尺寸 + 两张表同宽 | ☑ |
 | 2 | `framework/src/code_table.cpp` | v2-only 加载器：尺寸自检、四段偏移链、段 tiling、`rank != 0`、flags 掩码、词组表结构校验 | ☑ |
 | 3 | `tools/mkdat/mkdat.cpp` | 产 80B 头 / 24B 条目；音节段改前缀和；词组表计数 0 | ☑ |
+| 3a | `tools/mkdat/export_cmap.py`、`data/droid_cmap.txt` | 从 ReactOS 自带字体导出 29,622 码点；入库、可复现 | ☑ |
+| 3b | `tools/mkdat/mkdat.cpp`（分级） | 新增 `--cmap`；按码点集写 `flags` bit1；`--stats` 报 tier 分布 | ☑ |
 | 4 | `tests/code_table_test.cpp` | blob 构造器改 80B/24B；新增 v1 拒载、版本号、尺寸不符、rank 0、保留位、tiling、词组表（合法/无键/跳词/单音节）用例 | ☑ |
-| 5 | `tests/check_mkdat.py`、`tools/coverage_report.py` | 新 struct 与偏移链；tier 统计行 | ☑ |
-| 6 | `tools/mkdat/build_dat.sh` | 指纹更新为 v2 产物 `3bf4d5fa…` | ☑ |
+| 5 | `tests/check_mkdat.py`、`tools/coverage_report.py` | 新 struct 与偏移链；tier 统计行 + 中/嗯 分级断言 | ☑ |
+| 6 | `tools/mkdat/build_dat.sh` | cmap sha256 钉死；产物指纹更新为分级表 `8f8cdb33…` | ☑ |
 | 7 | M4（词组索引/查询 API） | **不在本次**：加载器只校验结构，不建索引 | ☐ |
 
 ---
@@ -308,12 +314,14 @@ LexCode 段按**键串字节序**升序（不是按池偏移），运行时可�
 | 6 | 段区间错位 | 前缀和 tiling，加载器一个累加器校验 | 已封（单字与词组各 1 条用例） |
 | 7 | 「未知版本」用例的语义漂移 | 原 `kVersion + 1` 恰是下一个合法版本 | 改为 `0x7F7F`，永不复用 |
 | 8 | `mkdat` 与加载器口径 | 同一 `dat::Header` 结构体、同一套 static_assert | 结构上不可能不一致 |
-| 9 | 端到端可复现 | `build_dat.sh` 全流程（含原始输入 sha256）产出 `3bf4d5fa…` | 与手工产物逐字节一致 |
+| 9 | 端到端可复现 | `build_dat.sh` 全流程（原始输入 + cmap 均 sha256 钉死）产出 `8f8cdb33…` | 与手工产物逐字节一致 |
 | 10 | 数据未变 | 44,355 字 / 418 音节 / 118 多音 / 首屏覆盖 96.8% | 与 M2 基线一致：容器变了、载荷没变 |
 
 **残留（不是缺陷，是时序）**：
 
-1. **tier 全 0**：还没有 cmap 分级数据（F-T1），所以关闭态过滤今天等于不过滤。
+1. ~~tier 全 0~~ **已关闭（2026-11-20）**：cmap 分级数据已入库并写入 dat，
+   tier0=16,500 / tier1=27,855；运行时按 tier 过滤由 framework 的
+   `renderable_candidates` + `[快]/[全]` 承担（FR-2/FR-3/FR-5）。
 2. **词组表无读取方**：加载器只校验结构；索引与查询属 M4。
 3. **形码侧要跟**：`shape.dat` 的字节图与尺寸表在统一文本里已同步为 80B，但
    `XINGMA-PLAN.md` §4.1 与 `FRAMEWORK-REQ.md` 需形码侧按统一文本 §7 自检。
