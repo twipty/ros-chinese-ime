@@ -268,9 +268,23 @@ int main() {
             check(table.load_dat(b) == 0, "bad magic is rejected");
         }
         {
+            // Red line 1 of docs/plan/DAT-FORMAT-V2.md: shape.dat shares the
+            // skeleton, so only the magic keeps a shape table from being read
+            // as pinyin (slot 0 would become a pool offset posing as a code
+            // point). Pin the refusal by name, not just "some bad byte".
             std::string b = valid;
-            put_u32(b, kOffVersion, imfw::dat::kVersion + 1);
-            check(table.load_dat(b) == 0, "wrong version is rejected");
+            std::memcpy(&b[0], imfw::dat::kMagicShape,
+                        sizeof(imfw::dat::kMagicShape));
+            check(table.load_dat(b) == 0,
+                  "shape.dat magic is rejected by the pinyin loader");
+        }
+        {
+            std::string b = valid;
+            // Pin an unknown version, not "the next one": version 2 is the
+            // unified format and becomes readable with F-T1, at which point
+            // this case would silently turn into a v2-parse test.
+            put_u32(b, kOffVersion, imfw::dat::kVersionV2 + 1);
+            check(table.load_dat(b) == 0, "unknown version is rejected");
         }
         {
             std::string b = valid;

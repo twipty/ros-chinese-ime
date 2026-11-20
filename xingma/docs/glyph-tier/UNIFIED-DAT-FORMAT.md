@@ -1,6 +1,6 @@
 # 统一 dat 格式规范（拼音 `rospinyin.dat` 与形码 `shape.dat`）
 
-- 状态：**xingma 侧定义，待拼音/framework owner 同步**（2026-11-20）。拼音侧的对应规范 `docs/plan/DAT-FORMAT-V2.md`（xingma 目录外）需按本文在定稿前同步修订；本文不修改该文件。
+- 状态：**已冻结，两产品均已同步**（2026-11-20）。xingma 侧定义；拼音侧落地文本为 `docs/plan/DAT-FORMAT-V2.md`（xingma 目录外），已按本文重写并与本文互指。拼音侧的四条裁决回执见 §10。
 - 决策来源：两产品均未落地代码（拼音 dat 仍是 v1、v2 仅冻结文档；xingma 零 C++），此刻统一格式的迁移成本为零，避免后续维护两套格式管理。
 - 适用版本：拼音与形码**统一采用 v2**。拼音 v1 文件保留兼容读法（§6）。
 - 关联：`xingma/XINGMA-PLAN.md` §4.1（形码格式）、`FRAMEWORK-REQ.md` FR-1/FR-8（可见性位消费）、`docs/plan/DAT-FORMAT-V2.md`（拼音现状，xingma 外只读引用）。
@@ -35,7 +35,7 @@
 | 16 | `entry_count` | 4 | 原 `char_count`：CharEntryV2 条数 | Entry 条数 |
 | 20 | `code_count` | 4 | 原 `syl_count`：SylEntry 条数 | Code 条数 |
 | 24 | `entry_table_off` | 4 | 原 `char_table_off`，须 = 64 | Entry 表偏移，须 = 64 |
-| 28 | `code_table_off` | 4 | 原 `syl_table_off`，须 = 24 + entry_count×24 | 同式 |
+| 28 | `code_table_off` | 4 | 原 `syl_table_off`，须 = 64 + entry_count×24 | 同式 |
 | 32 | `pool_off` | 4 | 须 = code_table_off + code_count×16 | 同式 |
 | 36 | `pool_size` | 4 | 池字节数；pool_off + pool_size ≤ 文件大小 | 同 |
 | 40 | `name_off` | 4 | 拼音不用，须 0 | 池偏移：显示名，空串非法 |
@@ -99,13 +99,13 @@
 
 ## 5. 加载校验清单（统一骨架，两产品共用一套代码）
 
-1. `magic` ∈ {`ROSPYDAT`, `ROSSHDAT`}；
+1. `magic` **等于调用方期望的那一个**（拼音 `ROSPYDAT`、形码 `ROSSHDAT`）；共享校验把期望 magic 作为参数传入，**不得**接受另一产品的 magic。理由：按 `ROSSHDAT` 读成拼音表不会报错，只会静默产出垃圾候选（槽0 的池偏移被当成码点、槽2 的字节数被当成 `syl_id`），失败必须发生在加载期而不是候选列表里；
 2. `version` ∈ {1, 2}；v2 用本文布局，v1 用 §6 兼容布局；
 3. `header.flags == 0`；
 4. `entry_table_off == header_size`（v1=52 / v2=64）；`code_table_off == entry_table_off + entry_count × entry_size`（v1=20 / v2=24）；`pool_off == code_table_off + code_count × 16`；`pool_off + pool_size ≤ 文件大小`；
 5. 每个 Code：槽0 池偏移可解析、键串合法（拼音过 `is_dat_reading`，形码编码串字符 ∈ `alphabet`）；
-6. 每个 Entry：槽1 `rank` 合法、槽5 `flags` 除 bit0/bit1 外全 0；
-7. 拼音额外：`syl_id < code_count`、读音偏移合法；形码额外：`text_off/text_len` 池范围合法、`entry_type` ∈ {0,1}、`max_code_len` ∈ 1..8、`auto_commit` ∈ 0..2；
+6. 每个 Entry：槽1 `rank` 合法、槽5 `flags` 除 bit0/bit1 外全 0。**`rank` 合法 = `rank ≥ 1` 或 `rank == 0xFFFFFFFF`**（无频序哨兵，`kUnknownRank`）；拼音 44,355 条里 34,457 条取哨兵，按 `rank > 0` 收紧会让生僻字整批拒载；
+7. 拼音额外：`syl_id < code_count`、读音偏移合法；**槽4 = `alt_off`，不得校验为 0**（多音字次读音 109 条，含「谁/重/嗯」，靠它建别名索引；本文 §2.2「保留，须 0」只对形码成立）；形码额外：`text_off/text_len` 池范围合法、`entry_type` ∈ {0,1}、`max_code_len` ∈ 1..8、`auto_commit` ∈ 0..2；
 8. 任一失败 → `clear()` + 返回 0，不部分加载。
 
 > `entry_size` 与 `header_size` 按 version 分支，与旧 `DAT-FORMAT-V2.md` §4 第4条的思路一致，扩展为两个尺寸都分支；不允许出现「v1 一套校验、v2 另一套校验」的代码漂移——共用主体，仅尺寸常量与产品专属字段分支。
@@ -123,7 +123,8 @@
 
 ## 7. 需 framework / 拼音 owner 同步的改动（本文不执行，仅列出）
 
-> 以下文件均在 `xingma/` 外，本文作者无权修改，列出供 owner 执行：
+> 以下文件均在 `xingma/` 外。**2026-11-20 已由 framework/拼音 owner 全部执行**（提交 `30a63fa`），
+> 表中内容保留为变更记录；拼音侧的具体落地口径见 `docs/plan/DAT-FORMAT-V2.md`，两文冲突时仍以本文为准。
 
 | 文件 | 改动 |
 |---|---|
@@ -149,5 +150,29 @@
 |---|---|
 | 槽位复用可读性 | Entry 槽0/2/3/4 按 magic 解释，需靠字段名注释与 `magic` 断言防止误用；收益是 rank/flags 固定偏移，公共过滤代码无需分支 |
 | bit0 语义分叉 | 拼音恒 0 / 形码仅组词，偏移一致但含义不同；公共代码禁止读 bit0，隔离在各自引擎 |
-| 拼音 v1 兼容 | 需 header_size 分支；`DAT-FORMAT-V2.md` 原「header 与 v1 完全相同」的表述随之作废，由 owner 同步 |
+| 拼音 v1 兼容 | 需 header_size 分支；`DAT-FORMAT-V2.md` 原「header 与 v1 完全相同」的表述已随之作废（2026-11-20 同步完成） |
 | 跨目录同步 | 本文只写 xingma/；§7 的同步若遗漏，会出现「shape.dat 按新格式、rospinyin.dat 按旧格式」的不一致——需在 framework 开工前确认 §7 全部落定 |
+
+---
+
+## 10. 拼音侧裁决回执（2026-11-20，owner 裁定）
+
+拼音落地时发现本文有四处按形码视角写死、直接照做会破坏拼音功能，owner 裁定如下（本文已同步修订，不另立第二套口径）：
+
+| # | 原文位置 | 原文 | 裁定 |
+|---|---|---|---|
+| 1 | §5 第 1 条 | `magic` ∈ {两个 magic} | **改为按调用方传入的期望 magic 校验**；拼音只认 `ROSPYDAT`，形码只认 `ROSSHDAT` |
+| 2 | §5 第 6 条 | 「`rank` 合法」未定义 | **明文定义**：`rank ≥ 1` 或 `rank == 0xFFFFFFFF`；哨兵是合法值 |
+| 3 | §2.2 槽 4 | 「保留，须 0」被当成全局校验 | **只在形码路径成立**；拼音槽 4 是 `alt_off`，不得校验为 0 |
+| 4 | §2.1 第 28 行 | `24 + entry_count×24` | **公式笔误，已改为 `64 + entry_count×24`**（`entry_table_off = 64` 与该式必须自洽） |
+
+**表族 magic 注册表**（同骨架，按 magic 分语义）：
+
+| magic | 产品 | 说明 |
+|---|---|---|
+| `ROSPYDAT` | 拼音单字表 | Header 64B / Entry 24B / SylEntry 16B；槽0 = 码点 |
+| `ROSSHDAT` | 形码表 | 同骨架；槽0 = `text_off` |
+| `ROSPYLEX` | 拼音词组表（M4，待实现） | 同骨架、**Entry 不扩充**；槽0 = `text_off`、槽2 = `syl_count`，Code 键为音节序列串。详见 `docs/plan/DAT-FORMAT-V2.md` §11 |
+
+> **不引入第四种骨架**：词组的三方案（第三种 magic / `header.flags` 类型位 / 单文件扩 Header 到 72B）已在
+> `DAT-FORMAT-V2.md` §11 比较，裁定取"第三种 magic、Entry 与 Header 均不动"——扩 Header 会连带形码侧返工。

@@ -33,6 +33,9 @@
 //   kUnknownRank is legal, slot 4 belongs to alt_off) is docs/plan/
 //   DAT-FORMAT-V2.md. The structs below are that contract's machine-checked
 //   half; the loader switch lands with F-T1.
+//
+//   A third magic, ROSPYLEX, carries M4's word list on the same skeleton; see
+//   the lexicon block at the bottom of this file. No reader implements it yet.
 
 #pragma once
 
@@ -139,6 +142,43 @@ static_assert(sizeof(CharEntryV2) == 24, "dat::CharEntryV2 must be exactly 24 by
 
 constexpr std::size_t kHeaderV2Size = sizeof(HeaderV2);
 constexpr std::size_t kCharEntryV2Size = sizeof(CharEntryV2);
+
+// ---------------------------------------------------------------------------
+// M4 lexicon (rospinyin-lexicon.dat). Same skeleton, third magic, NOT a wider
+// record: six slots already hold everything a word needs, and the missing
+// pieces (table kind, a second key space) are carried by the magic and by a
+// code table of syllable-sequence keys. Frozen 2026-11-20; see
+// docs/plan/DAT-FORMAT-V2.md section 11 and the ruling table in section 10.
+// No code reads this yet -- it is the contract, not an implementation.
+// ---------------------------------------------------------------------------
+
+// Words cannot live in a ROSPYDAT file: there slot 0 is a code point, and
+// header carries exactly one code table. A separate magic makes the two
+// unreadable as each other at load time instead of silently producing garbage.
+constexpr char kMagicLexicon[8] = {'R', 'O', 'S', 'P', 'Y', 'L', 'E', 'X'};
+
+struct LexEntryV2 {
+    std::uint32_t text_off;       // slot 0: pool offset, UTF-8 word, NUL-terminated
+    std::uint32_t rank;           // slot 1: shared with CharEntryV2
+    std::uint32_t syl_count;      // slot 2: number of syllables, >= 2
+    std::uint32_t reading_off;    // slot 3: pool offset "ni3 hao3"; 0 = derive from key
+    std::uint32_t alt_off;        // slot 4: reserved, must be 0
+    std::uint32_t flags;          // slot 5: bit1 = tier; bit0 and the rest must be 0
+};
+
+// Code table of the lexicon: key = concatenated toned syllables ("ni3hao3"),
+// sorted by key bytes so the runtime can binary-search the pool directly.
+// Storing strings instead of syllable ids keeps the lexicon independent of
+// rospinyin.dat: either file can be rebuilt without invalidating the other.
+struct LexCodeV2 {
+    std::uint32_t key_off;        // slot 0: pool offset, key string
+    std::uint32_t first_entry;    // slot 1: first LexEntryV2 of this run
+    std::uint32_t entry_count;    // slot 2: run length
+    std::uint32_t reserved;       // slot 3: reserved, must be 0
+};
+
+static_assert(sizeof(LexEntryV2) == 24, "dat::LexEntryV2 must be exactly 24 bytes");
+static_assert(sizeof(LexCodeV2) == 16, "dat::LexCodeV2 must be exactly 16 bytes");
 
 }  // namespace dat
 }  // namespace imfw

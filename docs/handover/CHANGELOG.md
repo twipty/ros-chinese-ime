@@ -7,6 +7,25 @@
 
 ## 未发布
 
+### dat v2 七项裁决关闭 + 词组表同骨架方案（2026-11-20，规范 + 头文件契约，零行为变更）
+
+- 上一版留下的 7 项待裁决**全部关闭**（`DAT-FORMAT-V2.md` §10 现为裁决记录表）：
+  ① 共享校验按调用方传入的 magic 做白名单（拼音只认 `ROSPYDAT`，拒绝 `ROSSHDAT`）；
+  ② `rank` 合法 = `≥ 1` 或 `== kUnknownRank`（34,457 条无频序字得以保留）；
+  ③ 槽 4 归拼音 `alt_off`，不校验为 0（多音字 109 条次读音）；④ 拼音的形码专用 header 字段严格 0；
+  ⑤ 词组沿用同一格式（见下）；⑥ v1 表全 `tier = 0` 的降级接受，发行包与 CI 同源换 v2；
+  ⑦ 统一文本 §2.1 公式笔误改为 `64 + entry_count × 24`。
+- 上位文本同步修订：`xingma/docs/glyph-tier/UNIFIED-DAT-FORMAT.md` §5 第 1/6/7 条按裁决改写、
+  §2.1 第 28 行公式就地修正、§7 标注「已执行」、新增 §10「拼音侧裁决回执」与表族 magic 注册表。
+- 第五项（词组）结论：**保持相同格式不等于扩 Entry**——24B 六槽已够表达词条
+  （槽0 文本池偏移 / 槽1 rank / 槽2 音节数 / 槽3 读音 / 槽4 保留 / 槽5 flags），
+  缺的是「表类型标签」和「第二套键空间」，故取**同骨架 + 第三种 magic `ROSPYLEX` + 独立文件**
+  `rospinyin-lexicon.dat`；扩 Header 到 72B 的真单文件方案被否（会连带形码侧返工）。
+  新增 `DAT-FORMAT-V2.md` §11：槽语义表、Code 键按字节序二分、校验补充、
+  体积量级（10 万词 ≈ 4.5 MB）、M4 落地时序。
+- `framework/include/imfw/dat_format.hpp` 增加 `kMagicLexicon`、`LexEntryV2`(24B)、`LexCodeV2`(16B)
+  与 static_assert；v1/v2 结构与加载器行为一字未动（无读取方）。
+
 ### 码表 dat 统一格式 v2 冻结（2026-11-20，规范 + 头文件契约，零行为变更）
 
 - owner 裁定：接收 `xingma/docs/glyph-tier/UNIFIED-DAT-FORMAT.md` 为**新版 dat 的唯一冻结版本**——
@@ -20,7 +39,7 @@
   ② `rank == kUnknownRank` 合法（44,355 条里 34,457 条无频序）；③ 槽 4 是 `alt_off`，
   不得要求为 0（多音字次读音）。
 - 文档口径同步：`PLAN.md` §12、`ROADMAP.md` §F、`M2-REMAINING.md` 的 tier 编号改为 0 = 保底可绘。
-- 遗留待裁决 7 项见 `DAT-FORMAT-V2.md` §10（含统一文本 §2.1 公式笔误 `24 → 64`）。
+- 当时遗留待裁决 7 项，同日全部关闭，见上一节。
 
 ### F 里程碑计划变更：分级码表 + 全字形开关（2026-11-19，仅计划文档）
 
