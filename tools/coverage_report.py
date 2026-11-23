@@ -15,10 +15,12 @@ first page. This script measures exactly that, from the shipped `rospinyin.dat`.
 Method (mirrors the engine, no reimplementation of the ranking):
 
   * `CharEntry` records are stored sorted by (syl_id, rank, codepoint), and
-    `pinyin_session.cpp` scores candidates as `1000000 - rank` (higher wins),
-    dropping unranked characters unless show_rare is on. So for a syllable the
-    on-screen order is simply rank-ascending order within the record range,
-    and the default `show_rare = false` list is the ranked ones only.
+    `pinyin_session.cpp` scores candidates as `1000000 - rank` (higher wins).
+    Every entry is offered; tier-0 entries with no frequency data carry rank
+    1,000,000 (score 0), so they sort after the ranked ones. For a syllable the
+    on-screen order is simply rank-ascending order within the record range.
+    [快] then drops tier-1 entries, which never changes the relative position
+    of the top-ranked characters this report measures.
   * "top 500 by frequency" = the 500 characters with the lowest `rank` field,
     which mkdat copies from the frequency table (hanziDB, itself ranked by the
     Jun Da ordering). The original Jun Da table is not redistributed -- using
@@ -109,9 +111,7 @@ def main() -> int:
         for i in range(first, first + count):
             cp, rank = chars[i][0], chars[i][1]
             pinyin_of[cp] = name
-            if rank == K_UNKNOWN_RANK:
-                continue  # hidden by default (show_rare = false)
-            seen += 1
+            seen += 1  # every entry is an offered candidate; tier filters later
             position[cp] = seen
 
     top = sorted(ranked, key=lambda c: (c[1], c[0]))[: a.top]

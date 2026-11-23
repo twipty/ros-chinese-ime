@@ -7,6 +7,44 @@
 
 ## 未发布
 
+### 取消 rare 概念：低权重入码表 + [快]/[全] 唯一由 tier 决定（2026-11-23）
+
+- **决策**：按 owner 指令，不再在引擎里用 `show_rare` 藏无字频字，改为数据层直接分级——
+  有字体覆盖（tier0）但无字频的字自动赋 rank `1,000,000`（低权重，真实 rank 上限 9,900），
+  作为普通候选排在末尾；framework 与 pinyin 中 `show_rare`/rare 全部删除，
+  `[快]/[全]` 是唯一展示策略，完全按 dat 的 tier 位判定。
+- **根因回顾**：之前 zhong 段 108 条中 82 条无频序字被引擎 `show_rare_=false` 拦截，
+  `[快]/[全]` 只在 ranked 26 条里过滤（22 vs 26，同为 3 页），所以页数与 Esc 重打都不变。
+  这是独立于双路径 bug 的第三个缺陷。
+- **数据层**：`tools/mkdat/mkdat.cpp` 给 tier0+无字频赋低权重；指纹
+  `8f8cdb33…` → `db0c7bcf…`（1,080,224 B 不变，rank 槽改变；ranked 9,898→17,306，
+  unknown 34,457→27,049，tier 分布 16,500/27,855 不变）。新表已用 `build_dat.sh --install` 装机。
+- **引擎/框架**：删 `PinyinSession::show_rare_` 与 `set_show_rare()`，`recompute()` 不再分流；
+  `renderable_candidates()` 的 fail-open 从「全不可见或过半被剔」收窄为「全不可见」——
+  码表 tier1 本就占 27,855/44,355，过半规则会把豆腐块放回 `[快]`，使开关只剩标签差异。
+- **验收数值**：zhong 段 `[快]`=40 条 5 页（原 3 页，因 18 个 tier0 无频序字进候选）、
+  `[全]`=108 条 12 页；`Ctrl+Shift+G` 即时重算；G 不进拼音串。
+- **产物**：`rospinyin.ime` = `ad9edb663ce167368d018034fd8d507092afe1425a06d9a6396a4840d897aa15`
+  （950,668 B，BUILTIN_TABLE=OFF / TRACE=OFF）；`rospinyin.dat` 指纹见上（1,080,224 B）。
+  两者均已部署到 HTTP 8000，下载校验 200。安装器的 size 校验是「源与目标比对」而非硬编码，
+  故 ime 体积变化不需要重建安装器。
+- **门禁**：红→绿 TDD（pinyin-session 2 断言 + host-key 2 断言 + host-smoke 2 断言）；
+  ctest 双配置 18/18、check_m1 111/111、check_docs 7/7、check_mkdat 全绿后部署。
+
+### 修复 Ctrl+Shift+G 双路径缺口：G 进拼音串 + 候选不即时重建（2026-11-23）
+
+- **现象**：实机按 `Ctrl+Shift+G` 后状态条 `[快]→[全]` 正常翻转，但字母 `G` 被当成
+  拼音输入（`zhong`→`zhongg`），候选列表与页数随之错乱（`- 3 /3`）。
+- **根因**：IMM32 把一次按键走两遍——`ImeProcessKey → wants_key()` 认领 ModeToggle 并
+  翻转模式；`ImeToAsciiEx → handle_key()` 没有 ModeToggle 分支，`route_key()` 把 `G` 当普通字母。
+- **修复**：`handle_key()` 在 `route_key()` 前拦截 ModeToggle，不再 `feed('g')`；
+  用 `ImeSessionState::raw_candidates`（新增，未过滤候选缓存）立即重建 pager 并刷新 UI，
+  兑现 `FRAMEWORK-REQ.md` FR-5「切换后当前组合候选立即重建」。`finish_composition()` 清缓存。
+- **验证**：`tests/host_key_test.cpp` 新增双路径断言（G 不进引擎、composition 不变、
+  候选即时从 10 重建为 11、UI 即时刷新）；ctest 18/18、check_m1 111/111、check_docs 7/7 全绿。
+- **附**：确认运行时字形探测链（`can_render`/`GlyphProbe`/`UiCanRender`/`GetGlyphIndicesW`）
+  已全仓库零命中，本问题与探测残留无关。
+
 ### pinyin dat v2 分级落地 + framework 探测链移除（2026-11-20，已实现）
 
 上一节留下的「tier 全 0」残留已关闭，并把 `FRAMEWORK-REQ.md` 的 FR-1~FR-6 一次落地：

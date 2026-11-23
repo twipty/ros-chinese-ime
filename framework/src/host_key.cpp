@@ -36,6 +36,7 @@ void refresh_ui(Host& host, ImeSessionState& state) {
 void finish_composition(Host& host, ImeSessionState& state) {
     state.engine->cancel();
     state.pager.reset({});
+    state.raw_candidates.clear();
     state.composing = false;
     state.composition.clear();
     state.segments.clear();
@@ -57,14 +58,18 @@ void set_ime_open(Host& host, ImeSessionState& state, bool open) {
 void adopt_result(ImeSessionState& state, const Result& result) {
     state.composition = result.composition;
     state.segments = result.segments;
+    // Cache the unfiltered list BEFORE the [快] filter runs. A later mode flip
+    // rebuilds the pager from this (Engine cannot re-query current candidates).
+    state.raw_candidates = result.candidates;
 }
 
 // Glyph visibility is a build-time fact on each Candidate, not something to
 // probe while typing. [快] (the default) keeps only candidates the bundled
-// font can draw; [全] keeps everything. Two guards keep a wrong font from
-// hiding every word:
-//   * everything dropped (or more than half) means the table is misgraded --
-//     that is a data problem, so keep the list (fail-open, as before);
+// font can draw; [全] keeps everything. This is the single visibility rule:
+//   * if every candidate is invisible the table is misgraded -- keep the
+//     list so no syllable becomes untypable (fail-open);
+//   * a majority being invisible is normal (27,855 of 44,355 dat entries are
+//     tier 1) and must NOT fail open, or [快] would show tofu again;
 //   * [全] never calls the filter at all, so the caller's list comes back
 //     untouched.
 std::vector<Candidate> renderable_candidates(Host& host,
@@ -80,7 +85,7 @@ std::vector<Candidate> renderable_candidates(Host& host,
 
     const std::size_t dropped = input.size() - kept.size();
     if (dropped == 0) return input;
-    if (kept.empty() || kept.size() * 2 < input.size()) {
+    if (kept.empty()) {
         host.on_candidates_filtered(dropped, input.size(), true);
         return input;
     }
@@ -184,6 +189,20 @@ bool wants_key(ImeSessionState& session, const KeyEvent& event, Host& host) {
 
 KeyResult handle_key(ImeSessionState& session, const KeyEvent& event, Host& host) {
     if (session.engine == nullptr) return {};
+
+    // IMM32 double path (Win32): ImeProcessKey first asks wants_key(), which
+    // claims Ctrl+Shift+G, flips [快]/[全] and refreshes the toolbar. IMM32
+    // then calls ImeToAsciiEx with the SAME key -> this function. route_key()
+    // has no ModeToggle notion and would treat 'G' as a pinyin letter, turning
+    // "zhong" into "zhongg" and replacing the candidate list with a bogus one.
+    // Consume it here instead: rebuild the pager under the already-flipped
+    // mode and push it to the UI so pages/count update in the same keystroke.
+    if (event.kind == KeyKind::ModeToggle) {
+        session.pager.reset(
+            renderable_candidates(host, session.raw_candidates));
+        refresh_ui(host, session);
+        return {};
+    }
 
     // X2-c: "which key is this" has one owner (route_key, key_route.cpp);
     // "what to do about it" has another (the switch below). Note that this

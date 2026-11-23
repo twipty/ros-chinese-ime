@@ -43,6 +43,12 @@ using imfw::dat::kMagic;
 using imfw::dat::kUnknownRank;
 using imfw::dat::kVersion;
 
+// An unranked but font-covered entry gets this explicit low weight instead
+// of kUnknownRank, so the engine needs no "rare" admission logic: [快]/[全]
+// is decided by the tier bit alone. Real ranks in hanziDB top out at 9,900;
+// 1,000,000 sorts after all of them and still yields score=0 (1e6 - rank).
+constexpr std::uint32_t kLowPriorityRank = 1'000'000;
+
 struct UniReading {
     std::vector<std::string> readings;  // canonicalized kMandarin readings
     std::string pinlu_primary;          // highest-frequency kHanyuPinlu reading
@@ -379,6 +385,13 @@ bool parse_frequency(const std::string& text,
         entry.pinyin = canonical;
         try {
             const unsigned long rank = std::stoul(fields[rank_col]);
+            if (rank != 0 && rank >= kLowPriorityRank) {
+                std::fprintf(stderr,
+                             "mkdat: frequency rank %lu collides with the "
+                             "low-priority rank (%u)\n",
+                             rank, kLowPriorityRank);
+                return false;
+            }
             entry.rank = rank == 0 ? kUnknownRank
                                    : static_cast<std::uint32_t>(rank);
         } catch (...) {
@@ -490,6 +503,13 @@ BuiltData build(const std::map<std::uint32_t, UniReading>& unihan,
         Working item;
         item.codepoint = cp;
         item.rank = freq != nullptr ? freq->rank : kUnknownRank;
+        // Tier 0 means the bundled font can draw it. Give those entries a
+        // real (low) rank rather than the sentinel so they flow through the
+        // engine as ordinary candidates; tier-1 unranked entries keep the
+        // sentinel and sort last, appearing only under [全].
+        if (item.rank == kUnknownRank && cmap.count(cp) != 0) {
+            item.rank = kLowPriorityRank;
+        }
         item.reading = primary;
         for (std::size_t i = 0; i < alts.size(); ++i) {
             if (i != 0) item.alts.push_back(' ');

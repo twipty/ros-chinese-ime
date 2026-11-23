@@ -396,14 +396,17 @@ int main() {
         check(one_host.filter_dropped == 1, "exactly one candidate was dropped");
         check(one.pager.total() == 10, "the visible candidates are kept");
 
-        // More than half hidden: a misgraded table, keep the whole list.
+        // A majority hidden is the normal case for the shipped table (27,855
+        // of 44,355 entries are tier 1). Keeping the whole list here would put
+        // tofu back into [快] and defeat the single tier-based visibility rule.
         imfw::ImeSessionState half;
         half.engine = std::make_unique<FakeEngine>(5);
         SpyHost half_host;
         imfw::handle_key(half, letter_event('A'), half_host);
         check(half_host.filter_dropped == 6, "6 of 11 were dropped");
-        check(half_host.filter_kept_all, "losing more than half is a data problem");
-        check(half.pager.total() == 11, "the list is kept when most of it is hidden");
+        check(!half_host.filter_kept_all, "a majority drop is not a data problem");
+        check(half.pager.total() == 5,
+              "tier-1 entries are dropped even when they are the majority");
 
         // [全]: no filtering at all, even when every candidate is hidden.
         imfw::ImeSessionState full;
@@ -431,6 +434,40 @@ int main() {
         check(!imfw::wants_key(toggle_session, toggle, toggle_host),
               "key-up is never claimed");
         check(toggle_host.mode_toggles == 1, "key-up does not toggle again");
+
+        // The IMM32 double path: ImeProcessKey consumes the toggle via
+        // wants_key(), then IMM32 calls ImeToAsciiEx -> handle_key with the
+        // SAME key. handle_key must not feed 'g' to the engine (that would
+        // turn "zhong" into "zhongg" and replace the candidate list with a
+        // bogus one). It must instead rebuild the pager under the mode that
+        // wants_key() already flipped to.
+        imfw::ImeSessionState mode_session;
+        mode_session.engine = std::make_unique<FakeEngine>(10);  // 10 visible + 1 hidden
+        SpyHost mode_host;
+        imfw::handle_key(mode_session, letter_event('A'), mode_host);
+        check(mode_session.pager.total() == 10,
+              "[快] drops the hidden candidate before the toggle");
+
+        imfw::KeyEvent mode_toggle;
+        mode_toggle.kind = imfw::KeyKind::ModeToggle;
+        mode_toggle.vk = 'G';
+        mode_toggle.ctrl = true;
+        check(imfw::wants_key(mode_session, mode_toggle, mode_host),
+              "wants_key claims the mode key and flips [全]");
+        check(mode_host.full_glyph, "mode is now [全]");
+        const std::size_t feeds_before = mode_host.feeds.size();
+        const int shows_before = mode_host.show_calls;
+        const imfw::KeyResult toggle_result =
+            imfw::handle_key(mode_session, mode_toggle, mode_host);
+        check(toggle_result.commit.empty(), "the mode key commits nothing");
+        check(mode_host.feeds.size() == feeds_before,
+              "handle_key does NOT feed 'g' to the engine (no zhong->zhongg)");
+        check(mode_session.composition == "a",
+              "the composition stays intact across the mode flip");
+        check(mode_session.pager.total() == 11,
+              "the current candidates are rebuilt under [全] immediately");
+        check(mode_host.show_calls > shows_before,
+              "the rebuilt candidate list is pushed to the UI immediately");
     }
 
     if (failures == 0) {

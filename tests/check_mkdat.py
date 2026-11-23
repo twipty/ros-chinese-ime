@@ -36,6 +36,9 @@ HEADER_SIZE = struct.calcsize(HEADER_FMT)
 CHAR_SIZE = struct.calcsize(CHAR_FMT)
 SYL_SIZE = struct.calcsize(SYL_FMT)
 UNKNOWN_RANK = 0xFFFFFFFF
+# mkdat gives tier-0 (font-covered) entries with no frequency rank this
+# explicit low weight instead, so the engine needs no separate rare filter.
+LOW_PRIORITY_RANK = 1_000_000
 LEX_FMT_SIZE = struct.calcsize(LEX_FMT)
 LEXCODE_FMT_SIZE = struct.calcsize(LEXCODE_FMT)
 
@@ -210,9 +213,11 @@ def main() -> int:
         fail("的 should have rank 1")
     if by_cp[0x4E00]["rank"] != 2:
         fail("一 should have rank 2")
-    # A char present only in Unihan has unknown rank.
-    if by_cp[0x4E48]["rank"] != UNKNOWN_RANK:
-        fail("么 (Unihan-only) should have unknown rank")
+    # A tier-0 char with no frequency rank gets the explicit low weight.
+    # Keeping it ranked (instead of the unknown-rank sentinel) is what lets
+    # the engine drop all rare admission logic: [快]/[全] is decided by tier.
+    if by_cp[0x4E48]["rank"] != LOW_PRIORITY_RANK:
+        fail(f"么 (Unihan-only, tier 0) should have rank {LOW_PRIORITY_RANK}")
 
     # Tier is graded from the real cmap at build time: 中 is covered, 嗯 is
     # not. These two fixtures would both flip to 0 if --cmap were ignored.

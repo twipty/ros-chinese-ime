@@ -138,7 +138,7 @@
           if (c.glyph_visible) kept.push_back(c);        // [快]: baseline only
       const auto dropped = input.size() - kept.size();
       if (dropped == 0) return input;
-      if (kept.empty() || kept.size() * 2 < input.size()) {
+      if (kept.empty()) {                                 // all invisible
           host.on_candidates_filtered(dropped, input.size(), true);
           return input;                                   // fail-open
       }
@@ -148,6 +148,9 @@
   ```
 - **保留**：`on_candidates_filtered(dropped, total, kept_all)` 诊断回调的语义与调用时机不变，trace 日志格式不变。
 - **验收**：新增 host_key 单测三组——① `[快]` + 混合可见性 → 只剩 visible；② `[全]` + 混合可见性 → 原样返回；③ `[快]` + 全不可见 → fail-open 原样返回且 `kept_all == true`。
+- **2026-11-23 修正**：原来的「过半被剔也 fail-open」已删除。码表实际 tier1 占 27,855/44,355（多数），
+  过半规则会把 `[快]` 里本该隐藏的豆腐块整批放回，使 `[快]/[全]` 只剩标签差异。fail-open 现在
+  严格限于「可见集为空」这一种数据故障态；「多数不可见」是正常分级结果，不再触发放行。
 
 ### FR-4 移除运行时探测链
 
@@ -190,6 +193,14 @@
   - 新会话首次候选 100% `glyph_visible == true`；
   - 切换后**当前正在组合的候选立即重建**（`handle_key` 中 `state.pager.reset(renderable_candidates(...))` 已有此路径，切换后复用）；
   - 全仓库无 `RegOpenKeyExW` / `RegSetValueExW` / `CreateFile` 新增调用（IME 运行时仍零持久化写入）。
+- **实现说明（2026-11-23，双路径修复）**：Win32 的 IMM32 把一次按键走两遍——
+  `ImeProcessKey → wants_key()` 判定归属并翻转 `full_glyph`、刷 toolbar；随后
+  `ImeToAsciiEx → handle_key()` 做实际工作。ModeToggle 最初只实现了前半段，
+  导致第二次路径把 `G` 当拼音字母 `feed()` 进引擎（`zhong`→`zhongg`），候选与页数
+  全部错乱。修复：`handle_key()` 在 `route_key()` 之前拦截 `KeyKind::ModeToggle`，
+  不喂引擎，改为用 `ImeSessionState::raw_candidates`（未过滤候选缓存，因 Engine
+  无"重取当前候选"接口）重建 pager 并 `refresh_ui()`。`adopt_result()` 维护该缓存，
+  `finish_composition()` 清空。宿主测试 `host-key` 钉死"G 不进引擎 + 候选即时重建"。
 
 ### FR-6 工具栏显示模式与即时刷新
 
@@ -207,7 +218,11 @@
 
 ### FR-7 拼音侧等价与双 IME 隔离
 
-- **拼音侧**：Engine 不填 `glyph_visible`（恒 true）→ FR-3 的 `[快]` 过滤对拼音无效果，`[全]` 也无效果；模式切换键对拼音可无操作或同样翻转但不影响候选（推荐：同样翻转、同样显示 label，保持行为一致）。
+- **拼音侧（2026-11-23 更新）**：拼音 Engine **按 dat 的 tier 位填 `glyph_visible`**（`tier==0` → true），
+  因此 FR-3 的 `[快]` 过滤对拼音**真实生效**，`[全]` 放行全部 108 条（`zhong`：快 40 条 5 页 / 全 108 条 12 页）。
+  字库侧给「有字体覆盖、无字频」的字赋 rank 1,000,000（低权重），无频序字不再作为准入判据；
+  引擎与 framework 中已无 `show_rare` / rare 概念，`[快]/[全]` 是唯一的展示策略。
+  模式切换键对拼音同样翻转、同样显示 label。
 - **回归风险**：删除 P1-2 探测后，拼音侧不再有「字体没有 CJK 时整体放行」的兜底。见 §6 FR-D3——这是一个**需要明确接受的取舍**，不能默认声称「完全等价」。
 - **双 IME**：`full_glyph` 是 per-HIMC 字段，不是进程全局；两个 IME DLL 同进程时各自的会话互不干扰，不引入新单例。
 - **验收**：拼音 `ctest` 全绿、`check_m1.py` 全绿；VM 中拼音常用 3500 字候选逐屏与改造前一致；双 IME 同进程加载 + 各自切换模式，互不串扰。

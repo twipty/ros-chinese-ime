@@ -176,10 +176,12 @@ void PinyinSession::recompute() {
     // silently throws away everything typed before it.
     const auto entries = table_->lookup(syllables_.front());
     candidates_.reserve(entries.size());
-    // Two passes: ranked characters first, then (only if that left nothing to
-    // pick) the Unihan-only ones. Rare characters are not dropped from the
-    // table -- they are just not offered while a common reading exists.
-    std::vector<Candidate> rare;
+    // Every entry is offered. Rank only orders the list (unknown rank scores
+    // 0); it is never an admission gate. Visibility is decided by the dat's
+    // tier bit and applied by the host according to [快]/[全]. The two axes
+    // stay independent: a frequent character may still need an extra font,
+    // and an unranked one may be perfectly drawable (mkdat gives those an
+    // explicit low weight so they sort after the ranked ones).
     for (const auto& entry : entries) {
         Candidate candidate;
         candidate.text.assign(1, static_cast<char32_t>(entry.codepoint));
@@ -189,16 +191,9 @@ void PinyinSession::recompute() {
                               : static_cast<int>(1000000u - entry.rank);
         // The dat's tier bit is a build-time fact; the engine only translates
         // its polarity (0 = bundled font covers it) into the host's predicate.
-        // Rank and tier are independent: a common character may still need an
-        // extra font, and a rare one may be perfectly drawable.
         candidate.glyph_visible = (entry.tier == 0);
-        if (entry.rank == kUnknownRank && !show_rare_) {
-            rare.push_back(std::move(candidate));
-        } else {
-            candidates_.push_back(std::move(candidate));
-        }
+        candidates_.push_back(std::move(candidate));
     }
-    if (candidates_.empty()) candidates_ = std::move(rare);
 }
 
 Result PinyinSession::commit(std::size_t index) {

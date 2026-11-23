@@ -487,15 +487,16 @@ int main() {
               "one tier-1 candidate is dropped");
         check(session.pager.total() == 1, "one candidate survives the filter");
 
-        // Two of three hidden: more than half gone means the table is
-        // misgraded, so the list is kept (fails open).
+        // Two of three hidden is the normal case for a graded table (tier 1
+        // is the majority in the shipped dat). Only an *empty* visible set
+        // fails open; the two tier-1 candidates must still be filtered out.
         script->feed_script = {absorb("ab", {"ab"},
                                       {candidate(U"甲", 1),
                                        candidate(U"龘", 0, false),
                                        candidate(U"乙", 0, false)})};
         imfw::handle_key(session, letter_event('B'), host);
-        check(host.filtered_kept_all, "a mostly-hidden list is kept");
-        check(session.pager.total() == 3, "no candidate is lost to a grading bug");
+        check(!host.filtered_kept_all, "a mostly-hidden list is still filtered");
+        check(session.pager.total() == 1, "tier-1 candidates are dropped in [快]");
 
         // [全]: the next feed keeps all three, and the filter is not called.
         imfw::KeyEvent toggle;

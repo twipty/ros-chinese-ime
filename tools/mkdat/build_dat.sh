@@ -69,7 +69,13 @@ fi
 # tables). Second bump the same day carries the first real tier grading: 44,355
 # characters stay, but slot-5 bit1 is now set for the 27,855 codepoints outside
 # Droid's cmap instead of being all zero. A differing count here is a data bug.
-EXPECTED_DAT_SHA256="8f8cdb332b425a460eb25e1e016ce06871c9eec0dd7f6de750f59521142756d3"
+#
+# Bumped 2026-11-23: the 7,408 tier-0 entries that had no frequency rank now
+# carry rank 1,000,000 instead of the kUnknownRank sentinel (real ranks top out
+# at 9,900). This lets the engine drop all "rare" admission logic, leaving
+# [快]/[全] decided purely by the tier bit. Byte count is unchanged (1,080,224);
+# only rank slots differ. Stats now report ranked=17,306 / unknown=27,049.
+EXPECTED_DAT_SHA256="db0c7bcffc42345935a50e59c4046765b6e0766ead4e20c7be6a115785163eba"
 ACTUAL_DAT_SHA256="$(sha256sum "$OUT_DIR/rospinyin.dat" | cut -d' ' -f1)"
 if [[ "$ACTUAL_DAT_SHA256" != "$EXPECTED_DAT_SHA256" ]]; then
     echo "rospinyin.dat fingerprint mismatch" >&2

@@ -29,6 +29,12 @@ struct ImeSessionState {
     bool composing = false;  // true while there is an active composition
     std::string composition;             // last engine composition
     std::vector<std::string> segments;   // last engine segmentation
+    // The engine's UNFILTERED candidate list from the last result. The pager
+    // holds only the [快]-filtered copy, and Engine has no "re-query current
+    // candidates" method, so a [快]/[全] flip needs this cache to rebuild the
+    // pager immediately (FR-5). Refreshed on every feed/backspace/commit that
+    // carries candidates; cleared when the composition ends.
+    std::vector<Candidate> raw_candidates;
     // Set on VK_SHIFT down and cleared by any other key, so only a *lone*
     // Shift toggles Chinese/English (Shift+A must stay a capital A).
     bool shift_latched = false;

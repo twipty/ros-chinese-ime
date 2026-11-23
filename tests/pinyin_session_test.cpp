@@ -283,12 +283,15 @@ int main() {
     check(session.feed(0x1B).action == Action::Absorb,
           "Esc still absorbs even when composition is empty");
 
-    // ---- rare candidates are hidden by default, never silently dropped ----
+    // ---- unranked characters stay in the table, in table order ------------
     {
         imfw::CodeTable table;
         rospinyin::add_reading(table, U'水', 202, "shui3");
         rospinyin::add_reading(table, U'谁', 648, "shui2");
         // Unihan-only character: present in the table, no frequency rank.
+        // There is no rare filter any more: it is offered in table order,
+        // after the ranked ones. In the shipped .dat mkdat gives tier-0
+        // unranked characters an explicit low weight instead.
         rospinyin::add_reading(table, U'\u3968', imfw::dat::kUnknownRank, "shui4");
         table.build_index();
         auto shared = std::make_shared<const imfw::CodeTable>(std::move(table));
@@ -296,26 +299,21 @@ int main() {
         rospinyin::PinyinSession session(shared);
         session.on_select(true);
         feed_string(session, "shui");
-        check(session.candidates().size() == 2,
-              "unranked (glyph-less) characters stay out of the default list");
-        if (session.candidates().size() == 2) {
+        check(session.candidates().size() == 3,
+              "unranked characters are offered, not silently dropped");
+        if (session.candidates().size() == 3) {
             check(session.candidates()[0].text == std::u32string(1, U'水'),
                   "ranked candidates keep frequency order");
             check(session.candidates()[1].text == std::u32string(1, U'谁'),
                   "谁 is offered for shui");
+            check(session.candidates()[2].text == std::u32string(1, U'\u3968'),
+                  "the unranked character comes last, still selectable");
         }
-
-        rospinyin::PinyinSession rare_session(shared);
-        rare_session.on_select(true);
-        rare_session.set_show_rare(true);
-        feed_string(rare_session, "shui");
-        check(rare_session.candidates().size() == 3,
-              "set_show_rare(true) restores the full list");
     }
 
-    // Tier -> glyph_visible: the engine translates the dat bit's polarity, and
-    // rank stays an independent axis (a frequent character can still need an
-    // extra font, a rare one can be perfectly drawable).
+    // Tier -> glyph_visible: the engine only translates the dat bit's
+    // polarity. Rank is an ordering axis, never an admission gate: every
+    // entry is returned and [快]/[全] filtering is the host's job alone.
     {
         imfw::CodeTable table;
         table.add(U'中', 7, "zho1ng", "zhong", 0);
@@ -327,28 +325,23 @@ int main() {
         rospinyin::PinyinSession session(shared);
         session.on_select(true);
         feed_string(session, "zhong");
-        check(session.candidates().size() == 2,
-              "graded table keeps the two ranked candidates");
-        if (session.candidates().size() == 2) {
+        check(session.candidates().size() == 3,
+              "the engine returns every entry regardless of rank or tier");
+        if (session.candidates().size() == 3) {
             check(session.candidates()[0].text == U"中" &&
                       session.candidates()[0].glyph_visible,
                   "tier 0 becomes glyph_visible=true");
             check(session.candidates()[1].text == U"钟" &&
                       !session.candidates()[1].glyph_visible,
                   "tier 1 becomes glyph_visible=false");
+            check(session.candidates()[2].text ==
+                          std::u32string(1, U'\u3968') &&
+                      !session.candidates()[2].glyph_visible,
+                  "an unranked tier-1 entry keeps its visibility bit");
         }
-
-        rospinyin::PinyinSession with_rare(shared);
-        with_rare.on_select(true);
-        with_rare.set_show_rare(true);
-        feed_string(with_rare, "zhong");
-        check(with_rare.candidates().size() == 3 &&
-                  !with_rare.candidates()[2].glyph_visible,
-              "an unranked tier-1 character keeps its visibility bit");
     }
 
-    // When a syllable has *only* unranked characters the filter must not leave
-    // the user with nothing to pick.
+    // A syllable with only unranked characters must still be typeable.
     {
         imfw::CodeTable table;
         rospinyin::add_reading(table, U'\u3968', imfw::dat::kUnknownRank, "guo2");
@@ -359,7 +352,7 @@ int main() {
         session.on_select(true);
         feed_string(session, "guo");
         check(session.candidates().size() == 1,
-              "a rare-only syllable still yields its candidate");
+              "an unranked-only syllable still yields its candidate");
     }
 
     if (failures != 0) {

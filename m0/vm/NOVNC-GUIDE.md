@@ -44,7 +44,7 @@
 > 2. **新增 guestOS 下载工具**：HTTP 共享里放了 `wget.exe` / `curl.exe`（同一
 >    个全静态 MinGW i686 程序的两个名字），只依赖 KERNEL32/msvcrt/WS2_32，
 >    可在裸 ReactOS 0.4.16 上直接跑。**guestOS 内的下载/浏览器操作由你本人执行**，
->    我只准备工具和 URL，不远程点浏览器。
+>    我只准备工具和 URL，不远程点浏览器。（2026-11-23 起仅保留 `wget.exe`，`curl.exe` 已清理。）
 >
 > **v4（2026-11-16 第三轮）**：构建工具链从 MSVC 切换为 **MinGW-w64 i686**，
 > 彻底解决 `the procedure entry point initializecriticalsectionex could not be
@@ -131,18 +131,18 @@ wget http://10.0.2.2:8000/rospinyin.ime
 ```
 http://192.168.0.205:6080
 ```
-如需直接下载文件，可访问下面两个 URL（浏览器会另存到「My Documents」或下载目录）：
+如需直接下载文件，可访问下面 URL（浏览器会另存到「My Documents」或下载目录）：
 ```
 http://10.0.2.2:8000/wget.exe
-http://10.0.2.2:8000/curl.exe
 ```
-把下载到的 `wget.exe` / `curl.exe` 放到你会用的工作目录（例如与 installer 同目录）。
-之后在 cmd 里就能用它们下载了，支持：
+把下载到的 `wget.exe` 放到你会用的工作目录（例如与 installer 同目录）。
+之后在 cmd 里就能用它下载了，支持：
 ```
 wget http://10.0.2.2:8000/rospinyin.ime
 wget http://10.0.2.2:8000/rospinyin.ime -O rospinyin.ime
-curl -o rospinyin.ime http://10.0.2.2:8000/rospinyin.ime
 ```
+> 2026-11-23 清理：HTTP 共享里的 `curl.exe` 已移除（与 `wget.exe` 功能重复），上面的 curl 示例同步删除。
+> 若确实需要 curl，可从构建目录 `build-v2-release/tools/httpdl/` 重新取回并放入 `m0/share/`。
 （只支持 http://，不支持 https://；这是本地测试共享，够用。）
 
 ## 第 2 步：安装器自检
