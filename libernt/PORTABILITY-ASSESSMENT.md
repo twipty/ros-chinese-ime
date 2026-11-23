@@ -1,7 +1,7 @@
 # RosPinyin → LiberNT 移植可行性评估
 
 > 状态：**静态评估完成，实机验证未做**。本文基于对 libernt 主线源码树（`main-nt10`，2026-11-17 核查）、官方文档/新闻、一手用户报告，以及本仓库代码与契约检查的交叉核对。
-> 前置背景见 [README.md](../README.md)、[M0-REPORT.md](../docs/milestones/M0-REPORT.md)、[M1-REPORT.md](../docs/milestones/M1-REPORT.md)。本文是独立评估文档，不改动任何构建目标或契约。
+> 前置背景见 [项目总览](../docs/projectoverall.md)、[M0-REPORT.md](../docs/milestones/M0-REPORT.md)、[M1-REPORT.md](../docs/milestones/M1-REPORT.md)。本文是独立评估文档，不改动任何构建目标或契约。
 > 评估日期：2026-11-17。
 
 ---

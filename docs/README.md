@@ -9,7 +9,7 @@
 
 | 你要做什么 | 读这一串 |
 | --- | --- |
-| 第一次接手这个项目 | [README.md](../README.md) → [HANDOVER §1–§3](handover/HANDOVER.md) → [PLAN §3](plan/PLAN.md) → 当前里程碑报告 |
+| 第一次接手这个项目 | [项目总览](projectoverall.md)（根目录 `README.md` 是简短门面）→ [HANDOVER §1–§3](handover/HANDOVER.md) → [PLAN §3](plan/PLAN.md) → 当前里程碑报告 |
 | 每轮开工前对齐状态 | [PLAN §3 进度](plan/PLAN.md)、[ROADMAP 退出标准](plan/ROADMAP.md)、[HANDOVER §3 状态表](handover/HANDOVER.md) |
 | 准备发版 / 打 tag | [HANDOVER §12](handover/HANDOVER.md) + 先写 `docs/releases/<tag>.md` |
 | 要动字体、字形、生僻字 | [font/](font/) 整个目录；**先看 [FONT-PLAN-REVIEW](font/FONT-PLAN-REVIEW.md)，那是裁决** |
@@ -28,6 +28,12 @@
 | `releases/` | 每个 tag 一份发版说明 | 追加，**一个 tag 一个文件** | 由 CI 与版本门禁机器读取，不要改名或移动 |
 
 ## 3. 文件索引（全量）
+
+### 项目总览
+
+| 文件 | 内容 |
+| --- | --- |
+| [projectoverall.md](projectoverall.md) | 原根目录 `README.md` 全文归档：项目章程、立项依据、目标与非目标、技术基线、数据与许可证、M0–M2 历程与框架抽取记录（历史只读，现状以本索引所列活文档为准） |
 
 ### plan/ — 计划与路线
 
