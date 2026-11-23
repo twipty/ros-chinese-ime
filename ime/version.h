@@ -16,7 +16,7 @@
 
 #define ROSPINYIN_VERSION_MAJOR 0
 #define ROSPINYIN_VERSION_MINOR 0
-#define ROSPINYIN_VERSION_PATCH 2
+#define ROSPINYIN_VERSION_PATCH 3
 #define ROSPINYIN_VERSION_BUILD 0
 
 // rc.exe / windres want the four numbers as a bare comma list.
@@ -25,6 +25,6 @@
     ROSPINYIN_VERSION_PATCH, ROSPINYIN_VERSION_BUILD
 
 // Must equal the release tag exactly, e.g. "alpha0.0.2".
-#define ROSPINYIN_VERSION_STRING "alpha0.0.2"
+#define ROSPINYIN_VERSION_STRING "alpha0.0.3"
 
 #endif  // ROSPINYIN_VERSION_H

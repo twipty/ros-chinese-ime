@@ -92,6 +92,7 @@
 | 文件 | 内容 |
 | --- | --- |
 | [alpha0.0.2.md](releases/alpha0.0.2.md) | alpha0.0.2 的发布说明（CI 用它作为 release notes） |
+| [alpha0.0.3.md](releases/alpha0.0.3.md) | alpha0.0.3 的发布说明（M3 中文标点逐键验收；CI 用它作为 release notes） |
 
 ### 留在原处的子系统文档（不归 docs/）
 
