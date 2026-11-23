@@ -1,7 +1,7 @@
 # 字形分级与全字形开关 · 实施方案
 
 - 状态：**方案评审稿，未实现**。评审日期：2026-11-19。
-- 关联：`XINGMA-PLAN.md`（v1.3）、`TABLE-IMPORT-SPEC.md`（v1.1）、`DATA-PACK-SPEC.md`、`docs/glyph-tier/UNIFIED-DAT-FORMAT.md`、`docs/font/MINIMAL-FONT-SET-PLAN.md`、`docs/font/FULL-GLYPH-COVERAGE-PLAN.md`
+- 关联：`XINGMA-PLAN.md`（v1.5，P0 已通过 / P2 已放行）、`TABLE-IMPORT-SPEC.md`（v1.1）、`DATA-PACK-SPEC.md`、`docs/glyph-tier/UNIFIED-DAT-FORMAT.md`、`docs/font/MINIMAL-FONT-SET-PLAN.md`、`docs/font/FULL-GLYPH-COVERAGE-PLAN.md`
 - 交付范围：**本文只做评估与设计，不改任何代码**。Implementation 需另行授权（涉及 `framework/` 与 `tools/install-rospinyin/`，超出 `xingma/` 目录）。
 - 已确认决策（2026-11-19）：① 仅出方案文档；② 文档存 `xingma/docs/glyph-tier/`；③ "全字形"开关关闭时按 **Droid Sans Fallback 保底覆盖**口径过滤。
 - **后续更新（2026-11-19）**：开关状态决策已变更——由 §4.2 的 HKCU 注册表持久化改为**会话级 `[快]/[全]`、默认 `[快]`、不存注册表**；framework 侧接口也随之调整（`show_all_glyphs()` / `toggle_glyph_mode()` 替代 `Host::can_render`）。以 `FRAMEWORK-REQ.md` 为准，本文 §4.2/§4.3/§6 中涉及注册表与接口签名的描述 retirement 为历史设计，不再执行。
@@ -18,13 +18,13 @@
 | `[快]`（默认） | 只显示 `tier=0` 的候选；新会话默认此态，不持久化 |
 | `[全]` | 显示所有候选；扩展字能否显示取决于用户是否装字体，framework 不探测 |
 | 可见候选 | 当前模式下实际呈现的候选集合。`[快]` 下即 `tier=0` 的子集；`Candidate.glyph_visible = (tier==0)` |
-| 自动上屏 | 「**唯一可见候选**」才触发，判据与策略见 `XINGMA-PLAN.md` v1.3 §5.1 规则 5；控制字段为码表头 `auto_commit` |
+| 自动上屏 | 「**唯一可见候选**」才触发，判据与策略见 `XINGMA-PLAN.md` v1.5 §5.1 规则 5；控制字段为码表头 `auto_commit` |
 
 **为什么合并**：三档 tier（保底/扩展/其它）与 `[快]/[全]` 开关是两套正交机制，但实际上「其它」档从未有独立用途，扩展区与其它非保底在运行时行为完全一致（都只在 `[全]` 出现）。压缩为 1 bit 后，数据模型、接口、提示统计全部简化，且不损失任何用户可感知的能力。
 
 **保留的统计**：安装器/导入工具仍给出「保底覆盖 N / 需扩展字体 M」两档计数（原 tier0 与 tier12 合并计数），提示文案不变。
 
-> **旧正文的效力范围**：本文 §3.1/§3.2 及后续 §4–§10 中所有含 `glyph_tier`、`AutoCommitUnique`、`show_all_glyphs()`、HKCU 注册表、`tier0/tier1/tier2`、`tier12` 的接口与数据描述均为 v1.0 历史设计，随 v1.2 合并决策（及 v1.3 格式统一）一并作废，**不得作为实现依据**。现行接口与判据以 `FRAMEWORK-REQ.md`（FR-1/FR-3/FR-5/FR-8）、`UNIFIED-DAT-FORMAT.md`（dat 骨架与 tier 极性）与 `XINGMA-PLAN.md` v1.3 §4.1/§5.1 为准。§1 重码评估数据与 §2 现状链路（改造基线）仍然有效。
+> **旧正文的效力范围**：本文 §3.1/§3.2 及后续 §4–§10 中所有含 `glyph_tier`、`AutoCommitUnique`、`show_all_glyphs()`、HKCU 注册表、`tier0/tier1/tier2`、`tier12` 的接口与数据描述均为 v1.0 历史设计，随 v1.2 合并决策（及 v1.3 格式统一）一并作废，**不得作为实现依据**。现行接口与判据以 `FRAMEWORK-REQ.md`（FR-1/FR-3/FR-5/FR-8）、`UNIFIED-DAT-FORMAT.md`（dat 骨架与 tier 极性）与 `XINGMA-PLAN.md` v1.5 §4.1/§5.1 为准。§1 重码评估数据与 §2 现状链路（改造基线）仍然有效。
 
 ---
 

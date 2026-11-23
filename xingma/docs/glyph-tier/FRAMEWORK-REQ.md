@@ -6,7 +6,7 @@
 - 提出方：`xingma`（形码产品线）。接收方：`framework`（imfw 公共框架）维护方。
 - 关联：
   - `xingma/docs/glyph-tier/GLYPH-TIER-PLAN.md`（xingma 侧实施方案与重码/覆盖实测）
-  - `xingma/XINGMA-PLAN.md`（v1.3）、`xingma/docs/phase0/PHASE0-PLAN.md`（P0 门禁）
+  - `xingma/XINGMA-PLAN.md`（v1.5，P0 已通过 / P2 已放行）、`xingma/docs/phase0/PHASE0-PLAN.md`（v1.1，五项门禁判定证据）
   - `xingma/docs/glyph-tier/UNIFIED-DAT-FORMAT.md`（2026-11-20 统一格式：dat 骨架、槽位复用、可见性极性）
   - `docs/font/MINIMAL-FONT-SET-PLAN.md`（扩展字体方案，独立工程）
 - 写边界：本文件在 `xingma/` 内；下文变更在 owner 授权后由 framework 侧实施，

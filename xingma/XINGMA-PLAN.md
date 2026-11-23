@@ -1,9 +1,10 @@
-# RosXingMa 形码输入法 · 实施计划（正式版 1.4）
+# RosXingMa 形码输入法 · 实施计划（正式版 1.5）
 
 > 本文件是 RosXingMa 项目的**唯一实施依据**。开发、评审、验收均以本文件为准。
 > 方案调整直接修订本文件并递增版本号；历史版本存入 `xingma/archive/`，不再作为依据。
 >
 > **修订记录**
+> - **v1.5（2026-11-23，P0 门禁收口与放行）**：P0 五项门禁全部判定通过（基线 `main @ 51653db`，check_m1 111/111、ctest 18/18、check_docs 7/7），**第 8 章正式放行 P2**。同步四处：① P0.4 口径——§4.3/§9.3/§10 的「不写 `Preload`」降为部署偏好，§5.2 新增 A1b「`ImeInquire` 惰性注册 + 失败返回 FALSE」条款；② §9.3 回归基线改为 111/111 + 18/18；③ §11 风险表「注入缝未落地」消解、X3 单例隔离改列 P3 已知风险；④ PHASE0-PLAN 升 v1.1、README 与 FRAMEWORK-REQ 交叉引用同步。产品定义、数据模型、工具链、合规结论不变。
 > - **v1.4（2026-11-20，跟随拼音修订 B）**：Header 由 64B 扩到 **80B**（加自描述 `entry_size`/`code_size` 与词组两套表的计数/偏移），拼音侧同时放弃 v1 兼容——两产品仍同骨架、分 magic。
 > - **v1.3（2026-11-20，dat 格式与拼音统一）**：`shape.dat` 与拼音 `rospinyin.dat` 采用统一二进制骨架（Header 64B / Entry 24B / Code 16B，`magic` 作 tag），见 `docs/glyph-tier/UNIFIED-DAT-FORMAT.md`。可见性位由 `visible`（1=可见）改名 `tier` 并**反转极性为 0=可见**（按拼音口径），Entry 由 20B 扩到 24B 使 rank/flags 与拼音同偏移。Candidate 的 `glyph_visible=true` 谓词不变，读取时取反 `tier==0`。拼音侧需同步的改动清单见统一规范 §7（xingma 外，由 owner 执行）。四项目标、阶段划分、Q6（auto_commit=2 保留）结论不变。
 > - **v1.2（2026-11-19，字形可见性与自动上屏合并）**：① 取消 `glyph_tier` 三档分级与独立 `[快]/[全]` 开关的并置设计，合并为单一「字形可见性」标志——码表构建期按 `DroidSansFallback` cmap 给每条 Entry 打 1 bit `visible`，运行时 `[快]/[全]` 只决定「是否按该位过滤」，不再有 tier0/1/2；`Candidate` 加 `bool glyph_visible` 而非 2 bit tier。② 唯一候选自动上屏判据改为「**唯一可见候选**」：过滤后可见候选恰好 1 条才提交，`AutoCommitUnique` 默认由「码表头 `auto_commit` 字段」控制（ibus-table 先例），不再用 HKCU 独立开关。③ 未满定长时的处理确立为「不自动上屏」（主流形码共识：形码编码是前缀树，短码唯一即上屏会吃掉续打），详见 `xingma/docs/glyph-tier/FRAMEWORK-REQ.md` §11 调研附录。四项目标、阶段划分与合规结论不变。
@@ -12,7 +13,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 版本 | 1.3（正式版） |
+| 版本 | 1.5（正式版） |
 | 适用范围 | `rosxingma.ime`、`rosxingma-config.exe`、`rosxingma-table.exe`、可选数据包及其文档 |
 | 上游依赖 | ros-pinyin 的共用框架层 `framework/`（命名空间 `imfw`）；拼音产品 `pinyin/` 只读参照 |
 | 实施范围 | `xingma/` 目录内的全部代码、工具与文档 |
@@ -262,7 +263,7 @@ HKCU\SOFTWARE\RosXingMa\
     PackId / PackVersion / SourceUrl / UpstreamNotice   （仅 pack）
 ```
 
-- 不写 `Keyboard Layout\Preload`、不设默认布局、不硬编码 HKL（沿用 M0 红线）。
+- **部署偏好（非红线）**：不主动写 `Keyboard Layout\Preload`、不设默认布局、不硬编码 HKL。ReactOS 的 `ImmInstallIMEW` 自身会写 `Preload`，且同一 `.ime` 留在 `Preload` 里可一直开机——N/N′ 两组各 3 次启动实测均正常（见 `docs/milestones/M0-REDLINE-REVIEW.md` §13）。M0 红线 #2「禁写 `Preload`」已降级为部署偏好；**实质约束是「登录路径零失败初始化」**（A1/A1b：`DllMain` 零工作、`ImeInquire` 惰性注册且失败返回 FALSE），见 P0.4 与 `docs/phase0/PHASE0-PLAN.md` §3.4。
 - **写入顺序固定**：表文件 → `Tables\<id>` → `ActiveTable` → `Revision++`。任何一步失败即回滚说明，绝不让运行侧读到半成品。
 
 ### 4.4 排序与权重语义
@@ -311,6 +312,8 @@ HKCU\SOFTWARE\RosXingMa\
 | `create_engine()` | `ShapeSession`（从 `ShapeStore` 取当前表；框架不再传任何表，G2 终局契约） | 见 G2 |
 | `reload_data()` | 通知 `ShapeStore` 重读 revision/当前表 | G2：`reload_sessions()` 会调它并重建全部会话，配置工具换包即刻生效（形码不得假设框架内部的调用顺序） |
 | `configure(parent)` | 拉起配置工具后返回 `true` | G3：接管 `ImeConfigure`，成功后框架自动触发 `reload_sessions()` |
+
+**登录路径契约（P0.4 / A1b）**：`ShapeScheme` 不自行注册窗口类；四个类名由框架在 `ImeInquire` 中**惰性注册**（首次调用时才注册，不在 `DllMain` 做事），任一注册失败即 `ImeInquire` 返回 `FALSE`，让系统放弃加载而不是带病启动。`DllMain` 内零工作（A1）。形码安装器与 `.ime` 装配遵循同一口径，不因「静态检查不写 `Preload`」而把失败初始化塞进登录路径。
 
 ### 5.3 表切换
 
@@ -502,11 +505,13 @@ RosXingMa-Pack-Shape86-v1.0.0/
 
 ## 8. 实施计划
 
-> **v1.1 阶段重排说明**：新增 **P0 前置阶段** 作为新的第一阶段——它不是形码编码，而是「形码能否开工」的框架门禁。原 W0–W5 顺延为 **P1–P5**，编号与内容一一对应，不改变阶段顺序依赖关系。**P0 细化文档 = `xingma/docs/phase0/PHASE0-PLAN.md`**；P0 未完成，P1（原 W0，立项与合规，已随近几日文档工作实质完成）之后的编码阶段不得开工。
+> **v1.1 阶段重排说明**：新增 **P0 前置阶段** 作为新的第一阶段——它不是形码编码，而是「形码能否开工」的框架门禁。原 W0–W5 顺延为 **P1–P5**，编号与内容一一对应，不改变阶段顺序依赖关系。**P0 细化文档 = `xingma/docs/phase0/PHASE0-PLAN.md` v1.1**。
+>
+> **P0 判定（2026-11-23）：五项门禁全部通过，P2 已放行。** 基线 `main @ 51653db`（HEAD 与 `origin/main` 一致）；check_m1 111/111、ctest 18/18（BUILTIN_TABLE ON/OFF 两配置）、check_docs 7/7；P0.1 X1 归位、P0.2 `SchemeRegistry` + toy scheme 实证、P0.3a G1/M2 证据、P0.4 登录路径新口径、P0.5 类名 ≤15 与隔离登记均通过。逐条实测证据见 `docs/phase0/PHASE0-PLAN.md` §3.1–§3.5，勾选清单见 §5。**附条件项**：P0.3b（形码自身 ≥2 字词组真机用例）按原设计推迟到 P3，未过不得发布形码；X3 全局单例隔离未落地，作为 P3 已知限制单列，不阻塞 P2。
 
 | 阶段 | 名称 | 关键任务 | 完成判据 | 人日 |
 |---|---|---|---|---|
-| **P0** | **前置门禁（新增）** | 框架侧：X1 目录归位提交收口；X2-a0 `SchemeRegistry` 注入缝 + toy scheme；G1 ABI 修复复核（`≥2 字词组完整上屏` VM 用例）；M0 红线新口径（登录路径零失败初始化）；UI 类名 ≤15 字符断言。形码侧：以只读复核 + 用例设计配合，**不改框架文件** | 五项门禁逐条通过，判据与证据模板见 `docs/phase0/PHASE0-PLAN.md`；任一未过 → 后续阶段不启动 | 2–4（框架侧，形码只复核） |
+| **P0** ✅ **已通过（2026-11-23）** | **前置门禁（新增）** | 框架侧：X1 目录归位提交收口；X2-a0 `SchemeRegistry` 注入缝 + toy scheme；G1 ABI 修复复核（`≥2 字词组完整上屏` VM 用例）；M0 红线新口径（登录路径零失败初始化）；UI 类名 ≤15 字符断言。形码侧：以只读复核 + 用例设计配合，**不改框架文件** | 五项门禁逐条通过（证据见 `docs/phase0/PHASE0-PLAN.md` §3.1–§3.5、§5）；P0.3b 附条件推迟 P3。**P2 已放行** | 2–4（框架侧，形码只复核） |
 | **P1**（原 W0） | 立项与合规 | 双轨分发定稿；数据包署名与免责文本；「新世纪不分发」决策记录；命名与文案避让 | `docs/` 三份规范与 `NOTICE.txt` 第 8 节齐备，无待决法务项（**当前已达成**） | 1–2 |
 | **P2**（原 W1） | 引擎与 dat 内核 | `shape_dat_format.hpp`、`ShapeTable`、`ShapeSession`；`libtableio` 的 CSV/TSV 读取与 `dat_writer`；`mkdat-shape`；自造样例表跑通全链路 | `ctest` 全绿；CSV→dat 两次构建字节一致；自造表可查表并在 host 测试中上屏（含词） | 12–16 |
 | **P3**（原 W2） | 装配与宿主集成 | `rosxingma.ime` 装配（scheme_reg、def、资源）；`ShapeScheme`、`ShapeStore`、`ShapeDatLoader`（G1 由框架解决，直接复用共享宿主层，无自建 `imm_entry_shape`；**前置门禁**：P0 全部通过，含 X1 路径归位、注入缝可用、UI 类名断言、G1 词组上屏 VM 用例）；自带安装器（`.ime` 进 system32、工具进程序文件夹）与 `HKLM` 安装信息，**遵循登录路径零失败初始化口径** | VM 中可安装；无表不吞键不崩溃；导入演示表后可输入、可选词上屏（**≥2 字词组完整上屏**是 G1 ABI 修复的真机验证用例）；开始菜单能拉起配置工具 | 6–9 |
@@ -517,9 +522,9 @@ RosXingMa-Pack-Shape86-v1.0.0/
 
 > 人日为粗估，不含法务沟通等待。G1–G4 已由框架侧解决（2026-11-16，见 3.4）；**G1 TRANSMSGLIST ABI 缺陷（2026-11-17 审计）已于同日修复并在 2026-11-18 M2 VM 验收（15/15）中获真机证据**，但形码装配仍须在 P0.3 用自己的宿主/窗口类名跑一次词组用例。M0 红线 #2 已于 2026-11-18 降级为部署偏好（平台自写 Preload），实质约束改为「登录路径零失败初始化」，形码安装器与 `.ime` 须按新口径实现，见 P0.4。
 >
-> **架构审计新增的两项前置风险**（`docs/phase0/PHASE0-PLAN.md` 处置）：① `scheme_instance()` 仍是全局工厂、无注入点——这是 `xingma/` 至今零 C++ 的根因，须由 X2-a0 注入缝 + toy scheme 验证第二个方案可接入；② 全局单例（`g_hInst` / `UiStats` / `g_last_geometry` / `GlyphProbe` / `WindowRegistry`）未做 per-instance 隔离，与"两 IME 同进程互不干扰"目标冲突，X3 承担隔离改造，形码侧在 P0.5 做接入核验但不越界改框架。
+> **架构审计两项前置风险的收口（2026-11-23）**：① `scheme_instance()` 原为无注入点的全局工厂，X2-a0 已改为 `SchemeRegistry` 注入缝 + toy scheme 实证，P0.2 通过，第二个方案可接入的模型成立；② 全局单例（`g_hInst` / `UiStats` / `g_last_geometry` / `WindowRegistry`，`GlyphProbe` 已于 2026-11-20 删除）仍未做 per-instance 隔离，与"两 IME 同进程互不干扰"目标冲突，X3 承担隔离改造——**P0.5 只核验接入设计，X3 缺口作为 P3 已知风险单列，不阻塞 P2**。
 
-**阶段顺序依赖**：**P0 是 P2（原 W1）及之后所有编码阶段的硬门禁**；P1 已实质完成。P2 完成前 P3 无法装配（缺 `ShapeTable`）；P5 的适配器依赖 P4 的 `libtableio` 稳定。
+**阶段顺序依赖**：**P0 是 P2（原 W1）及之后所有编码阶段的硬门禁；P0 已于 2026-11-23 通过，P2 可开工**；P1 已实质完成。P2 完成前 P3 无法装配（缺 `ShapeTable`）；P5 的适配器依赖 P4 的 `libtableio` 稳定。
 
 ---
 
@@ -593,17 +598,17 @@ xingma/tests/{shape_table_test,shape_session_test,shape_switch_test,
 
 | 检查 | 内容 |
 |---|---|
-| 契约静态检查 | 不写 `Preload`、不硬编码 HKL、`DllMain` 不做事、配置工具不写 `system32`、除 `.ime` 外安装器不向 `system32` 写文件 |
+| 契约静态检查 | 登录路径零失败初始化（`DllMain` 零工作、`ImeInquire` 惰性注册且失败返回 FALSE，调用点白名单）；不硬编码 HKL；配置工具不写 `system32`、除 `.ime` 外安装器不向 `system32` 写文件。不写 `Preload` 是部署偏好，不作为静态硬红线 |
 | 目录边界 | `xingma/tools/check_layout.py`：`xingma/` 之外出现 `xingma/` 路径即失败；`xingma/` 内对 `framework/`、`pinyin/` 出现写操作或非 `<imfw/...>` 形式的 include 即失败 |
 | 命名一致性 | 同脚本扫描旧名与旧路径，白名单仅四类事实引用 |
 | 确定性 | `check_shape_dat.py` 与两次构建哈希比对；数据包构建产物 zip 字节一致（固定时间戳） |
-| 回归 | 既有拼音 ctest 11/11 与 `check_m1.py` 63/63、`check_docs.py` 7/7 全绿（2026-11-18 基线）；关闭 `ROSXINGMA` 时拼音二进制行为不变 |
+| 回归 | 既有拼音 ctest 18/18（`BUILTIN_TABLE` ON/OFF 两配置各一遍）与 `check_m1.py` 111/111、`check_docs.py` 7/7 全绿（2026-11-23 基线；P0 立门禁时为 11/11 + 63/63）；关闭 `ROSXINGMA` 时拼音二进制行为不变 |
 
 ---
 
 ## 10. 验收标准
 
-1. `rosxingma.ime` 可经形码自带安装器装到 ReactOS 0.4.16+，动态分配 HKL，不写 `Preload`；拼音安装器不受影响。
+1. `rosxingma.ime` 可经形码自带安装器装到 ReactOS 0.4.16+，动态分配 HKL，登录路径零失败初始化（`DllMain` 零工作、`ImeInquire` 惰性注册且失败返回 FALSE）；不主动写 `Preload` 为部署偏好而非硬红线；拼音安装器不受影响。
 2. **无表可用**：全新安装无任何码表时启动不崩溃、按键不吞、界面给出明确引导。
 3. **不限数量**：可导入 ≥5 张表（含不同码长 4/5），列表正确显示，可重命名、排序、移除。
 4. **工具闭环**：GUI 与 CLI 均能完成 导入 → 预览 → 切换 → 导出 → 移除；`--dry-run` 无副作用；`rejects.csv` 可导出。
@@ -626,7 +631,8 @@ xingma/tests/{shape_table_test,shape_session_test,shape_switch_test,
 |---|---|---|
 | ~~G1 未解决导致词只能显示不能上屏~~ | ~~高~~（**已消解**） | G1 已由框架 `imfw::emit_text` 解决并有单测与 `check_m1.py` 断言（2026-11-16） |
 | **框架 G1 TRANSMSGLIST ABI 缺陷未修即装配** | ~~高~~（**已消解**） | 框架侧 2026-11-17 已修复、2026-11-18 M2 VM 验收 15/15 获真机证据；P0.3 再做形码自身词组用例确认；未过则 P3（原 W2）不启动，形码侧不自行打补丁（不碰框架） |
-| **Scheme 注入缝未落地 / 全局单例未隔离** | 中（2026-11-18 审计新增） | `scheme_instance()` 无注入点、全局单例无 per-instance 隔离是 `xingma/` 零 C++ 的根因；P0.2/P0.5 核验 X2-a0 注入缝与 X3 隔离规划，形码只读不改框架；详见 `docs/phase0/PHASE0-PLAN.md` |
+| ~~Scheme 注入缝未落地~~ | ~~中~~（**已消解 2026-11-23**） | X2-a0 已落地 `SchemeRegistry` + toy scheme，P0.2 通过；「第二个方案可接入」已被 CI 常驻验证；形码装配模型无需调整 |
+| **全局单例未隔离（X3）** | 中（P3 已知限制，不阻塞 P2） | `g_hInst` / `UiStats` / `g_last_geometry` / `WindowRegistry` 未做 per-instance 隔离（GlyphProbe 已删）；X3 承担改造；P3 验收以"单 IME 场景"为基线，双 IME 场景单列；详见 `docs/phase0/PHASE0-PLAN.md` §3.5/§6 |
 | 热切换在个别宿主进程中不生效 | 中 | 两处自检（`on_select` / 组合起点）+ 组合期延迟换表；`SwitchMode=1` 提供确定性模式；文案不夸大 |
 | IMM32 每进程独立，无法全局原子换表 | 高（已由设计消解） | 不做广播依赖；revision 自检；切换只在安全时机发生 |
 | 配置工具在 ReactOS 上的控件兼容性 | 中 | 仅用 user32/comctl32 基础控件；P3（原 W2）早测 `ListView`，必要时退 `ListBox`；不自绘 |
