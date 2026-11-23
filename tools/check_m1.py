@@ -678,9 +678,13 @@ def run(root: Path) -> int:
     # shape as the two X2-a0 rewrites.
     intent_hpp = read(root, "framework/include/imfw/intent.hpp")
     handle_body = function_body(policy, r"KeyResult handle_key\([^)]*\)")
+    # M3: the signature gained a `bool composing` value parameter (punctuation
+    # vs paging on ',' / '.'). It is still a pure function of its inputs -- no
+    # session, engine or host -- so the X2-c contract stands; only the exact
+    # signature string below changes with the deliberate M3 extension.
     c.check("X2-c: key routing is a pure function of (scheme, key)",
-            "Intent route_key(const Scheme& scheme, const KeyEvent& event)"
-            in route_cpp and
+            "Intent route_key(const Scheme& scheme, const KeyEvent& event, "
+            "bool composing)" in route_cpp and
             "src/key_route.cpp" in read(root, "framework/CMakeLists.txt") and
             "add_test(NAME key-route" in read(root, "tests/CMakeLists.txt") and
             "#include <windows.h>" not in route_cpp and
@@ -1184,7 +1188,10 @@ def run(root: Path) -> int:
     }
     code_suffixes = {".c", ".cpp", ".h", ".hpp", ".rc", ".def", ".cmake",
                      ".py", ".yml", ".yaml", ".json", ".txt"}
-    skip_dirs = {".git", "vendor", "xingma", "docs"}
+    # .devloop holds the dev-loop working data (JSON reports, confirmations,
+    # board HTML). It is neither code nor a build file -- the only reason it
+    # matched here is that stage reports quote version literals verbatim.
+    skip_dirs = {".git", "vendor", "xingma", "docs", ".devloop"}
     version_hits = []
     for path in sorted(root.rglob("*")):
         rel = path.relative_to(root).as_posix()

@@ -34,19 +34,27 @@ SEAMS = (
         4,
     ),
     (
+        # M3 raised the cap 12 -> 15: punctuation() is a new Scheme policy call,
+        # used twice in wants_key (idle page-key / non-page-key paths) and once
+        # in route_key. Three more call sites is the visible, intentional cost
+        # of putting the punctuation decision in the scheme; raising the cap
+        # records that instead of hiding it.
         "scheme-policy",
         ("framework/src/host_key.cpp", "framework/src/key_route.cpp"),
         r"\bscheme\.|\bscheme_instance\(\)",
-        12,
+        15,
     ),
     (
+        # M3 raised the cap 12 -> 13: Ctrl+Shift+Space refreshes the toolbar in
+        # the same keystroke, one more UiToolbarSetOpen() beside the existing
+        # per-key and lone-Shift refreshes. Still a single UI-exit seam.
         "ui-exit",
         (
             "framework/platform/win32/imm32/imm_entry.cpp",
             "framework/platform/win32/imm32/win32_host.cpp",
         ),
         r"\bUi[A-Z][A-Za-z0-9_]*\(",
-        12,
+        13,
     ),
     (
         "imm32-abi",

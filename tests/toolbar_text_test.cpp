@@ -108,14 +108,16 @@ int main() {
 
     // Glyph mode is a second, independent boolean: [快]/[全] must not follow
     // the Chinese/English flag, and a stateless scheme gets the suffix too.
-    check_text(imfw::toolbar_text_with_mode(pinyin, true, false), L"拼:开[快]",
-               "[快] on an open pinyin session");
-    check_text(imfw::toolbar_text_with_mode(pinyin, true, true), L"拼:开[全]",
+    check_text(imfw::toolbar_text_with_mode(pinyin, true, false), L"拼:开·中[快]",
+               "[快] + Chinese on an open pinyin session");
+    check_text(imfw::toolbar_text_with_mode(pinyin, true, true), L"拼:开·中[全]",
                "[全] on an open pinyin session");
-    check_text(imfw::toolbar_text_with_mode(pinyin, false, true), L"拼:关[全]",
-               "mode suffix is independent of the open flag");
+    check_text(imfw::toolbar_text_with_mode(pinyin, false, true), L"拼:关·英[全]",
+               "mode suffix is independent, English state shown on closed");
+    check_text(imfw::toolbar_text_with_mode(pinyin, false, false), L"拼:关·英[快]",
+               "closed pinyin shows English with [快]");
     check_text(imfw::toolbar_text_with_mode(stateless, false, false), L"형[快]",
-               "stateless scheme still shows the mode");
+               "stateless scheme still shows the mode, no language marker");
 
     if (failures != 0) {
         std::fprintf(stderr, "%d failure(s)\n", failures);

@@ -7,6 +7,72 @@
 
 ## 未发布
 
+### M3 标点表收敛：真中文标点 + 引号交替 + 间隔号（2026-11-23）
+
+- **标点表收敛到「只留真中文标点」**：owner 逐键核对后，`imfw::fullwidth_punctuation()`
+  从 24 键机械全角映射收敛为 20 键，分三类：
+  - **新增 4 个中文码点**：`shift+-`(`_`)→`——`（U+2014×2 破折号）、`$`→`￥`（U+FFE5）、
+    `\`→`、`（U+3001 顿号）、`` ` ``→`·`（U+00B7 间隔号，GB 2312 A1A4）。
+  - **引号改交替**：`"`→`“”`（U+201C/U+201D）、`'`→`‘’`（U+2018/U+2019）；
+    parity 放 `ImeSessionState`（`dquote_open`/`squote_open`，per-HIMC、不持久化、各自独立
+    支持嵌套），`handle_key` 的 Punctuation 分支按 `intent.ch` 选开/合码点并翻转。
+  - **移除 6 个纯全角形态**：`{ } / - + =` 不再映射 → 中文态空组合不认领、系统给半角 ASCII；
+    全角形态留给后续独立的全角/半角功能。`～`（U+FF5E）经确认是中文标点标准码点，保留。
+- **判据防回归**：引号分支以 `intent.ch` 判别，而非 `text.size()==2`——`……`/`——` 同为双码点
+  但必须整体提交、不得被 parity 截断；`punctuation_test` 逐条钉新增/移除/保留表值，
+  `host_key_test` 覆盖两种引号 ≥3 次交替、嵌套、英文态不推进、组合中不推进、双码点不截断。
+- **门禁**：ctest ON/OFF 各 20/20、check_m1 111/111、check_docs 7/7、seams 全在 cap、
+  check_mkdat OK；dat 指纹 `db0c7bcf` 不变。`route_key` 三参数纯函数签名与 Scheme 接口不动。
+- **guest 实机验收（2026-11-23）**：owner 在 guest 装文津宋体后手打 `"`×3 / `'`×3，
+  **引号交替实机 PASS**——三对 `‘’` + 三对 `“”` parity 正确、U+2018/U+2019/U+201C/U+201D
+  四码点渲染正常（截图 `m0/vm/evidence/now-font-tofu.png` + `now-font-quotes-zoom.png`）。
+  此前 Droid 下画成斜纹系字形缺失、非上屏码点错，平台层盲区以实机反证闭合。
+  `——`/`￥`/`、`/`·` 四键在 Droid 下同为斜纹无法判读码点，文津下实机截图尚未取得；
+  宿主测试已覆盖，按「不臆造」不写 PASS，留待 owner 补打取证。
+
+### M3 标点 shift 修复：键码映射 + 多码点上屏 + 热键预留（2026-11-23）
+
+- **根因收窄**：截图证据（Notepad 中/英态成对输入）表明 `punct_fullwidth` 中英门控正常；
+  英文态下 shift 组合出半角 `^ ? ,` 是系统 US 布局的正确行为，不是 IME 缺陷。本轮只补
+  **中文态**下的键码映射与多码点上屏，不改中英认领逻辑。
+- **键码映射**：新增 Windows-free 纯函数 `imfw::key_char(vk, shift)`
+  （`framework/include/imfw/key_char.hpp`），13 类 vk × shift 两态共 34 条宿主断言；
+  `key_translate.cpp` 把 modifier 计算提前，平台层只调用纯函数，双路径天然一致。
+- **多码点接口**：`imfw::fullwidth_punctuation()` 与 `Scheme::punctuation()` 返回类型
+  `char32_t → std::u32string`，`Intent` 增加 `text` 字段承载完整上屏文本；`^` → `……`
+  （U+2026 两个码点），`<` `>` → `《》`（U+300A/U+300B），其余 22 键保持单码点。
+  形码将来复用同一张表，无需再改接口。
+- **热键**：Ctrl+Shift+Space 不再切中英（与单 Shift 重复），改为**吞键 no-op**；
+  保留 `KeyKind::LanguageToggle` 识别，预留给后续全角/半角切换专用。
+- **门禁**：新增 `key-char` 测试，ctest ON/OFF 各 20/20、check_m1 111/111、
+  check_docs 7/7、seams 全在 cap（scheme-policy 15/15、ui-exit 13/13）；
+  dat 指纹 `db0c7bcf` 与 zhong 5/12 页不变。
+- **guest 实机验收 PASS（2026-11-23）**：owner `/step1` 安装新 IME（`b7ac4454…` 三文件 hash
+  逐字节核对）后重启 guest，六键全过——中文态 `shift+6→……`、`shift+/→？`、`shift+,→《`，
+  英文态 `^`/`?`/`<`（US 布局下 shift+, 即 `<`，先前验收清单写 `,` 系笔误已纠正）。
+  `？`/`?` 码点靠墨迹起点位移确证（全角 x=19 / 半角 x=12），非肉眼猜测。平台层盲区闭合：
+  shift 组合确实进 IME 并完成全角转换，S1 预案的 trace 构建未触发。截图见
+  `m0/vm/evidence/m3-punct-accept-20261123-1934.png`。
+
+### M3 中文体验第一批：中文标点 + 中英态显示 + 备用热键（2026-11-23）
+
+- **中文标点（共享表）**：空组合中文态下 `, . ? ! : ; ( ) [ ] { } < > / \ " ' ~ - _ + =` 共 23 键
+  映射为全角/中文标点；字母数字空格保持半角。映射表是**唯一一份** `imfw::fullwidth_punctuation()`
+  （`framework/include/imfw/punctuation.hpp`，无 Windows 头、Linux 可单测），PinyinScheme 只一行转发
+  ——形码将来复用同一张表，不抄表、不反向依赖 pinyin 插件。
+- **翻页共存**：`,` `.` `-` `=` 同时是标点键与翻页键——空组合出标点、组合中翻页，靠
+  `route_key(scheme, event, composing)` 的 `!composing` 守卫分流；`wants_key` 双路径同步认领
+  （避免重演 Ctrl+Shift+G 的 G 进串 bug）。`check_m1` X2-f scheme-policy cap 12→15、
+  ui-exit cap 12→13（记录了新增的合法调用点，不是放宽）。
+- **中英态显示**：工具栏从「拼:开/关」扩为「拼:开·中[快] / 拼:关·英[全]」；标点态跟随 fOpen
+  （`punct_fullwidth` per-HIMC、不持久化），独立标点开关留下一轮。
+- **备用热键**：Ctrl+Shift+Space 切中英（新增 `KeyKind::LanguageToggle`，与 Ctrl+Shift+G 不冲突），
+  imm32 同键即时刷工具栏。主热键 Ctrl+Space 因 CORE-19455 在 ReactOS 不可靠，故加此备用并在文档注明。
+- **门禁**：红→绿 TDD（punctuation_test 30 断言 + scheme 一致性 + key-route 双 composing + host-key
+  语法为双路径 + toolbar 新格式）；ctest ON/OFF 各 19/19、check_m1 111/111、check_docs 7/7、
+  check_mkdat 全绿；dat 指纹 `db0c7bcf` 与 zhong 5/12 页不回退。
+- **产物**：release `.ime` `a2aa63f9…`（951,498 B，BUILTIN_TABLE=OFF/TRACE=OFF）已部署 HTTP。
+
 ### 取消 rare 概念：低权重入码表 + [快]/[全] 唯一由 tier 决定（2026-11-23）
 
 - **决策**：按 owner 指令，不再在引擎里用 `show_rare` 藏无字频字，改为数据层直接分级——

@@ -137,6 +137,20 @@ public:
     bool is_input_char(char32_t cp) const override {
         return cp >= U'a' && cp <= U'z';
     }
+    // M3: this scheme declares Chinese punctuation. `,` / `.` are also page
+    // keys; the router uses the composing flag to choose between the two.
+    std::u32string punctuation(char32_t ch) const override {
+        if (ch == U',') return U"\uFF0C";
+        if (ch == U'.') return U"\u3002";
+        if (ch == U'^') return U"\u2026\u2026";
+        if (ch == U'_') return U"\u2014\u2014";
+        if (ch == U'$') return U"\uFFE5";
+        if (ch == U'\\') return U"\u3001";
+        if (ch == U'`') return U"\u00B7";
+        if (ch == U'"') return U"\u201C\u201D";
+        if (ch == U'\'') return U"\u2018\u2019";
+        return {};
+    }
 
     std::unique_ptr<imfw::Engine> create_engine() const override {
         return std::make_unique<FakeEngine>();
@@ -372,6 +386,199 @@ int main() {
         result = imfw::handle_key(session, letter_event(0x70 /* F1 */), host);
         check(result.commit.empty(), "an unmanaged key commits nothing");
         check(session.pager.total() == total_before, "an unmanaged key does not touch the pager");
+    }
+
+    {
+        // ---- M3: Chinese punctuation on the two IMM32 paths ------------
+        // Empty composition, Chinese state: a mapped key is OURS and commits
+        // the fullwidth code point (wants_key + handle_key, both paths).
+        imfw::ImeSessionState session;
+        session.engine = std::make_unique<FakeEngine>();
+        SpyHost host;
+
+        check(imfw::wants_key(session, char_event(U','), host),
+              "idle Chinese comma is claimed for punctuation");
+        imfw::KeyResult r = imfw::handle_key(session, char_event(U','), host);
+        check(r.commit == std::u32string(1, U'\uFF0C'),
+              "idle comma commits a fullwidth comma");
+        check(session.engine->feed(U'x').action == imfw::Action::Absorb,
+              "engine still works after a punctuation commit");
+
+        // Digits stay halfwidth: with no composition they are NOT ours, so
+        // they reach the application untouched (S0 acceptance 4).
+        check(!imfw::wants_key(session, char_event(U'1'), host),
+              "idle digit passes through (stays halfwidth)");
+
+        // Mid-composition the SAME key pages, never produces punctuation.
+        imfw::ImeSessionState composing;
+        composing.engine = std::make_unique<FakeEngine>();
+        SpyHost composing_host;
+        imfw::handle_key(composing, letter_event('A'), composing_host);
+        check(composing.pager.page() == 0, "starts on page 1");
+        imfw::handle_key(composing, char_event(U'='), composing_host);
+        check(composing.pager.page() == 1, "moved to page 2");
+        r = imfw::handle_key(composing, char_event(U','), composing_host);
+        check(r.commit.empty(), "composing comma commits no punctuation");
+        check(composing.pager.page() == 0, "composing comma pages back to page 1");
+        check(composing.composition == "a", "composition unchanged by paging");
+
+        // English state: the same key is not ours -- halfwidth reaches the app.
+        SpyHost en_host;
+        en_host.open = false;
+        check(!imfw::wants_key(session, char_event(U','), en_host),
+              "English state leaves the comma to the application");
+    }
+
+    {
+        // ---- M3 v6: Chinese quotes alternate open/close (per-HIMC) ------
+        imfw::ImeSessionState session;
+        session.engine = std::make_unique<FakeEngine>();
+        SpyHost host;
+
+        // Two independent parities, each starting OPEN.
+        check(session.dquote_open && session.squote_open,
+              "both quote parities start open");
+
+        // Double quote: “ ” “ over three presses.
+        imfw::KeyResult r = imfw::handle_key(session, char_event(U'"'), host);
+        check(r.commit == std::u32string(1, U'\u201C'),
+              "1st double quote -> open curly U+201C");
+        r = imfw::handle_key(session, char_event(U'"'), host);
+        check(r.commit == std::u32string(1, U'\u201D'),
+              "2nd double quote -> close curly U+201D");
+        r = imfw::handle_key(session, char_event(U'"'), host);
+        check(r.commit == std::u32string(1, U'\u201C'),
+              "3rd double quote -> wraps back to open");
+
+        // Single quote parity is independent (“嵌套” support).
+        r = imfw::handle_key(session, char_event(U'\''), host);
+        check(r.commit == std::u32string(1, U'\u2018'),
+              "1st single quote -> open U+2018 (double parity untouched)");
+        r = imfw::handle_key(session, char_event(U'"'), host);
+        check(r.commit == std::u32string(1, U'\u201D'),
+              "double quote continues from its own parity, not reset by single");
+        r = imfw::handle_key(session, char_event(U'\''), host);
+        check(r.commit == std::u32string(1, U'\u2019'),
+              "2nd single quote -> close U+2019");
+
+        // Multi-code-point punctuation is NOT a quote: commit whole, never
+        // sliced by parity (the '……' regression from the previous round).
+        r = imfw::handle_key(session, char_event(U'^'), host);
+        check(r.commit == std::u32string(U"\u2026\u2026"),
+              "caret commits both ellipsis code points, parity untouched");
+        r = imfw::handle_key(session, char_event(U'_'), host);
+        check(r.commit == std::u32string(U"\u2014\u2014"),
+              "underscore commits both em dashes, parity untouched");
+        r = imfw::handle_key(session, char_event(U'"'), host);
+        check(r.commit == std::u32string(1, U'\u201C'),
+              "double quote parity still open after the multi-code-point keys");
+
+        // English state does not advance parity (the key is not ours).
+        // Capture whatever the parity currently is -- it has been flipped by
+        // the presses above -- and assert it does not move.
+        const bool dq_before = session.dquote_open;
+        session.punct_fullwidth = false;
+        check(!imfw::wants_key(session, char_event(U'"'), host),
+              "English state does not claim the double quote");
+        check(session.dquote_open == dq_before,
+              "English state leaves parity unchanged");
+        session.punct_fullwidth = true;
+        r = imfw::handle_key(session, char_event(U'"'), host);
+        const char32_t expected_after_en =
+            dq_before ? U'\u201C' : U'\u201D';
+        check(r.commit == std::u32string(1, expected_after_en),
+              "switching back, parity resumes where it left off");
+
+        // Mid-composition the quote key is not punctuation -- parity stays.
+        imfw::ImeSessionState composing;
+        composing.engine = std::make_unique<FakeEngine>();
+        SpyHost composing_host;
+        imfw::handle_key(composing, letter_event('A'), composing_host);
+        const bool before = composing.dquote_open;
+        imfw::handle_key(composing, char_event(U'"'), composing_host);
+        check(composing.dquote_open == before,
+              "mid-composition quote leaves parity unchanged");
+    }
+
+    {
+        // ---- M3: Ctrl+Shift+Space is a reserved no-op (owner decision) ---
+        imfw::ImeSessionState session;
+        session.engine = std::make_unique<FakeEngine>();
+        SpyHost host;
+
+        imfw::KeyEvent lang = kind_event(imfw::KeyKind::LanguageToggle, 0x20);
+        check(imfw::wants_key(session, lang, host),
+              "the reserved hotkey is still claimed (Space must not select)");
+        check(host.open && host.open_writes == 0,
+              "the reserved hotkey does NOT flip Chinese/English");
+        check(session.punct_fullwidth == true,
+              "punctuation state is untouched by the reserved hotkey");
+
+        lang.key_up = true;
+        check(!imfw::wants_key(session, lang, host),
+              "key-up is never claimed");
+        check(host.open_writes == 0, "key-up still does nothing");
+
+        // The double path: ImeToAsciiEx sees the same key. Space is a
+        // selection key, so without a consume branch it would pick a candidate
+        // or feed the engine. handle_key must produce nothing.
+        imfw::KeyEvent lang_down = kind_event(imfw::KeyKind::LanguageToggle, 0x20);
+        const imfw::KeyResult r = imfw::handle_key(session, lang_down, host);
+        check(r.commit.empty(), "the reserved hotkey commits nothing on path 2");
+    }
+
+    {
+        // ---- M3: 100-key mixed run (S0 acceptance 5) --------------------
+        // A long stream mixing letters, fullwidth punctuation, paging and
+        // language toggles. Nothing may commit spuriously and the session must
+        // stay consistent for the whole run. This is the host-side half of the
+        // "100 字段落" exit criterion (guest hand-typing is the other half).
+        imfw::ImeSessionState session;
+        session.engine = std::make_unique<FakeEngine>();
+        SpyHost host;
+        std::size_t punct_commits = 0;
+        std::size_t toggles = 0;
+        for (int i = 0; i < 100; ++i) {
+            if (i % 10 == 0) {
+                // Idle fullwidth punctuation commits one code point.
+                const imfw::KeyResult r =
+                    imfw::handle_key(session, char_event(U','), host);
+                check(r.commit.size() == 1 && r.commit[0] == U'\uFF0C',
+                      "mixed run: idle comma commits exactly one fullwidth char");
+                ++punct_commits;
+            } else if (i % 10 == 1) {
+                // Lone Shift is the real Chinese/English gesture; the reserved
+                // Ctrl+Shift+Space hotkey is a no-op now. Use the gesture so
+                // the 100-key run still exercises both languages.
+                imfw::KeyEvent down = kind_event(imfw::KeyKind::Shift, 0x10);
+                imfw::wants_key(session, down, host);
+                imfw::KeyEvent up = kind_event(imfw::KeyKind::Shift, 0x10);
+                up.key_up = true;
+                imfw::wants_key(session, up, host);
+                ++toggles;
+            } else if (!host.open) {
+                // Closed: switch back via lone Shift so the next letters are
+                // ours again.
+                imfw::KeyEvent down = kind_event(imfw::KeyKind::Shift, 0x10);
+                imfw::wants_key(session, down, host);
+                imfw::KeyEvent up = kind_event(imfw::KeyKind::Shift, 0x10);
+                up.key_up = true;
+                imfw::wants_key(session, up, host);
+                ++toggles;
+            } else {
+                // A letter into the engine, then a page turn while composing.
+                imfw::handle_key(session, letter_event('A'), host);
+                check(session.composing, "mixed run: letter starts a composition");
+                imfw::handle_key(session, char_event(U'='), host);
+                check(!session.composing || session.pager.total() > 0,
+                      "mixed run: page turn keeps a valid pager");
+                imfw::handle_key(session,
+                                 kind_event(imfw::KeyKind::Escape, 0x1B), host);
+                check(!session.composing, "mixed run: escape ends the composition");
+            }
+        }
+        check(punct_commits == 10, "mixed run: 10 punctuation commits");
+        check(toggles > 0, "mixed run: language toggled during the stream");
     }
 
     {

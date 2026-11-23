@@ -29,6 +29,15 @@ m0/extract/*.bin
 m0/probe/reactos/
 # Local HTTP share drop zone for the ReactOS VM (all payloads are build outputs)
 m0/share/
+
+# Font binaries: downloaded or derived by tools/fonts/*, served via m0/share.
+# Local only - do not commit font payloads (reproduce from documented URLs).
+*.ttf
+*.ttc
+*.otf
+*.woff
+*.woff2
+
 vendor/*.tar.gz
 
 # Third-party reference source: local extraction only, reproduce with

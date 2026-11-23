@@ -7,6 +7,7 @@
 
 #include <imfw/code_table.hpp>
 #include <imfw/engine.hpp>
+#include <imfw/punctuation.hpp>
 #include <rospinyin/dat_source.hpp>
 #include <rospinyin/pinyin_session.hpp>
 #include <rospinyin/scheme.hpp>
@@ -68,6 +69,22 @@ int main() {
           "non-paging keys report 0");
     check(!scheme.is_selection_key(0) && scheme.page_key(0) == 0,
           "null key reports neither selection nor paging");
+
+    // M3: PinyinScheme enables Chinese punctuation by forwarding to the ONE
+    // shared table. Asserting equality with the public function (rather than
+    // hardcoding mappings again) is the anti-fork guard: if the plugin ever
+    // grows its own private table, this test fails.
+    check(scheme.punctuation(U',') == imfw::fullwidth_punctuation(U',') &&
+              scheme.punctuation(U',') == std::u32string(1, U'\uFF0C'),
+          "scheme punctuation forwards the shared table (comma)");
+    check(scheme.punctuation(U'.') == std::u32string(1, U'\u3002') &&
+              scheme.punctuation(U'?') == std::u32string(1, U'\uFF1F'),
+          "scheme punctuation forwards the shared table (period/question)");
+    check(scheme.punctuation(U'^') == std::u32string(U"\u2026\u2026"),
+          "scheme punctuation forwards the multi-codepoint ellipsis");
+    check(scheme.punctuation(U'1').empty() &&
+              scheme.punctuation(U' ').empty(),
+          "scheme leaves digits and space to the framework");
 
     // G3: the configure hook defaults to declining (ImeConfigure then keeps
     // returning FALSE); schemes with configuration UI override it.

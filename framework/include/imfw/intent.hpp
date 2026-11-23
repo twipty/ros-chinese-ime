@@ -36,6 +36,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
 
 namespace imfw {
 
@@ -47,6 +48,7 @@ enum class IntentKind : std::uint8_t {
     Select,     // pick the candidate at page-relative index `slot`
     PagePrev,   // pager.previous_page()
     PageNext,   // pager.next_page()
+    Punctuation,// commit `ch`, an already-mapped fullwidth code point (M3)
     Backspace,  // engine.backspace()
     Escape,     // discard the composition
 };
@@ -59,6 +61,9 @@ struct Intent {
     // Select only: 0-based, relative to the current page (so digit 1 on page 2
     // means candidate 10). Resolved by the pager, not here.
     std::size_t slot = 0;
+    // Punctuation only: the complete text to commit. `ch` remains the source
+    // key for diagnostics, but one char32_t cannot express '……' (U+2026 twice).
+    std::u32string text;
 };
 
 // What this key means, or IntentKind::None.
@@ -68,8 +73,14 @@ struct Intent {
 // those are ownership questions and answering them twice is how the two
 // answers drift apart.
 //
-// Pure: no session, no engine, no host. The only inputs are the key and the
-// scheme's policy, which is why every branch below is testable on its own.
-Intent route_key(const Scheme& scheme, const KeyEvent& event);
+// `composing` is the session's active-composition flag: a key that is both a
+// punctuation key and a page key (`,` `.`) yields Punctuation only when idle,
+// and PagePrev/PageNext mid-composition. It is a value, not a session -- the
+// router stays pure and the decision stays testable on its own.
+//
+// Pure: no session, no engine, no host. The only inputs are the key, the
+// composing flag and the scheme's policy, which is why every branch below is
+// testable on its own.
+Intent route_key(const Scheme& scheme, const KeyEvent& event, bool composing);
 
 }  // namespace imfw

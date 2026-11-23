@@ -45,6 +45,20 @@ struct ImeSessionState {
     // [快] (false, default) vs [全] (true). Per-HIMC, reset when the session
     // is released; never persisted to registry, config or any other store.
     bool full_glyph = false;
+    // M3: whether ASCII punctuation maps to fullwidth Chinese forms. Per-HIMC
+    // and not persisted. Today it follows the Chinese/English flag exactly
+    // (set_ime_open); the next milestone can give it an independent switch
+    // without touching the router -- punctuation() is only asked when idle and
+    // this flag gates it in wants_key/handle_key.
+    bool punct_fullwidth = true;
+    // M3 v6: Chinese paired-quote alternation. true = the next `"` / `'`
+    // commits the OPEN glyph (“ / ‘), false = the CLOSE glyph (” / ’).
+    // Each quote has its own parity so nested quotes (“他说'你好'”) work;
+    // both are per-HIMC and never persisted. Only the Punctuation commit
+    // branch flips them -- English state and mid-composition leave them alone,
+    // and multi-code-point keys ('……' / '——') are committed whole instead.
+    bool dquote_open = true;
+    bool squote_open = true;
 };
 
 }  // namespace imfw

@@ -47,6 +47,7 @@ const char* kind_name(imfw::IntentKind kind) {
     case imfw::IntentKind::Select: return "Select";
     case imfw::IntentKind::PagePrev: return "PagePrev";
     case imfw::IntentKind::PageNext: return "PageNext";
+    case imfw::IntentKind::Punctuation: return "Punctuation";
     case imfw::IntentKind::Backspace: return "Backspace";
     case imfw::IntentKind::Escape: return "Escape";
     }
@@ -131,24 +132,40 @@ public:
     }
 };
 
+// M3: a scheme that declares Chinese punctuation. `,` and `.` are ALSO page
+// keys in the classic policy -- the whole point of the test is that the router
+// picks punctuation when idle and paging when composing, on the SAME key.
+class PunctuationScheme final : public ClassicScheme {
+public:
+    std::u32string punctuation(char32_t ch) const override {
+        if (ch == U',') return U"\uFF0C";
+        if (ch == U'.') return U"\u3002";
+        if (ch == U'^') return U"\u2026\u2026";  // multi-code-point case
+        return {};
+    }
+};
+
 // Printed with the payload attached: a failure that says "expected Select, got
 // Select" is the one thing a wrong slot looks like, and it costs a rebuild to
 // find out which of the two differed.
-std::string describe(imfw::IntentKind kind, char32_t ch, std::size_t slot) {
-    char buf[64];
-    std::snprintf(buf, sizeof buf, " ch=U+%04X slot=%zu",
-                  static_cast<unsigned>(ch), slot);
+std::string describe(imfw::IntentKind kind, char32_t ch, std::size_t slot,
+                     const std::u32string& text) {
+    char buf[96];
+    std::snprintf(buf, sizeof buf, " ch=U+%04X slot=%zu text_size=%zu",
+                  static_cast<unsigned>(ch), slot, text.size());
     return std::string(kind_name(kind)) + buf;
 }
 
 void expect(const std::string& desc, const imfw::Scheme& scheme,
             const imfw::KeyEvent& event, imfw::IntentKind kind,
-            char32_t ch = 0, std::size_t slot = 0) {
-    const imfw::Intent intent = imfw::route_key(scheme, event);
-    if (intent.kind != kind || intent.ch != ch || intent.slot != slot) {
-        check(false, desc + ": expected " + describe(kind, ch, slot) +
+            char32_t ch = 0, std::size_t slot = 0, bool composing = false,
+            const std::u32string& text = {}) {
+    const imfw::Intent intent = imfw::route_key(scheme, event, composing);
+    if (intent.kind != kind || intent.ch != ch || intent.slot != slot ||
+        intent.text != text) {
+        check(false, desc + ": expected " + describe(kind, ch, slot, text) +
                          ", got " + describe(intent.kind, intent.ch,
-                                             intent.slot));
+                                             intent.slot, intent.text));
     }
 }
 
@@ -227,11 +244,33 @@ int main() {
     expect("a key claimed by both policies selects, not pages", overlap,
            plain('5', U'5'), imfw::IntentKind::Select, U'5', 4);
 
+    // ---- M3 punctuation: same key, two meanings by composing state --------
+    const PunctuationScheme punct;
+    expect("idle ',' yields a fullwidth comma", punct, plain(',', U','),
+           imfw::IntentKind::Punctuation, U',', 0, false,
+           std::u32string(1, U'\uFF0C'));
+    expect("idle '.' yields an ideographic full stop", punct, plain('.', U'.'),
+           imfw::IntentKind::Punctuation, U'.', 0, false,
+           std::u32string(1, U'\u3002'));
+    expect("idle '^' carries TWO code points in Intent.text", punct,
+           plain(0x36, U'^'), imfw::IntentKind::Punctuation, U'^', 0, false,
+           std::u32string(U"\u2026\u2026"));
+    expect("composing ',' still pages back", punct, plain(',', U','),
+           imfw::IntentKind::PagePrev, U',', 0, true);
+    expect("composing '.' still pages forward", punct, plain('.', U'.'),
+           imfw::IntentKind::PageNext, U'.', 0, true);
+    expect("a key with no punctuation mapping stays a page key", punct,
+           plain('-', U'-'), imfw::IntentKind::PagePrev, U'-', 0, false);
+    expect("digits select even when idle (halfwidth, no punct mapping)", punct,
+           plain('1', U'1'), imfw::IntentKind::Select, U'1', 0, false);
+    expect("a scheme with no punctuation policy pages as before", classic,
+           plain(',', U','), imfw::IntentKind::PagePrev, U',', 0, false);
+
     // ---- the default Intent is None ---------------------------------------
     {
         const imfw::Intent fresh;
         check(fresh.kind == imfw::IntentKind::None && fresh.ch == 0 &&
-                  fresh.slot == 0,
+                  fresh.slot == 0 && fresh.text.empty(),
               "a default-constructed Intent means nothing to do");
     }
 

@@ -34,6 +34,9 @@ public:
     // ---- key policy ----
     char32_t input_char(std::uint32_t vk) const override;
     bool is_input_char(char32_t cp) const override;
+    // M3: Chinese punctuation is a language fact shared by every Chinese
+    // scheme -> forward to the ONE framework table, never build a private one.
+    std::u32string punctuation(char32_t ch) const override;
 
     // ---- engine ----
     std::unique_ptr<imfw::Engine> create_engine() const override;

@@ -251,6 +251,15 @@ BOOL WINAPI ImeProcessKey(rpimm::InputContext hIMC, UINT uVirtKey, LPARAM lParam
         return FALSE;
     }
 
+    // M3: Ctrl+Shift+Space flips fOpen via wants_key(). Refresh the toolbar in
+    // the SAME keystroke (the Shift gesture already does this just above):
+    // otherwise the user sees "开" while the IME is actually in English.
+    if (event.kind == imfw::KeyKind::LanguageToggle) {
+        if (state != nullptr) imfw::wants_key(*state, event, host);
+        if (hIMC != nullptr) imfw::UiToolbarSetOpen(hIMC, host.is_open());
+        return TRUE;  // claim it: the app must not see Space as a keypress
+    }
+
     const bool consume = state != nullptr && imfw::wants_key(*state, event, host);
 #if IMFW_TRACE_ON
     // open= is now the gate itself (Chinese/English), so a persistent 0 here

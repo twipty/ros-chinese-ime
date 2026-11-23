@@ -18,8 +18,24 @@
 
 namespace imfw {
 
-Intent route_key(const Scheme& scheme, const KeyEvent& event) {
+Intent route_key(const Scheme& scheme, const KeyEvent& event, bool composing) {
     const char32_t ch = event.ch;
+
+    // M3 punctuation runs FIRST, and only while idle. A key like ',' is both
+    // a fullwidth-comma source and a page key; when there is no composition
+    // the punctuation meaning wins, and mid-composition the !composing guard
+    // drops through to the paging branch below. Selection keys (space, 1-9)
+    // have no fullwidth mapping, so they are unaffected.
+    if (!composing && ch != 0) {
+        const std::u32string punct = scheme.punctuation(ch);
+        if (!punct.empty()) {
+            Intent intent;
+            intent.kind = IntentKind::Punctuation;
+            intent.ch = ch;        // source key, for diagnostics only
+            intent.text = punct;   // complete text: '^' commits TWO code points
+            return intent;
+        }
+    }
 
     // Selection before paging before text: the order the branches have always
     // run in, and the one a scheme's overlapping declarations depend on.

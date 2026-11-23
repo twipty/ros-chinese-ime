@@ -43,7 +43,9 @@ enum class KeyKind : std::uint8_t {
     Backspace,
     Escape,
     Shift,
-    ModeToggle,  // Ctrl+Shift+G: flip [快]/[全], owned by the framework
+    ModeToggle,     // Ctrl+Shift+G: flip [快]/[全], owned by the framework
+    LanguageToggle, // Ctrl+Shift+Space: backup hotkey for Chinese/English
+                    // (the primary Ctrl+Space is unreliable — CORE-19455)
 };
 
 // One key message, already translated.

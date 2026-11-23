@@ -24,7 +24,18 @@ std::wstring toolbar_text(const Scheme& scheme, bool open) {
 
 std::wstring toolbar_text_with_mode(const Scheme& scheme, bool open,
                                     bool full_glyph) {
-    return toolbar_text(scheme, open) + (full_glyph ? L"[全]" : L"[快]");
+    std::wstring text = toolbar_text(scheme, open);
+    // M3: for a scheme that declares a state (the pinyin "拼:开/关"), add the
+    // explicit Chinese/English marker the user asked for: "拼:开·中[快]".
+    // A stateless scheme (no toolbar_state_label) keeps its bare label + mode
+    // suffix -- inventing a language marker for a scheme with no language
+    // state would be a lie. The marker is derived from `open`, not a new flag:
+    // fOpen IS the Chinese/English state, and punctuation follows it.
+    const wchar_t* state = scheme.toolbar_state_label(open);
+    if (state != nullptr && state[0] != L'\0') {
+        text += open ? L"·中" : L"·英";
+    }
+    return text + (full_glyph ? L"[全]" : L"[快]");
 }
 
 }  // namespace imfw

@@ -7,6 +7,7 @@
 
 #include "key_translate.h"
 
+#include <imfw/key_char.hpp>
 #include <imfw/emit_text.hpp>
 
 #include <cstddef>
@@ -19,6 +20,7 @@ constexpr BYTE kCtrlBit = 0x80;
 constexpr BYTE kAltBit = 0x80;
 constexpr BYTE kShiftBit = 0x80;
 constexpr UINT kModeToggleVk = 'G';  // Ctrl+Shift+G -> [快]/[全]
+constexpr UINT kLanguageToggleVk = VK_SPACE;  // Ctrl+Shift+Space -> 中/英 backup
 
 // lParam bit 31 of WM_KEYDOWN/WM_KEYUP: 1 = the key is being released. The
 // same lParam is handed to ImeProcessKey, and it is the only transition
@@ -32,22 +34,12 @@ bool modifier_down(const BYTE* lpbKeyState, KeyIndex index, BYTE bit) {
            (lpbKeyState[static_cast<int>(index)] & bit) != 0;
 }
 
-// Translate the framework-managed virtual keys to their character. The policy
-// deciding which of these are selection / paging keys lives in the Scheme
-// (G4); the input alphabet is also translated by the Scheme.
-char32_t framework_key_char(UINT vk) {
-    if (vk >= '0' && vk <= '9') return static_cast<char32_t>(vk);
-    switch (vk) {
-    case VK_SPACE:      return U' ';
-    case VK_OEM_MINUS:  return U'-';
-    case VK_OEM_PLUS:   return U'=';
-    case VK_OEM_COMMA:  return U',';
-    case VK_OEM_PERIOD: return U'.';
-    case VK_SUBTRACT:   return U'-';   // numpad minus
-    case VK_ADD:        return U'=';   // numpad plus
-    default:            return 0;
-    }
-}
+// The vk -> char table moved to imfw/key_char.hpp (M3 shift fix). Besides
+// being Windows-free and host-testable, the important change is the shift
+// argument: the old signature could not express '?' (shift+/), '<' (shift+,)
+// or '^' (shift+6), so those keys produced ch=0 / the unshifted character and
+// never reached the Chinese punctuation router. The policy deciding which of
+// these are selection / paging keys still lives in the Scheme (G4).
 
 }  // namespace
 
@@ -55,15 +47,24 @@ KeyEvent key_event_from(UINT vk, unsigned long lParam,
                        const BYTE* lpbKeyState) {
     KeyEvent event;
     event.vk = vk;
-    event.ch = framework_key_char(vk);
+    // Modifiers first: the character table needs `shift`. In the old order
+    // event.ch was computed before shift was even read, which is exactly why
+    // shifted punctuation could never be represented.
     const bool ctrl = modifier_down(lpbKeyState, KeyIndex::Control, kCtrlBit);
     const bool alt = modifier_down(lpbKeyState, KeyIndex::Alt, kAltBit);
     const bool shift = modifier_down(lpbKeyState, KeyIndex::Shift, kShiftBit);
+    event.ch = key_char(vk, shift);
     // Ctrl+Shift+G is the framework-owned mode switch (FR-D5). Alt+G and a
     // bare Shift+G are ordinary application keys and stay untouched.
     const bool mode_toggle =
         vk == kModeToggleVk && ctrl && shift && !alt;
+    // Ctrl+Shift+Space is the backup Chinese/English hotkey. Requires shift so
+    // it cannot be confused with the primary Ctrl+Space (CORE-19455 unreliable)
+    // or with plain Space (a selection key). Alt+Shift combos stay untouched.
+    const bool language_toggle =
+        vk == kLanguageToggleVk && ctrl && shift && !alt;
     event.kind = mode_toggle ? KeyKind::ModeToggle
+                 : language_toggle ? KeyKind::LanguageToggle
                  : vk == VK_BACK     ? KeyKind::Backspace
                  : vk == VK_ESCAPE   ? KeyKind::Escape
                  : vk == VK_SHIFT    ? KeyKind::Shift

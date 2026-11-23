@@ -114,6 +114,20 @@ public:
         return 0;
     }
 
+    // M3: the fullwidth Chinese punctuation this scheme wants for `ch`, or an
+    // empty string when the key has no Chinese form / this scheme does not do
+    // Chinese punctuation. A Chinese scheme forwards to
+    // imfw::fullwidth_punctuation() (the ONE shared table); the default empty
+    // keeps English/toy schemes and the pre-M3 behaviour untouched. The router
+    // only asks this when idle (no composition), so a key that is also a page
+    // key (`,` `.`) still pages mid-composition.
+    // The string (not char32_t) is required by multi-code-point forms such as
+    // '^' -> '……'; an empty result is the exact analogue of the old `== 0`.
+    virtual std::u32string punctuation(char32_t ch) const {
+        (void)ch;
+        return {};
+    }
+
     // ---- engine ----------------------------------------------------------
 
     // One engine instance per input context. The scheme builds it against

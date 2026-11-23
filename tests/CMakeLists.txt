@@ -73,6 +73,18 @@ add_executable(rospinyin-key-route key_route_test.cpp)
 target_link_libraries(rospinyin-key-route PRIVATE imfw-engine)
 add_test(NAME key-route COMMAND rospinyin-key-route)
 
+# M3: the shared ASCII -> fullwidth Chinese punctuation table. One table in the
+# framework, reused by every Chinese scheme (pinyin now, shape IME later).
+add_executable(rospinyin-punctuation punctuation_test.cpp)
+target_link_libraries(rospinyin-punctuation PRIVATE imfw-engine)
+add_test(NAME punctuation COMMAND rospinyin-punctuation)
+
+# M3 shift fix: the vk -> char table as a Windows-free pure function. Without
+# this target the shift half of every punctuation key is untestable on Linux.
+add_executable(rospinyin-key-char key_char_test.cpp)
+target_link_libraries(rospinyin-key-char PRIVATE imfw-engine)
+add_test(NAME key-char COMMAND rospinyin-key-char)
+
 # X2-b: the same layers, but asserting the *sequence* instead of single
 # decisions. One fixed key run (zhongguo -> 2 -> Backspace x2 -> Esc -> lone
 # Shift), one exact host-call log. This is the net X2-c/X2-d must not move:

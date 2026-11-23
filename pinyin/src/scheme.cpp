@@ -20,6 +20,7 @@
 #include <rospinyin/dat_source.hpp>
 #include <rospinyin/pinyin.hpp>
 #include <rospinyin/pinyin_session.hpp>
+#include <imfw/punctuation.hpp>
 
 #include <cstdint>
 #include <memory>
@@ -209,6 +210,12 @@ char32_t PinyinScheme::input_char(std::uint32_t vk) const {
 
 bool PinyinScheme::is_input_char(char32_t cp) const {
     return (cp >= U'a' && cp <= U'z') || cp == U'\'';
+}
+
+std::u32string PinyinScheme::punctuation(char32_t ch) const {
+    // The table belongs to the framework so the future shape IME reuses it;
+    // pinyin only declares that it wants Chinese punctuation.
+    return imfw::fullwidth_punctuation(ch);
 }
 
 // ---- engine -------------------------------------------------------------

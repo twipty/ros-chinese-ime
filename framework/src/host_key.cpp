@@ -51,6 +51,10 @@ void finish_composition(Host& host, ImeSessionState& state) {
 void set_ime_open(Host& host, ImeSessionState& state, bool open) {
     if (open == host.is_open()) return;
     host.set_open(open);
+    // M3: fullwidth punctuation follows the Chinese/English state for now.
+    // The next milestone can decouple them by giving punctuation its own
+    // switch; the router already gates on this flag, not on fOpen directly.
+    state.punct_fullwidth = open;
     if (!open && state.composing) finish_composition(host, state);
 }
 
@@ -164,6 +168,16 @@ bool wants_key(ImeSessionState& session, const KeyEvent& event, Host& host) {
         return true;  // claim it: the application must not also see Ctrl+Shift+G
     }
 
+    // M3 (owner decision 2026-11-23): Ctrl+Shift+Space is RESERVED for the
+    // fullwidth/halfwidth switch. It is still recognised and claimed here so
+    // Space never reaches the app as a selection, but it deliberately does NOT
+    // flip Chinese/English -- lone Shift already owns that, and the duplicate
+    // hotkey made the toolbar state ambiguous. Keeping the distinct KeyKind
+    // means the future switch gets a key without redoing this path.
+    if (event.kind == KeyKind::LanguageToggle) {
+        return true;
+    }
+
     // Closed = English: every key belongs to the application. This is the whole
     // point of the Shift toggle; without it "switching to English" would leave
     // the IME swallowing letters and inserting Chinese.
@@ -182,7 +196,20 @@ bool wants_key(ImeSessionState& session, const KeyEvent& event, Host& host) {
     // meaningful mid-composition with candidates on screen; otherwise they
     // pass through to the application (e.g. space in an empty editor).
     if (scheme.is_selection_key(event.ch) || scheme.page_key(event.ch) != 0) {
+        // M3: an idle Chinese comma/period is punctuation, not a page key. The
+        // page policy above returns false when idle; claim it here so it reaches
+        // handle_key. Mid-composition it stays a page key (the branch above won).
+        if (!session.composing && session.punct_fullwidth &&
+            !scheme.punctuation(event.ch).empty()) {
+            return true;
+        }
         return session.composing && !session.pager.empty();
+    }
+    // A punctuation key that is NOT a page key (e.g. '?', '(', '/') still needs
+    // claiming when idle -- there is no page branch to fall through.
+    if (!session.composing && session.punct_fullwidth &&
+        event.ch != 0 && !scheme.punctuation(event.ch).empty()) {
+        return true;
     }
     return false;
 }
@@ -204,14 +231,47 @@ KeyResult handle_key(ImeSessionState& session, const KeyEvent& event, Host& host
         return {};
     }
 
+    // M3 double path: ImeProcessKey claimed Ctrl+Shift+Space via wants_key()
+    // (reserved hotkey, no state change); IMM32 then calls ImeToAsciiEx with
+    // the SAME key. Space is a selection key, so without consuming it here a
+    // pending composition would pick a candidate. Consume it: the first path
+    // already made the only decision there is to make.
+    if (event.kind == KeyKind::LanguageToggle) {
+        return {};
+    }
+
     // X2-c: "which key is this" has one owner (route_key, key_route.cpp);
     // "what to do about it" has another (the switch below). Note that this
     // function no longer touches `scheme`: both policy questions it used to
     // ask inline are asked once, in the router, where a test can answer them
     // without an engine or a host.
-    const Intent intent = route_key(scheme_instance(), event);
+    const Intent intent =
+        route_key(scheme_instance(), event, session.composing);
 
     switch (intent.kind) {
+    case IntentKind::Punctuation:
+        // M3: idle fullwidth punctuation. It bypasses the engine entirely (no
+        // composition, no candidates) and commits the scheme's text.
+        //
+        // Paired quotes are the one stateful case: the table returns OPEN+CLOSE
+        // and per-HIMC parity picks one, then flips. The discriminator MUST be
+        // intent.ch (the source key), not text.size()==2 -- '^'->'……' and
+        // '_'->'——' are also two code points but must be committed whole and
+        // must never disturb quote parity.
+        // G4: the adapter turns every UTF-16 unit into its own WM_IME_CHAR.
+        if (intent.ch == U'"') {
+            const char32_t glyph = session.dquote_open ? intent.text[0]
+                                                       : intent.text[1];
+            session.dquote_open = !session.dquote_open;
+            return {std::u32string(1, glyph)};
+        }
+        if (intent.ch == U'\'') {
+            const char32_t glyph = session.squote_open ? intent.text[0]
+                                                       : intent.text[1];
+            session.squote_open = !session.squote_open;
+            return {std::u32string(1, glyph)};
+        }
+        return {intent.text};
     case IntentKind::Select: {
         // The pager resolves selection page-relative, so page 2 digit 1 picks
         // candidate 10 and space picks the first candidate of the page.
