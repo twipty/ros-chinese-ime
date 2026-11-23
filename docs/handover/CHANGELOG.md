@@ -27,8 +27,10 @@
   **引号交替实机 PASS**——三对 `‘’` + 三对 `“”` parity 正确、U+2018/U+2019/U+201C/U+201D
   四码点渲染正常（截图 `m0/vm/evidence/now-font-tofu.png` + `now-font-quotes-zoom.png`）。
   此前 Droid 下画成斜纹系字形缺失、非上屏码点错，平台层盲区以实机反证闭合。
-  `——`/`￥`/`、`/`·` 四键在 Droid 下同为斜纹无法判读码点，文津下实机截图尚未取得；
-  宿主测试已覆盖，按「不臆造」不写 PASS，留待 owner 补打取证。
+- **四键实机 PASS（2026-11-23 21:36）**：owner 在同一 Notepad 补打 `—— ￥ 、 ·`，agent 抓图
+  `m0/vm/evidence/now-fourkeys-20261123.png` + 放大 `now-fourkeys-zoom.png`——五个字符逐字可辨
+  （两横破折号 / 人民币 / 顿号 / 间隔号），状态栏 Line 5 column 9 与字符数吻合。此前 Droid 斜纹
+  确系字形缺失、非码点错误。**整条 AC9（引号交替 + 四个新键）全项 PASS**，平台层盲区闭合。
 
 ### M3 标点 shift 修复：键码映射 + 多码点上屏 + 热键预留（2026-11-23）
 
