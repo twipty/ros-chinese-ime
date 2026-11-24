@@ -18,9 +18,27 @@ fi
 # /tmp on this host is 10 MB; keep MinGW's temp files under the workbuddy dir.
 export TMPDIR="${TMPDIR:-/home/twipty/.workbuddy/tmp}"
 
-echo "== compiling glyph-probe.exe =="
-"$GXX" -mwindows -std=c++17 -O2 -I"$SCRIPT_DIR" \
+echo "== compiling glyph-probe.exe (static runtime: guest has no MinGW DLLs) =="
+# ReactOS ships no libgcc_s_dw2-1.dll / libstdc++-6.dll. A dynamic C++ runtime
+# link makes the exe fail to load in the guest with a misleading "missing DLL"
+# popup. The installer GUI uses the same -static policy (cmake/StaticRuntime.cmake).
+"$GXX" -mwindows -municode -std=c++17 -O2 -I"$SCRIPT_DIR" \
+    -static-libgcc -static-libstdc++ -static \
     "$SCRIPT_DIR/glyph_probe.cpp" -o "$OUT"
+
+# PE import gate: fail the build if a dynamic MinGW runtime DLL slipped back in.
+OBJDUMP="${MINGW_OBJDUMP:-${GXX%/*}/i686-w64-mingw32-objdump}"
+if [ -x "$OBJDUMP" ]; then
+    BAD=$("$OBJDUMP" -p "$OUT" 2>/dev/null \
+          | grep -iE 'DLL Name: (libgcc|libstdc\+\+|libwinpthread)' || true)
+    if [ -n "$BAD" ]; then
+        echo "ERROR: glyph-probe.exe has dynamic MinGW runtime dependency:" >&2
+        echo "$BAD" >&2
+        echo "Guest ReactOS does not ship these DLLs." >&2
+        exit 3
+    fi
+    echo "== PE import gate: no dynamic MinGW runtime DLLs =="
+fi
 
 echo "== artifact =="
 ls -la "$OUT"

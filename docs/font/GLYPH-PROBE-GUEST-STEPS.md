@@ -27,7 +27,18 @@
 ```bat
 cd \
 wget http://10.0.2.2:8000/glyph-probe.exe
+rhash --sha256 C:\glyph-probe.exe
 ```
+
+核对 SHA256（当前构建，2026-11-24 静态运行时修复版）：
+`298551ecffdde81a671ad44adc9e2dac3a56cbbd3cd1eea494d43c414a2b2418`
+
+> **如果双击报「缺少 DLL / 无法启动」**：那一定拿到旧版了。旧版动态链接了
+> `libgcc_s_dw2-1.dll` + `libstdc++-6.dll`（MinGW 的 C++ 运行时），ReactOS 系统里
+> 没有这两个 DLL。当前版本已用 `-static` 静态链接，只依赖系统自带的
+> `GDI32/KERNEL32/msvcrt/USER32`（与已实机跑通的安装器 GUI 完全一致）。
+> 重新下载并用上面的 SHA256 核对即可。这不涉及任何相对路径问题——结果文件
+> 路径由 `GetModuleFileNameW` 取 exe 所在目录，是绝对路径。
 
 字体三件套如果 guest 里还没有，从本地 HTTP 取（注意：官方包是 7z，这里是已经解压好的裸 TTF）：
 

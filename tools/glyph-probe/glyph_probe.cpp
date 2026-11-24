@@ -161,27 +161,52 @@ std::wstring exe_dir_file(const wchar_t* name) {
     return p + name;
 }
 
+// Append a UTF-16 string to an ASCII/UTF-8 buffer as UTF-8 bytes. Kept local
+// so the result file needs no CRT wide-stream functions (see write_result).
+void append_utf8(std::string& out, const wchar_t* s) {
+    if (!s) return;
+    const int n = WideCharToMultiByte(CP_UTF8, 0, s, -1, nullptr, 0, nullptr, nullptr);
+    if (n <= 1) return;  // empty string (only NUL)
+    const std::size_t start = out.size();
+    out.resize(start + static_cast<std::size_t>(n) - 1);  // drop source NUL
+    WideCharToMultiByte(CP_UTF8, 0, s, -1, &out[start], n - 1, nullptr, nullptr);
+}
+
+// Build the whole report in memory, then write it with CreateFileW/WriteFile.
+// Rationale: _wfopen_s is a C11 Annex K function that ReactOS msvcrt may not
+// export, and fwprintf pulls CRT locale state. Pure Win32 removes both risks
+// and keeps the result file byte-identical across host and guest.
 void write_result(const std::vector<std::vector<Cell>>& grid, const GdiApi& api) {
-    FILE* f = nullptr;
-    _wfopen_s(&f, exe_dir_file(L"glyph-probe-result.txt").c_str(), L"w, ccs=UTF-8");
-    if (!f) return;
-    std::fwprintf(f, L"# glyph-probe-result v1\n");
-    std::fwprintf(f, L"# api.GetGlyphIndicesW=%s fallback=%s\n",
-                  api.get_glyph_indices ? L"yes" : L"no",
-                  api.get_glyph_indices ? L"no" : L"UnicodeRanges");
-    std::fwprintf(f, L"codepoint\tface\tverdict\tglyph_index\tvia\n");
+    std::string text;
+    text += "# glyph-probe-result v1\n";
+    text += "# api.GetGlyphIndicesW=";
+    text += api.get_glyph_indices ? "yes" : "no";
+    text += " fallback=";
+    text += api.get_glyph_indices ? "no" : "UnicodeRanges";
+    text += "\ncodepoint\tface\tverdict\tglyph_index\tvia\n";
     for (std::size_t r = 0; r < kTestPointsCount(); ++r) {
         for (std::size_t c = 0; c < sizeof(kFaces) / sizeof(kFaces[0]); ++c) {
             const Cell& cell = grid[r][c];
-            std::fwprintf(f, L"U+%04X\t%s\t%s\t%u\t%s\n",
-                          kTestPoints[r].cp,
-                          kFaces[c].label,
-                          cell_text(cell.verdict).c_str(),
+            char line[256];
+            std::snprintf(line, sizeof(line), "U+%04X\t", kTestPoints[r].cp);
+            text += line;
+            append_utf8(text, kFaces[c].label);
+            text += "\t";
+            append_utf8(text, cell_text(cell.verdict).c_str());
+            std::snprintf(line, sizeof(line), "\t%u\t%s\n",
                           static_cast<unsigned>(cell.glyph),
-                          cell.using_fallback ? L"UnicodeRanges" : L"GlyphIndices");
+                          cell.using_fallback ? "UnicodeRanges" : "GlyphIndices");
+            text += line;
         }
     }
-    std::fclose(f);
+
+    HANDLE h = CreateFileW(exe_dir_file(L"glyph-probe-result.txt").c_str(),
+                           GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+                           FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (h == INVALID_HANDLE_VALUE) return;
+    DWORD written = 0;
+    WriteFile(h, text.data(), static_cast<DWORD>(text.size()), &written, nullptr);
+    CloseHandle(h);
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
@@ -250,7 +275,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 
 }  // namespace
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
+// -municode entry point, matching the installer GUI. This keeps the CRT
+// startup symbols (__wgetmainargs/__p__wcmdln) identical to the installer, so
+// "installer runs on the guest" implies "probe runs on the guest".
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow) {
     WNDCLASSW wc = {};
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;
