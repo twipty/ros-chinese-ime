@@ -87,6 +87,39 @@ inline std::uint32_t decode_utf16(const std::uint16_t* units, int len) {
     return 0xFFFFFFFFu;  // invalid sequence
 }
 
+// Verdict for the extent-based probe (the non-BMP-capable replacement for
+// GetGlyphIndicesW). Unknown is distinct from NoGlyph: it means "the API used
+// cannot answer for this codepoint", never "the font lacks the glyph".
+enum class ProbeVerdict : std::uint8_t {
+    HasGlyph = 0,
+    NoGlyph = 1,
+    Unknown = 2,
+};
+
+// Decide a glyph-availability verdict from two rendered pixel buffers.
+//
+// Advance width is NOT a usable signal for WenJin Mincho: it is monospaced, so
+// every glyph including .notdef advances 1000/1000 em. The reliable signal is
+// the rendered pixels themselves. The tool renders the codepoint under test
+// and a known-absent noncharacter (U+10FFFF) with the same font into two equally
+// sized buffers; this function compares them.
+//
+//   a, b              - pixel buffers (raw BITMAPINFO RGB bytes) of equal size
+//   len               - number of bytes to compare; 0 => Unknown
+//   surrogate_capable - true when the render path combines UTF-16 surrogate
+//                       pairs (TextOutW on ReactOS does, per freetype.c:6949).
+//
+// Identical pixels => the codepoint rendered as .notdef => NoGlyph.
+// Any differing pixel => a real glyph was drawn => HasGlyph.
+inline ProbeVerdict render_verdict(const std::uint8_t* a, const std::uint8_t* b,
+                                   std::size_t len, bool surrogate_capable) {
+    if (!surrogate_capable || len == 0 || !a || !b) return ProbeVerdict::Unknown;
+    for (std::size_t i = 0; i < len; ++i) {
+        if (a[i] != b[i]) return ProbeVerdict::HasGlyph;
+    }
+    return ProbeVerdict::NoGlyph;
+}
+
 }  // namespace glyph_probe
 
 #endif  // ROSPINYIN_GLYPH_PROBE_LOGIC_HPP

@@ -112,6 +112,47 @@ int main() {
         }
     }
 
+    // Render-based verdict for non-BMP: GetGlyphIndicesW does NOT combine
+    // surrogate pairs on ReactOS (freetype.c:7642), and advance width cannot
+    // distinguish glyphs either because WenJin is monospaced (every glyph,
+    // including .notdef, has advance 1000/1000 em). The only reliable signal is
+    // PIXELS: render the codepoint and a known-absent noncharacter (U+10FFFF)
+    // with the same font into equally-sized buffers; if the pixels are
+    // identical the codepoint fell back to .notdef (no glyph), otherwise a
+    // real glyph was drawn. Pin the pixel-comparison + verdict rule as a host
+    // pure function (Win32 rendering stays in the GUI tool).
+    using glyph_probe::render_verdict;
+    using glyph_probe::ProbeVerdict;
+    {
+        const std::uint8_t a[4] = {0, 0, 0, 0};  // blank / .notdef render
+        const std::uint8_t same[4] = {0, 0, 0, 0};
+        const std::uint8_t diff[4] = {0, 1, 0, 0};
+        const bool capable = true;  // TextOutW combines pairs on ReactOS
+        if (render_verdict(a, same, 4, capable) != ProbeVerdict::NoGlyph) {
+            std::fprintf(stderr, "glyph_probe_logic test failed: identical pixels must be NoGlyph\n");
+            ++failures;
+        }
+        if (render_verdict(a, diff, 4, capable) != ProbeVerdict::HasGlyph) {
+            std::fprintf(stderr, "glyph_probe_logic test failed: differing pixels must be HasGlyph\n");
+            ++failures;
+        }
+        if (render_verdict(a, a, 4, false) != ProbeVerdict::Unknown) {
+            std::fprintf(stderr, "glyph_probe_logic test failed: non-surrogate-capable must be Unknown\n");
+            ++failures;
+        }
+        // Empty/zero-length render is unusable -> Unknown, never NoGlyph.
+        if (render_verdict(a, same, 0, capable) != ProbeVerdict::Unknown) {
+            std::fprintf(stderr, "glyph_probe_logic test failed: empty buffer must be Unknown\n");
+            ++failures;
+        }
+        // A different pixel beyond the first word still counts.
+        const std::uint8_t diff_late[4] = {0, 0, 0, 9};
+        if (render_verdict(a, diff_late, 4, capable) != ProbeVerdict::HasGlyph) {
+            std::fprintf(stderr, "glyph_probe_logic test failed: must scan whole buffer\n");
+            ++failures;
+        }
+    }
+
     if (failures) {
         std::fprintf(stderr, "%d glyph_probe_logic check(s) failed\n", failures);
         return 1;

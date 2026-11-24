@@ -15,6 +15,7 @@
 
 #include <cstdio>
 #include <cstdint>
+#include <cstring>
 #include <cwchar>
 #include <string>
 #include <vector>
@@ -51,13 +52,60 @@ const Face kFaces[] = {
     {L"WenJin Mincho Plane 3", L"WJ-P3"},
 };
 
-enum class Verdict { HasGlyph, NoGlyph, ApiUnavailable };
+enum class Verdict { HasGlyph, NoGlyph, ApiUnavailable, Unknown };
 
 struct Cell {
     Verdict verdict = Verdict::ApiUnavailable;
     std::uint16_t glyph = 0;
     bool using_fallback = false;
+    const wchar_t* via = L"GlyphIndices";  // measurement method for this cell
 };
+
+// get_glyph_index via GetGlyphIndicesW is accurate for BMP but on ReactOS
+// explicitly does NOT combine surrogate pairs (freetype.c:7642). Advance width
+// is no help either: WenJin is monospaced (every glyph, .notdef included, is
+// 1000/1000 em), so widths are identical whether a glyph exists or not.
+// The reliable signal is PIXELS: render the codepoint and a known-absent
+// noncharacter (U+10FFFF) with the same font into two offscreen bitmaps and
+// compare. ReactOS TextOutW goes through the surrogate-pair-aware paint path
+// (freetype.c:6949 Utf32FromSurrogatePair), so real Ext B/C glyphs do draw.
+constexpr int kGlyphTile = 40;  // 40x40 px offscreen tile per render
+
+// Render one text run into a 40x40 32-bpp DIB section using the given font.
+// Returns raw BGRA bytes; blank background is 0. Empty on failure.
+std::vector<std::uint8_t> render_tile(const wchar_t* text, int units, HFONT font) {
+    std::vector<std::uint8_t> pixels(
+        static_cast<std::size_t>(kGlyphTile) * kGlyphTile * 4, 0);
+    HDC screen = GetDC(nullptr);
+    if (!screen) return pixels;
+    HDC mem = CreateCompatibleDC(screen);
+    BITMAPINFO bi{};
+    bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bi.bmiHeader.biWidth = kGlyphTile;
+    bi.bmiHeader.biHeight = kGlyphTile;  // top-down
+    bi.bmiHeader.biPlanes = 1;
+    bi.bmiHeader.biBitCount = 32;
+    bi.bmiHeader.biCompression = BI_RGB;
+    void* bits = nullptr;
+    HBITMAP bmp = CreateDIBSection(mem, &bi, DIB_RGB_COLORS, &bits, nullptr, 0);
+    if (bmp && bits) {
+        HGDIOBJ old_bmp = SelectObject(mem, bmp);
+        HGDIOBJ old_font = SelectObject(mem, font);
+        RECT r{0, 0, kGlyphTile, kGlyphTile};
+        FillRect(mem, &r, reinterpret_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
+        SetBkMode(mem, TRANSPARENT);
+        SetTextColor(mem, RGB(0, 0, 0));
+        TextOutW(mem, 2, 2, text, units);
+        GdiFlush();
+        std::memcpy(pixels.data(), bits, pixels.size());
+        SelectObject(mem, old_font);
+        SelectObject(mem, old_bmp);
+        DeleteObject(bmp);
+    }
+    DeleteDC(mem);
+    ReleaseDC(nullptr, screen);
+    return pixels;
+}
 
 // Dynamically resolve GetGlyphIndicesW; ReactOS may or may not export it.
 using GetGlyphIndicesFn = UINT(WINAPI*)(HDC, LPCWSTR, int, LPWORD, DWORD);
@@ -80,6 +128,28 @@ struct GdiApi {
 };
 
 std::size_t kTestPointsCount() { return sizeof(kTestPoints) / sizeof(kTestPoints[0]); }
+
+// Self-test for the pixel-render path: U+4E2D in Plane-0 font MUST render
+// differently from the U+10FFFF noncharacter baseline. If offscreen rendering
+// is broken on this OS (e.g. CreateDIBSection/TextOutW), both are blank and the
+// comparison would falsely say "no glyph" for every cell. Detect that here and
+// surface it in the result header so the data is never silently trusted.
+bool pixel_path_selftest_ok() {
+    HFONT font = CreateFontW(-20, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                             DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
+                             CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
+                             DEFAULT_PITCH | FF_DONTCARE, L"WenJin Mincho Plane 0");
+    if (!font) return false;
+    const wchar_t known[2] = {0x4E2D, 0};  // HAS on P0 in prior guest run
+    std::uint16_t nd[2] = {0, 0};
+    const int nd_n = glyph_probe::encode_utf16(0x10FFFF, nd);
+    const wchar_t ndc[3] = {static_cast<wchar_t>(nd[0]), static_cast<wchar_t>(nd[1]), 0};
+    const auto a = render_tile(known, 1, font);
+    const auto b = render_tile(ndc, nd_n, font);
+    DeleteObject(font);
+    return glyph_probe::render_verdict(a.data(), b.data(), a.size(), true) ==
+           glyph_probe::ProbeVerdict::HasGlyph;
+}
 
 // Fallback: does the selected font's cmap claim the codepoint?
 // GLYPHSET layout returned by GetFontUnicodeRanges:
@@ -129,21 +199,48 @@ Cell probe_cell(HDC dc, const Face& face, std::uint32_t cp, const GdiApi& api) {
     const int n = glyph_probe::encode_utf16(cp, units);
     wchar_t text[3] = {static_cast<wchar_t>(units[0]),
                        static_cast<wchar_t>(units[1]), 0};
-    if (api.get_glyph_indices) {
-        WORD index = 0;
-        UINT got = api.get_glyph_indices(dc, text, n, &index, 0);
-        if (got == n && index != 0 && index != 0xFFFF) {
+
+    if (cp <= 0xFFFF) {
+        // BMP: GetGlyphIndicesW is accurate (verified: U+4E2D/U+3400 -> P0 HAS).
+        if (api.get_glyph_indices) {
+            WORD index = 0;
+            UINT got = api.get_glyph_indices(dc, text, n, &index, 0);
+            if (got == n && index != 0 && index != 0xFFFF) {
+                out.verdict = Verdict::HasGlyph;
+                out.glyph = index;
+            } else if (got == n) {
+                out.verdict = Verdict::NoGlyph;
+                out.glyph = index;
+            } else {
+                out.verdict = Verdict::ApiUnavailable;
+            }
+        } else if (unicode_range_claims(dc, cp)) {
             out.verdict = Verdict::HasGlyph;
-            out.glyph = index;
-        } else if (got == n) {
-            out.verdict = Verdict::NoGlyph;
-            out.glyph = index;
+            out.using_fallback = true;
+            out.via = L"UnicodeRanges";
         } else {
-            out.verdict = Verdict::ApiUnavailable;
+            out.verdict = Verdict::NoGlyph;
+            out.using_fallback = true;
+            out.via = L"UnicodeRanges";
         }
     } else {
-        out.verdict = unicode_range_claims(dc, cp) ? Verdict::HasGlyph : Verdict::NoGlyph;
-        out.using_fallback = true;
+        // Non-BMP: neither GetGlyphIndicesW (no surrogate support,
+        // freetype.c:7642) nor advance width (WenJin is monospaced) can answer.
+        // Render the surrogate pair and U+10FFFF (noncharacter, absent from
+        // every font) with THIS font into offscreen tiles and compare pixels.
+        // TextOutW combines surrogate pairs on ReactOS (freetype.c:6949).
+        std::uint16_t nd_units[2] = {0, 0};
+        const int nd_n = glyph_probe::encode_utf16(0x10FFFF, nd_units);
+        const wchar_t nd_text[3] = {static_cast<wchar_t>(nd_units[0]),
+                                    static_cast<wchar_t>(nd_units[1]), 0};
+        const std::vector<std::uint8_t> target_px = render_tile(text, n, font);
+        const std::vector<std::uint8_t> notdef_px = render_tile(nd_text, nd_n, font);
+        const glyph_probe::ProbeVerdict pv = glyph_probe::render_verdict(
+            target_px.data(), notdef_px.data(), target_px.size(), true);
+        out.verdict = pv == glyph_probe::ProbeVerdict::HasGlyph   ? Verdict::HasGlyph
+                      : pv == glyph_probe::ProbeVerdict::NoGlyph ? Verdict::NoGlyph
+                                                                 : Verdict::Unknown;
+        out.via = L"Pixels";
     }
     // Note: glyph drawing happens in WM_PAINT with per-face fonts, not here.
     // This measurement DC must not paint (0,0) -- that was a redundant draw.
@@ -158,6 +255,7 @@ std::wstring cell_text(Verdict v) {
         case Verdict::HasGlyph: return L"HAS";
         case Verdict::NoGlyph: return L"NONE";
         case Verdict::ApiUnavailable: return L"API?";
+        case Verdict::Unknown: return L"UNK?";
     }
     return L"?";
 }
@@ -186,14 +284,19 @@ void append_utf8(std::string& out, const wchar_t* s) {
 // Rationale: _wfopen_s is a C11 Annex K function that ReactOS msvcrt may not
 // export, and fwprintf pulls CRT locale state. Pure Win32 removes both risks
 // and keeps the result file byte-identical across host and guest.
-void write_result(const std::vector<std::vector<Cell>>& grid, const GdiApi& api) {
+void write_result(const std::vector<std::vector<Cell>>& grid, const GdiApi& api,
+                  bool selftest_ok) {
     std::string text;
-    text += "# glyph-probe-result v1\n";
+    text += "# glyph-probe-result v2\n";
+    text += "# bmp=GetGlyphIndicesW nonbmp=TextOutW-pixels(notdef=U+10FFFF)\n";
+    text += "# pixel_selftest=";
+    text += selftest_ok ? "OK (U+4E2D@P0 != U+10FFFF)"
+                        : "FAIL (offscreen render unreliable; non-BMP verdicts invalid)";
+    text += "\n";
     text += "# api.GetGlyphIndicesW=";
     text += api.get_glyph_indices ? "yes" : "no";
-    text += " fallback=";
-    text += api.get_glyph_indices ? "no" : "UnicodeRanges";
-    text += "\ncodepoint\tface\tverdict\tglyph_index\tvia\n";
+    text += " (BMP only; non-BMP via pixel render)\n";
+    text += "codepoint\tface\tverdict\tglyph_index\tvia\n";
     for (std::size_t r = 0; r < kTestPointsCount(); ++r) {
         for (std::size_t c = 0; c < sizeof(kFaces) / sizeof(kFaces[0]); ++c) {
             const Cell& cell = grid[r][c];
@@ -203,9 +306,11 @@ void write_result(const std::vector<std::vector<Cell>>& grid, const GdiApi& api)
             append_utf8(text, kFaces[c].label);
             text += "\t";
             append_utf8(text, cell_text(cell.verdict).c_str());
+            char via_ascii[32] = {0};
+            WideCharToMultiByte(CP_UTF8, 0, cell.via, -1, via_ascii, sizeof(via_ascii),
+                                nullptr, nullptr);
             std::snprintf(line, sizeof(line), "\t%u\t%s\n",
-                          static_cast<unsigned>(cell.glyph),
-                          cell.using_fallback ? "UnicodeRanges" : "GlyphIndices");
+                          static_cast<unsigned>(cell.glyph), via_ascii);
             text += line;
         }
     }
@@ -234,7 +339,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
                 }
             }
             ReleaseDC(hwnd, dc);
-            write_result(grid, api);
+            const bool selftest_ok = pixel_path_selftest_ok();
+            write_result(grid, api, selftest_ok);
             return 0;
         }
         case WM_PAINT: {
@@ -272,7 +378,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
                     wchar_t text[3] = {static_cast<wchar_t>(units[0]),
                                        static_cast<wchar_t>(units[1]), 0};
                     TextOutW(dc, x, y, text, n);
-                    TextOutW(dc, x + 24, y, cell_text(grid[r][c].verdict).c_str(), 4);
+                    const std::wstring vt = cell_text(grid[r][c].verdict);
+                    TextOutW(dc, x + 24, y, vt.c_str(), static_cast<int>(vt.size()));
                     SelectObject(dc, old);
                     DeleteObject(font);
                 }

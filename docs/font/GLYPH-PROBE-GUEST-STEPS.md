@@ -30,13 +30,17 @@ wget http://10.0.2.2:8000/glyph-probe.exe
 rhash --sha256 C:\glyph-probe.exe
 ```
 
-核对 SHA256（当前构建，2026-11-24 静态运行时 + UTF-16 代理对修复版）：
-`733554b1edf2310e10378c7e81f5f441a6bb06c43e3124fc2c51623d70dff991`
+核对 SHA256（当前构建，2026-11-24 像素渲染修复版）：
+`2bf04d6682af0a0e9a8ee5e68becbfb0f7a0ce2b5fb67d7d7cd519204f1fa215`
 
-> **重要：扩展区码点必须用 UTF-16 代理对传给 GDI。** 上一版用
-> `static_cast<wchar_t>(cp)` 把 U+20000 截断成 U+0000，导致所有扩展 B/C 格
-> 显示假 `NONE`（不是字体没装好）。当前版已修，并在宿主测试里钉死编码。
-> 若你之前跑出的矩阵里 WJ-P2/WJ-P3 扩展区全是 NONE，那是旧版的假阴性，请用新版重跑。
+> **重要：非 BMP 码点不能靠 GetGlyphIndicesW 检测。** 上一版虽已用 UTF-16 代理对，
+> 但仍用 `GetGlyphIndicesW` 查询——ReactOS 源码明确注释该函数**不支持代理对**
+> （逐 WCHAR 拆分查高/低代理项），导致所有扩展 B/C 格再次显示假 `NONE`。
+> 另外 advance width 也无效：文津是等宽字体，所有字形（含 notdef）宽度都是 1000。
+> 当前版改用**像素渲染对比**：用同一字体把码点和 U+10FFFF（非字符，任何字体都没有）
+> 画到离屏位图比像素（ReactOS `TextOutW` 支持代理对）。结果文件头有一行
+> `pixel_selftest=OK/FAIL`——**必须看到 OK**，否则说明离屏渲染不可靠、非 BMP 数据无效。
+> 若你之前跑出的矩阵里 WJ-P2/WJ-P3 扩展区全是 NONE，那是旧版假阴性，请用新版重跑。
 
 > **如果双击报「缺少 DLL / 无法启动」**：那一定拿到旧版了。旧版动态链接了
 > `libgcc_s_dw2-1.dll` + `libstdc++-6.dll`（MinGW 的 C++ 运行时），ReactOS 系统里
