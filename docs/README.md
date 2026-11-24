@@ -80,6 +80,7 @@
 | [FULL-GLYPH-COVERAGE-PLAN.md](font/FULL-GLYPH-COVERAGE-PLAN.md) | 方案 A（已被取代）：全量字形覆盖推算；§6 非 BMP 渲染退路仍有效 |
 | [FONT-BUNDLING-ASSESSMENT.md](font/FONT-BUNDLING-ASSESSMENT.md) | 是否捆绑字体的早期评估：体积、授权、P1/P2 风险清单 |
 | [RARE-CHAR-AND-GLYPH-SOLUTION.md](font/RARE-CHAR-AND-GLYPH-SOLUTION.md) | 生僻字与字形过滤的完整方案：rank 语义、渲染可见性、入口策略 |
+| [GLYPH-PROBE-GUEST-STEPS.md](font/GLYPH-PROBE-GUEST-STEPS.md) | P1 验证阶段：guest 内 GDI 字体族名回退探测工具的手工步骤与数据判读表（先验证、不实现） |
 
 ### reviews/ — 跨切面评估
 

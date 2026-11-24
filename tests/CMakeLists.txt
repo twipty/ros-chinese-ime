@@ -124,6 +124,13 @@ target_include_directories(rospinyin-installer-logic PRIVATE
     "${PROJECT_SOURCE_DIR}/tools/install-rospinyin")
 add_test(NAME installer-logic COMMAND rospinyin-installer-logic)
 
+# P1 verification stage: pure codepoint -> WenJin plane mapping, shared by the
+# guest GDI probe tool. No <windows.h>; host-testable.
+add_executable(rospinyin-glyph-probe-logic glyph_probe_logic_test.cpp)
+target_include_directories(rospinyin-glyph-probe-logic PRIVATE
+    "${PROJECT_SOURCE_DIR}/tools/glyph-probe")
+add_test(NAME glyph-probe-logic COMMAND rospinyin-glyph-probe-logic)
+
 # Static M1 contract checks (exports, version resource, M0 red lines).
 find_program(ROSPINYIN_PYTHON NAMES python3 python QUIET)
 if(ROSPINYIN_PYTHON)
