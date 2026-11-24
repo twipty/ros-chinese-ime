@@ -85,15 +85,35 @@ rhash -c SHA256SUMS.txt
 
 工具同时在 exe 同目录生成 `glyph-probe-result.txt`（制表符分隔，可核对）。
 
-### 第 4 步：回传证据（三选一，从简到繁）
+### 第 4 步：回传证据（四种方式任选）
 
-结果文件是纯文本（约 1 KB），三种方式任选：
+结果文件是纯文本（约 1 KB），四种方式任选其一即可。截图**都要发**
+（要能看清每列字符和 HAS/NONE，用于判断字形是否真是方框）。
 
-**方式 A（最简单，推荐）· 直接贴文本**：在记事本里打开 `C:\glyph-probe-result.txt`，
-`Ctrl+A` 全选 → `Ctrl+C` 复制，然后直接粘贴到 WorkBuddy 对话框发给我。
-窗口截图也一并发来（要能看清每列字符和 HAS/NONE，用于判断字形是否真是方框）。
+**方式 A · 直接贴文本**：记事本打开 `C:\glyph-probe-result.txt`，
+`Ctrl+A` → `Ctrl+C`，粘贴到 WorkBuddy 对话框发给我。
 
-**方式 B · 串口重定向（无需网络）**：VM 已把 guest 的 COM1 映射到宿主文件
+**方式 B · FTP 上传（全自动，推荐）**：宿主已起 FTP 接收服务（匿名可写，
+`10.0.2.2:2121`，被动端口 60000–60099）。HTTP 目录挂了一个极简上传器
+`ftpput.exe`，下载后双击即把 `C:\glyph-probe-result.txt` 传到宿主，弹窗显示 OK 即成功：
+
+```bat
+cd \
+wget http://10.0.2.2:8000/ftpput.exe
+rhash --sha256 C:\ftpput.exe
+ftpput.exe
+```
+
+核对 SHA256：`7fd17575c01c844b8ec3bea977072f3d9efbad43ef554696af6a6518e45f5697`。
+双击 `ftpput.exe`（或命令行直接敲 `ftpput.exe`）——它读 `C:\glyph-probe-result.txt`，
+连 FTP 服务上传；成功弹 `OK - uploaded`，失败弹具体原因（连不上 / 读不到文件等）。
+上传后**告诉我一声**，我去宿主 `m0/vm/uploads/glyph-probe-result.txt` 取回并核对哈希。
+- 传别的文件：`ftpput.exe "C:\other\file.txt"`（远程文件名取 basename）。
+- 需要先有结果文件（第 3 步已生成）；上传器不依赖字体，纯 WinSock，静态链接，
+  只导入 `KERNEL32/USER32/WS2_32/msvcrt`（ReactOS 自带），已实机验证协议序列。
+- 若弹「Cannot connect to 10.0.2.2:2121」：宿主 FTP 服务没起，跟我说我重启它。
+
+**方式 C · 串口重定向（无需网络）**：VM 已把 guest 的 COM1 映射到宿主文件
 `m0/vm/logs/rosdbg.log`。在 guest 命令行执行：
 
 ```bat
@@ -102,8 +122,8 @@ type C:\glyph-probe-result.txt > COM1
 
 然后告诉我一声，我直接读宿主那份日志。注意这是**追加**写，重跑前我会先清空。
 
-**方式 C · HTTP 上传**：当前 HTTP 服务只支持下载（guest 的 wget 不支持 POST），
-需要我在宿主另起接收端点，用前先跟我说，我给你一条上传命令。
+**方式 D · HTTP 上传**：仅 wget 不支持 POST，需我在宿主另起接收端点；
+方式 B 已覆盖此需求，通常不必用。
 
 无论哪种方式，都请同时回传结果文件的 SHA256，便于核对是否传完整：
 

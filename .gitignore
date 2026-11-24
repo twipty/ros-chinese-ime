@@ -55,6 +55,8 @@ m0/vm/evidence/
 m0/vm/snapshots/
 m0/vm/*.broken-*
 m0/vm/tools.iso
+# FTP receiver uploads (guest-produced result logs) are local verification state.
+m0/vm/uploads/
 # Downloaded ISOs/archives/installers are local build inputs, never commit.
 m0/downloads/
 
