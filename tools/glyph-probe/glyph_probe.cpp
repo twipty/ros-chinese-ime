@@ -24,21 +24,11 @@
 
 namespace {
 
-struct TestCp {
-    std::uint32_t cp;
-    const wchar_t* label;
-};
-
-// One representative per plane plus boundaries and a known BMP control.
-const TestCp kTestPoints[] = {
-    {0x4E2D, L"U+4E2D BMP 中"},
-    {0x3400, L"U+3400 ExtA start"},
-    {0x20000, L"U+20000 ExtB start"},
-    {0x2A6E0, L"U+2A6E0 ExtB"},
-    {0x2B81E, L"U+2B81E ExtD"},
-    {0x30000, L"U+30000 ExtG start"},
-    {0x31350, L"U+31350 ExtH start"},
-};
+// Test points live in the shared pure header (glyph_probe_logic.hpp) so the
+// host test and this GUI tool can never drift apart. One representative per
+// plane plus boundaries and a known BMP control; all are Unicode-assigned CJK.
+using glyph_probe::ProbePoint;
+const ProbePoint* kTestPoints = glyph_probe::kProbePoints;
 
 struct Face {
     const wchar_t* name;   // nullptr == system default ("MS Shell Dlg")
@@ -127,7 +117,9 @@ struct GdiApi {
     }
 };
 
-std::size_t kTestPointsCount() { return sizeof(kTestPoints) / sizeof(kTestPoints[0]); }
+std::size_t kTestPointsCount() {
+    return sizeof(glyph_probe::kProbePoints) / sizeof(glyph_probe::kProbePoints[0]);
+}
 
 // Self-test for the pixel-render path: U+4E2D in Plane-0 font MUST render
 // differently from the U+10FFFF noncharacter baseline. If offscreen rendering

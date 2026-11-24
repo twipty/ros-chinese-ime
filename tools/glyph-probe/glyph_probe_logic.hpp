@@ -87,6 +87,42 @@ inline std::uint32_t decode_utf16(const std::uint16_t* units, int len) {
     return 0xFFFFFFFFu;  // invalid sequence
 }
 
+// Single source of truth for the guest probe matrix. Both the Win32 GUI tool
+// and the host test consume this table, so a test point can never drift out of
+// sync between what is displayed and what is asserted.
+struct ProbePoint {
+    std::uint32_t cp;
+    const wchar_t* label;
+};
+
+// Unicode 15.1 assigned CJK unified-ideograph ranges. A probe point outside
+// these ranges is unassigned: TextOutW can still map it to some cmap entry, but
+// the result is meaningless as a coverage signal (and often reads as NONE),
+// which is exactly why U+2A6E0 / U+2B81E produced an unanswerable matrix.
+inline bool is_assigned_cjk(std::uint32_t cp) {
+    if (cp >= 0x4E00 && cp <= 0x9FFF) return true;   // basic
+    if (cp >= 0x3400 && cp <= 0x4DBF) return true;   // Ext A
+    if (cp >= 0x20000 && cp <= 0x2A6DF) return true; // Ext B
+    if (cp >= 0x2A700 && cp <= 0x2B73F) return true; // Ext C
+    if (cp >= 0x2B740 && cp <= 0x2B81D) return true; // Ext D
+    if (cp >= 0x2B820 && cp <= 0x2CEAF) return true; // Ext E
+    if (cp >= 0x2CEB0 && cp <= 0x2EBEF) return true; // Ext F
+    if (cp >= 0x2EBF0 && cp <= 0x2EE5D) return true; // Ext I
+    if (cp >= 0x30000 && cp <= 0x3134A) return true; // Ext G
+    if (cp >= 0x31350 && cp <= 0x323AF) return true; // Ext H
+    return false;
+}
+
+inline constexpr ProbePoint kProbePoints[] = {
+    {0x4E2D,  L"U+4E2D BMP 中"},
+    {0x3400,  L"U+3400 ExtA start"},
+    {0x20000, L"U+20000 ExtB start"},
+    {0x2A700, L"U+2A700 ExtC start"},
+    {0x2B740, L"U+2B740 ExtD start"},
+    {0x30000, L"U+30000 ExtG start"},
+    {0x31350, L"U+31350 ExtH start"},
+};
+
 // Verdict for the extent-based probe (the non-BMP-capable replacement for
 // GetGlyphIndicesW). Unknown is distinct from NoGlyph: it means "the API used
 // cannot answer for this codepoint", never "the font lacks the glyph".

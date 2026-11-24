@@ -30,8 +30,12 @@ wget http://10.0.2.2:8000/glyph-probe.exe
 rhash --sha256 C:\glyph-probe.exe
 ```
 
-核对 SHA256（当前构建，2026-11-24 像素渲染修复版）：
-`2bf04d6682af0a0e9a8ee5e68becbfb0f7a0ce2b5fb67d7d7cd519204f1fa215`
+核对 SHA256（当前构建，2026-11-24 补测修正版：测试点改到已分配码点 U+2A700/U+2B740）：
+`99994406b4c58f5141aa6c4afbc0842003a960f3642e54dd8c6fcd1e403a62c9`
+
+> 上一版 `2bf04d6682af0a0e9a8ee5e68becbfb0f7a0ce2b5fb67d7d7cd519204f1fa215`
+> 的测试点 U+2A6E0/U+2B81E 落在 Unicode 未分配区，那两行 NONE 无意义、无法回答 ExtC 覆盖。
+> 如果你手上是上一版哈希，请重新下载本版重跑。
 
 > **重要：非 BMP 码点不能靠 GetGlyphIndicesW 检测。** 上一版虽已用 UTF-16 代理对，
 > 但仍用 `GetGlyphIndicesW` 查询——ReactOS 源码明确注释该函数**不支持代理对**
@@ -139,7 +143,8 @@ rhash --sha256 C:\glyph-probe-result.txt
 
 | 观察 | 结论 | 后续 P1 路线 |
 |---|---|---|
-| `Plane 2` 列在 U+20000/U+2A6E0 行全是 `HAS`，截图非方框 | Q1 成立：单族名可画本平面字形 | 候选窗可按平面加族名到字体链 |
+| `Plane 2` 列在 U+20000/U+2A700/U+2B740 行是 `HAS`，截图非方框 | Q1 成立：单族名可画本平面字形 | 候选窗可按平面加族名到字体链 |
+| U+2A700（ExtC 起点）/ U+2B740（ExtD 起点）行全 `NONE` | 文津 P2 真实缺少 ExtC/ExtD 覆盖 | 另开 S0 评估补字体，不在本轮范围 |
 | `Plane 0` 列在 U+20000 行也是 `HAS` | Q2 成立：GDI 自动跨族名回退 | 最小改法——只把文津族名加进 `kFontFaces` |
 | `Plane 0` 列在 U+20000 行是 `NONE` | Q2 不成立：必须按平面分别选字体 | 按码点分段 `SelectObject` 自绘（改动更大，另开 S0） |
 | 全部 `API?` 且截图全是方框 | GDI 探测 API 与回退都不可用 | 需换方案（如字体二进制嵌入 + 自绘），另开 S0 |

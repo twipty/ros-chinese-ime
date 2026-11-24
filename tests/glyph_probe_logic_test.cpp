@@ -52,7 +52,7 @@ int main() {
     expect(0x20000, pick_plane_for_codepoint(0x20000), WenJinPlane::Plane2, "Ext B start");
     expect(0x2A6DF, pick_plane_for_codepoint(0x2A6DF), WenJinPlane::Plane2, "Ext B end");
     expect(0x2A700, pick_plane_for_codepoint(0x2A700), WenJinPlane::Plane2, "Ext C start");
-    expect(0x2B81E, pick_plane_for_codepoint(0x2B81E), WenJinPlane::Plane2, "Ext D (v2.100 new)");
+    expect(0x2B740, pick_plane_for_codepoint(0x2B740), WenJinPlane::Plane2, "Ext D start");
     expect(0x2CEAF, pick_plane_for_codepoint(0x2CEAF), WenJinPlane::Plane2, "Ext E end");
     expect(0x2EE5D, pick_plane_for_codepoint(0x2EE5D), WenJinPlane::Plane2, "Ext I end");
 
@@ -88,8 +88,8 @@ int main() {
         {0x4E2D,   1, 0x4E2D, 0x0000},  // BMP: one unit
         {0x3400,   1, 0x3400, 0x0000},  // Ext A is still BMP
         {0x20000,  2, 0xD840, 0xDC00},  // Ext B start -> surrogate pair
-        {0x2A6E0,  2, 0xD869, 0xDEE0},  // Ext B
-        {0x2B81E,  2, 0xD86E, 0xDC1E},  // Ext D
+        {0x2A700,  2, 0xD869, 0xDF00},  // Ext C start (assigned; replaced U+2A6E0 gap)
+        {0x2B740,  2, 0xD86D, 0xDF40},  // Ext D start (assigned; replaced U+2B81E gap)
         {0x30000,  2, 0xD880, 0xDC00},  // Ext G start
         {0x31350,  2, 0xD884, 0xDF50},  // Ext H start
     };
@@ -151,6 +151,30 @@ int main() {
             std::fprintf(stderr, "glyph_probe_logic test failed: must scan whole buffer\n");
             ++failures;
         }
+    }
+
+    // Probe matrix points must all be Unicode-assigned CJK codepoints. An
+    // unassigned point (e.g. U+2A6E0 in the ExtB/ExtC gap, U+2B81E past ExtD's
+    // end) yields a meaningless NONE and makes AC1(a) unanswerable. Pin both
+    // directions: real extension starts are assigned, the old gap points are not.
+    using glyph_probe::is_assigned_cjk;
+    using glyph_probe::kProbePoints;
+    for (const auto& p : kProbePoints) {
+        if (!is_assigned_cjk(p.cp)) {
+            std::fprintf(stderr,
+                         "glyph_probe_logic test failed: probe point U+%04X is not an "
+                         "assigned CJK codepoint (label: %ls)\n",
+                         static_cast<unsigned>(p.cp), p.label);
+            ++failures;
+        }
+    }
+    if (!is_assigned_cjk(0x2A700) || !is_assigned_cjk(0x2B740)) {
+        std::fprintf(stderr, "glyph_probe_logic test failed: ExtC/ExtD starts must be assigned\n");
+        ++failures;
+    }
+    if (is_assigned_cjk(0x2A6E0) || is_assigned_cjk(0x2B81E)) {
+        std::fprintf(stderr, "glyph_probe_logic test failed: old gap points must read unassigned\n");
+        ++failures;
     }
 
     if (failures) {
