@@ -239,6 +239,7 @@ ros-pinyin/
 | 装配 | `ime/scheme_reg.cpp` | 定义 `imfw::scheme_instance()`（唯一的 Scheme 注入点） | Win |
 | 数据编译 | `tools/mkdat/mkdat.cpp` | Unihan + hanziDB → `rospinyin.dat`（确定性输出） | 宿主 |
 | 安装器 | `tools/install-rospinyin/install.cpp` | `/step1..4` 分步注册、动态 HKL 记录、`/i` 串行（仅 Windows 参照机） | Win |
+| GUI 安装器 | `tools/install-rospinyin/gui.cpp` + `gui_res.rc` | 内嵌压缩 payload、平台白名单闸门、驱动 CLI step1..4；Windows 真机只走 CLI | Win |
 | 契约检查 | `tools/check_m1.py` | 109 项静态断言（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、ABI、reload 顺序…） | 宿主 |
 | 部署对账 | `tools/artifact_hashes.py` | 各构建产物与共享副本的 size/sha256 对照，标出"同字节数不同内容"与"共享目录不是这一版" | 宿主 |
 | guest 侧哈希 | `tools/rhash/rhash.c` | 自带 SHA-256 的小 exe：`rhash.exe [文件...]`，无参数时算 system32 的 `.ime`/`.dat`。只依赖 kernel32+msvcrt | Win |
@@ -311,9 +312,11 @@ cmake --build --preset win32-cross --parallel
 
 ### 6.4 安装到 ReactOS
 
-> **发布渠道纪律（决策 2026-11-19）**：下一个 release **必须以安装器版本发布**，
-> `install-rospinyin.exe /step1..4` 是首选路径——它的 `/step1` 把 `.ime + .dat`
+> **发布渠道纪律（决策 2026-11-19，2026-11-23 扩充）**：下一个 release **必须以安装器版本发布**。
+> 终态首选 `install-rospinyin-gui.exe`（双击安装/卸载；平台白名单当前只放行 ReactOS）；
+> 当前已验证的稳妥路径仍是 `install-rospinyin.exe /step1..4`——它的 `/step1` 把 `.ime + .dat`
 > 作为同一个带 size 校验的载荷拷贝，二者同生同死，不存在"装了 ime 没带 dat"的半安装态。
+> Windows 真机安装只使用 CLI `/step1../step4`，GUI 不会放行。
 > 下面的 wget+copy 手工路径**降级为备选**，仅用于诊断/开发机场景；用它时装漏 `.dat`
 > 会进入空表异常态（字母上屏进组合串、候选恒空、退格/Esc 退出——见
 > `tests/builtin_gate_test.cpp`），不再有内置表兜底（release 构建已去除）。

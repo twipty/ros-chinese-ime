@@ -1,0 +1,14 @@
+{
+  "generated_at": "2026-11-23 22:02:24",
+  "token": "e3cc7a7584a12c9b",
+  "message": "release: bump version to alpha0.0.3 with release notes",
+  "files": [
+    "docs/README.md",
+    "docs/releases/alpha0.0.3.md",
+    "ime/version.h"
+  ],
+  "major": true,
+  "suggested_tag": "",
+  "head": "f51497acf2a4d0a1e24b2e5f517023742dc05a37",
+  "worktree": "66ac9b184e17c22b"
+}

@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>研发闭环 · 报告看板</title><style>
+:root{--bg:#f7f8fa;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;
+--accent:#2563eb;--ok:#059669;--warn:#d97706;--bad:#dc2626;--code:#f3f4f6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+font:15px/1.7 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:32px 24px 64px}
+header.top{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:24px}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:.5px}
+.meta{color:var(--muted);font-size:13px}
+.meta span{margin-right:16px}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;
+font-weight:600;border:1px solid transparent}
+.pill.ok{background:#ecfdf5;color:var(--ok);border-color:#a7f3d0}
+.pill.warn{background:#fffbeb;color:var(--warn);border-color:#fde68a}
+.pill.gray{background:#f3f4f6;color:var(--muted);border-color:var(--line)}
+.pill.bad{background:#fef2f2;color:var(--bad);border-color:#fecaca}
+.gates{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;
+margin:0 0 28px}
+.gate{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.gate .st{font-size:12px;color:var(--muted);letter-spacing:1px}
+.gate .nm{font-size:14px;font-weight:600;margin:4px 0 8px}
+.gate .note{font-size:12px;color:var(--muted);margin-top:6px;
+overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin:0 0 24px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;
+padding:12px 18px;min-width:110px}
+.stat b{display:block;font-size:22px;line-height:1.2}
+.stat span{font-size:12px;color:var(--muted)}
+section.card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+padding:24px 28px;margin-bottom:20px}
+section.card>h2{margin:0 0 4px;font-size:19px}
+section.card>.src{color:var(--muted);font-size:12px;margin-bottom:16px}
+h3{font-size:16px;margin:22px 0 8px;padding-left:10px;border-left:3px solid var(--accent)}
+h4,h5,h6{font-size:15px;margin:18px 0 6px}
+p{margin:8px 0}
+code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:13px;
+font-family:"Cascadia Mono",Consolas,monospace}
+pre.code{background:#0f172a;color:#e2e8f0;padding:14px 16px;border-radius:8px;
+overflow:auto;font-size:13px;line-height:1.6}
+pre.code code{background:none;color:inherit;padding:0}
+.nav{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:14px 0;
+font-size:13px;color:var(--muted)}
+.nav a{color:var(--accent);text-decoration:none;padding:3px 9px;border-radius:6px;
+background:#eff6ff;border:1px solid #bfdbfe}
+.nav a:hover{background:#dbeafe}
+figure.diagram{margin:14px 0;padding:14px;background:#fff;border:1px solid var(--line);
+border-radius:10px;overflow:auto}
+figure.diagram svg{display:block;margin:0 auto}
+figure.diagram details{margin-top:8px}
+figure.diagram summary{cursor:pointer;color:var(--muted);font-size:12px}
+figure.diagram pre.code{margin-top:8px}
+.table-wrap{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border:1px solid var(--line);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:#f9fafb;font-weight:600;white-space:nowrap}
+tbody tr:nth-child(even){background:#fcfcfd}
+blockquote{margin:12px 0;padding:10px 16px;background:#f9fafb;
+border-left:3px solid var(--accent);color:#374151;border-radius:0 6px 6px 0}
+hr{border:0;border-top:1px solid var(--line);margin:20px 0}
+ul,ol{margin:8px 0;padding-left:22px}
+li{margin:4px 0}
+a{color:var(--accent)}
+.empty{color:var(--muted);font-style:italic}
+footer{color:var(--muted);font-size:12px;text-align:center;margin-top:32px}
+</style></head>
+<body><div class="wrap">
+<header class="top">
+  <h1>研发闭环 · 报告看板</h1>
+  <div class="meta">
+    <span>dev-loop 1.14.0</span>
+    <span>阶段 S2</span>
+    <span>轮次 自包含 GUI 安装器：内嵌 ime+dat，双击傻瓜式一键安装+卸载，红线不动（不写 Preload/不设默认 IME）</span>
+    <span>第 70 版</span>
+    <span>生成于 2026-11-23 22:46:16</span>
+    <span><a href="看板历史/看板-20261123-223839-069.html">← 上一版</a></span>
+  </div>
+</header>
+<div class="gates"><div class="gate"><div class="st">S0 · v1</div><div class="nm">需求澄清</div><span class="pill ok">已确认</span><div class="note" title="变体纳入S1然后确认">变体纳入S1然后确认</div></div><div class="gate"><div class="st">S1 · v3</div><div class="nm">需求影响面与技术方案</div><span class="pill warn">待确认</span><div class="note" title="S1 v3：平台闸门改为严格白名单（当前仅 ReactOS，libernt 等未登记兼容分支拒绝安装），Windows 真机安装明确走 CLI /step1../step4，路线 C 定案">S1 v3：平台闸门改为严格白名单（当前仅 ReactOS，libernt 等未登记兼容分支拒绝安装），Windows 真机安装明确走 CLI /step1../step4，路线 C 定案</div></div><div class="gate"><div class="st">S2</div><div class="nm">实现（TDD）</div><span class="pill gray">未登记</span></div><div class="gate"><div class="st">S3</div><div class="nm">变更审计</div><span class="pill gray">未登记</span></div><div class="gate"><div class="st">S4</div><div class="nm">文档同步</div><span class="pill gray">未登记</span></div><div class="gate"><div class="st">S5</div><div class="nm">健康检查</div><span class="pill gray">未登记</span></div><div class="gate"><div class="st">S6</div><div class="nm">缺陷定位与修复</div><span class="pill gray">未登记</span></div><div class="gate"><div class="st">S7</div><div class="nm">提交</div><span class="pill gray">未登记</span></div></div>
+<div class="stats"><div class="stat"><b>1</b><span>阶段已确认</span></div><div class="stat"><b>0</b><span>P0 实现问题</span></div><div class="stat"><b>0</b><span>P1 实现问题</span></div><div class="stat"><b>0</b><span>P2 建议</span></div><div class="stat"><b>0</b><span>未闭环项</span></div></div>
+<div class="nav"><span>跳到阶段：</span><a href="#stage-S0">S0 需求澄清</a><a href="#stage-S1">S1 需求影响面与技术方案</a><a href="#stage-S2">S2 实现（TDD）</a><a href="#stage-S3">S3 变更审计</a><a href="#stage-S4">S4 文档同步</a><a href="#stage-S5">S5 健康检查</a><a href="#stage-S6">S6 缺陷定位与修复</a><a href="#stage-S7">S7 提交</a></div>
+<section class="card" id="stage-S0"><h2>S0 · 需求澄清</h2><div class="src">.devloop/S0-需求澄清.md</div><h2>S0 需求澄清</h2>
+<ul>
+<li>生成时间：2026-11-23 22:12:44</li>
+<li>轮次：自包含 GUI 安装器：内嵌 ime+dat，双击傻瓜式一键安装+卸载，红线不动（不写 Preload/不设默认 IME）</li>
+<li>技术栈：C++ / Win32 / MinGW-w64 / CMake / windres；宿主侧纯 C++ 单测（无 MinGW）</li>
+<li>测试命令：宿主 <code>ctest --test-dir build --output-on-failure</code> + <code>ctest --test-dir build-host-off</code>；CI Windows job 构建 exe；guest 实机截图取证</li>
+</ul>
+<h3>需求原话</h3>
+<blockquote>可以把安装文件打包成一个exe或msi,安装时傻瓜式安装无需人工命令安装吗</blockquote>
+<blockquote>用户确认：自包含 GUI exe（推荐）——内嵌 ime+dat，双击一键安装+卸载；保留 /step1..4 给开发者验证；走完整 dev-loop 并发布新版 release。</blockquote>
+<h3>问答表</h3>
+<div class="table-wrap"><table><thead><tr><th>类别</th><th>问题</th><th>用户答案</th><th>对方案的影响</th></tr></thead><tbody>
+<tr><td>目标范围</td><td>这次要解决的具体问题是什么？（谁、什么场景、现在怎么难受）</td><td>最终用户首次安装：拿到一个 exe 双击就装好输入法，全程不碰命令行、不碰注册表</td><td>必须单文件 GUI，零命令行输入；内嵌 ime+dat，不依赖外部文件</td></tr>
+<tr><td>目标范围</td><td>涉及哪些入口（接口/页面/定时任务/消息）？有没有明确不做的范围？</td><td>功能只要一键安装 + 一键卸载；不设默认输入法（M0 0xF4 红线）</td><td>GUI 上放安装/卸载两个主按钮；不写 Preload、不设默认；状态查看不做</td></tr>
+<tr><td>边界异常</td><td>空值、默认值、超大值、重复提交分别怎么处理？</td><td>重复安装：检测到已装先弹确认框，用户点&quot;仍然安装&quot;才覆盖</td><td>需要安装前状态检测；确认后才走覆盖链（沿用 move-aside 退让）</td></tr>
+<tr><td>边界异常</td><td>失败/超时/重试要不要幂等？事务边界卡在哪一层？</td><td>分步显示&quot;正在拷贝/注册/写入…&quot;每步进度；失败给具体原因和下一步（如&quot;请重启后重试&quot;）</td><td>GUI 需要分步回调显示，错误码映射成中文提示；每步可重入</td></tr>
+<tr><td>验收标准</td><td>怎么判断做完了？逐条给可测的标准（带数值或可观察结果）。</td><td>CI 构建 exe 成功、门禁全绿；guest 双击实机安装/卸载成功；装后至少冒烟：敲几个字（含中文标点）候选/上屏正常</td><td>验收标准 AC1-AC6，见下；宿主测纯逻辑红绿，CI 编译，guest 取证</td></tr>
+<tr><td>验收标准</td><td>谁来验、在哪个环境验、用什么数据验？</td><td>owner 在 guest 双击点安装/卸载，agent 截图取证（注册表 HKL、文件、Alt+Shift 可切换）；CI 负责编译</td><td>取证脚本 + 截图存 m0/vm/evidence/</td></tr>
+<tr><td>约束兼容</td><td>存量数据和老接口要不要兼容？能否加表、加字段、改签名？</td><td>保留原命令行安装器（install-rospinyin.exe 的 /step1..4），CLI 供开发者逐键诊断，GUI 给最终用户</td><td>两个安装器目标并存；CLI 源码与行为不动；GUI 与 CLI 共享安装逻辑抽层</td></tr>
+<tr><td>约束兼容</td><td>性能、权限、审计日志有硬要求吗？能不能引入新依赖？</td><td>内嵌方式：ime+dat 作为 PE 资源段内嵌（不额外压缩），运行时写临时目录，再从 tmp 拷到 system32；可引入轻量库但优先只用现有工具链</td><td>零新依赖（MinGW+Win32+windres）；资源释放到 %TEMP% 再拷贝；不用 zip 库</td></tr>
+</tbody></table></div>
+<h3>验收标准</h3>
+<ul>
+<li><strong>AC1</strong>：CMake <code>win32-mingw</code> preset 能编译出 <code>install-rospinyin-gui.exe</code>，CI Windows job 构建成功，产物上传为 release 资产。</li>
+<li><strong>AC2</strong>：exe 内嵌 <code>rospinyin.ime</code> + <code>rospinyin.dat</code> 两个 PE 资源；运行时释放到 <code>%TEMP%</code> 下的唯一子目录，安装后清理临时目录；字节与源资源一致（宿主测纯逻辑：资源释放/字节校验函数）。</li>
+<li><strong>AC3</strong>：双击 exe 显示 GUI：安装 / 卸载两个按钮；安装时分步显示拷贝/注册/写入进度，失败弹具体错误码与下一步提示；重复安装先弹确认框。</li>
+<li><strong>AC4</strong>：点安装等价于依次执行现有 step1..4（拷贝两文件 + ImmInstallIMEW + Layout Text + Layout Display Name），HKL 记录与 CLI 版同位置（<code>HKCU\SOFTWARE\RosPinyin\Install</code>）；不写 Preload、不设默认输入法。</li>
+<li><strong>AC5</strong>：点卸载等价于现有 /u：删除自己的注册表键与两个 payload 文件，不动其他输入法布局；运行中文件删除失败时提示重启后清理。</li>
+<li><strong>AC6</strong>：guest 实机取证：双击安装→截图 regs/HKL + 文件存在 + Alt+Shift 能切到「中文(简体) - RosPinyin」→ 记事本敲字（含中文标点）候选与上屏正常→双击卸载→截图确认键与文件已清理。</li>
+<li><strong>AC7</strong>：宿主侧 ctest 双配置（ON/OFF）全绿；<code>check_m1.py</code> 红线门禁全绿（安装器注册表白名单不被突破）；<code>check_docs.py</code>/<code>seams.py</code> 全绿。</li>
+</ul>
+<h3>待定与假设</h3>
+<ul>
+<li>假设 GUI exe 命名为 <code>install-rospinyin-gui.exe</code>，与原 CLI <code>install-rospinyin.exe</code> 并存；若 owner 希望最终用户只看到一个入口，S1 会给出&quot;只发 GUI、CLI 留源码&quot;的替代方案。</li>
+<li>假设版本号 bump 到 <code>alpha0.0.4</code>（用户已确认发版）。</li>
+<li>假设资源段命名遵循项目现有 <code>rospinyin_res.rc</code> 的 windres 惯例；base64 入库方案仅在没有构建产物可用时作为后备，S1 定稿。</li>
+<li>本地无 MinGW：GUI exe 的本机编译不可行，验收依赖 CI 构建 + guest 实机；宿主侧只测纯逻辑（资源字节校验、步骤编排、错误码映射）。</li>
+</ul>
+<h3>弹窗记录</h3>
+<div class="table-wrap"><table><thead><tr><th>轮次</th><th>时间</th><th>问了什么</th><th>用户怎么回</th></tr></thead><tbody>
+<tr><td>1</td><td>2026-11-23 22:1x</td><td>目标用户/场景、功能范围、不做的范围</td><td>最终用户首次安装；一键安装+一键卸载；不设默认输入法</td></tr>
+<tr><td>2</td><td>2026-11-23 22:1x</td><td>重复安装、CLI 去留、错误提示粒度</td><td>提示已安装再确认；保留 CLI；分步显示+错误码</td></tr>
+<tr><td>3</td><td>2026-11-23 22:1x</td><td>实机验收方式、回归范围、发版决策</td><td>CI 构建+guest 实机；至少冒烟；发 alpha0.0.4</td></tr>
+<tr><td>4</td><td>2026-11-23 22:1x</td><td>内嵌方式、TDD 策略</td><td>资源释放到 tmp；宿主测纯逻辑+CI 构建</td></tr>
+<tr><td>5</td><td>2026-11-23 22:1x</td><td>自解压具体形态、新依赖</td><td>资源释放到 tmp（不额外压缩）；可引入轻量库但优先现有工具链</td></tr>
+</tbody></table></div></section><section class="card" id="stage-S1"><h2>S1 · 需求影响面与技术方案</h2><div class="src">.devloop/S1-影响面与方案.md</div><h2>需求影响面与技术方案：自包含 GUI 安装器（含 payload 压缩变体评估）</h2>
+<h3>一、需求理解与验收标准</h3>
+<p>一句话：把 <code>rospinyin.ime</code> + <code>rospinyin.dat</code> 打进一个双击即用的 GUI 安装器，最终用户全程不碰命令行即可完成安装/卸载；红线（不写 Preload、不设默认输入法）不变；同时把「payload 先压缩再内嵌、运行时用轻量解压库释放到 tmp」这一变体（路线 C）与纯内嵌（A）、真 SFX（B）一并评估定案。</p>
+<p>可判定的完成条件（沿用 S0 的 AC1–AC7，本轮补充 AC8–AC9）：</p>
+<ul>
+<li><strong>AC1</strong>：<code>win32-mingw</code> preset 编译出 <code>install-rospinyin-gui.exe</code>，CI Windows job 构建成功，产物进 release 资产。</li>
+<li><strong>AC2</strong>：两 payload 内嵌（路线 A/C 为 PE 资源；C 额外要求压缩字节可还原为源文件字节），运行时释放到 <code>%TEMP%</code> 唯一子目录，安装后清理；宿主纯逻辑测试校验「释放/解压后字节 == 源字节」。</li>
+<li><strong>AC3</strong>：GUI 显示安装/卸载两按钮；安装分步显示拷贝/注册/写入进度；重复安装先弹确认；失败弹具体错误码与下一步提示。</li>
+<li><strong>AC4</strong>：点安装等价于 step1..4（拷贝两文件 + <code>ImmInstallIMEW</code> + Layout Text + Layout Display Name），HKL 记录位置与 CLI 一致；不写 Preload、不设默认。</li>
+<li><strong>AC5</strong>：点卸载等价于 <code>/u</code>：删自己的注册表键与两 payload，不动其他布局；占用中删除失败时提示重启清理。</li>
+<li><strong>AC6</strong>：guest 实机双击安装 → 截图 HKL/文件/Alt+Shift 可切/中文标点冒烟 → 双击卸载 → 截图清理完成。</li>
+<li><strong>AC7</strong>：双配置 ctest 全绿；<code>check_m1.py</code> 红线门禁全绿；<code>check_docs.py</code>/<code>seams.py</code> 全绿。</li>
+<li><strong>AC8（本轮修订·P0）</strong>：GUI「安装」按钮采用<strong>严格平台白名单</strong>：当前白名单只含 <code>ProductName == &quot;ReactOS&quot;</code>（大小写不敏感）；读不到、类型不符、Windows、<code>libernt</code> 等尚未显式列入白名单的兼容分支一律拒绝安装并弹明确提示。后续新增兼容分支（例如 <code>libernt</code>）必须先完成实机验证并显式加入白名单，未登记即默认拒绝；卸载按钮不受此限（误装时要能清理）。判据抽成宿主可测纯函数 <code>is_supported_product_name()</code>，覆盖 <code>&quot;ReactOS&quot;</code>/大小写变体/Windows 值/<code>libernt</code>/空串/类型不符。依据：ReactOS 官方论坛 hbelusca 回帖 + ReactOS 自带 <code>cmd ver.c</code> 读同一键。</li>
+<li><strong>AC9（本轮补充）</strong>：release notes 与 README 含「杀毒误报说明」段（未签名说明、SHA256 核验步骤、勿关闭杀软、加白名单指引）；同时写明 <strong>Windows 真机安装只使用 CLI <code>/step1../step4</code> 分步方式</strong>，GUI 不提供 Windows 安装入口且会拒绝安装；CLI 行为不改，供开发者/诊断使用。GUI 减少可疑特征（固定临时目录+即时清理、不加密 payload、标准 RCDATA）。不承诺零误报、不购买 EV/OV 证书。</li>
+</ul>
+<blockquote>专项评估：<code>docs/reviews/GUI-INSTALLER-FP-AND-WINDOWS-GUARD.md</code>（含官方来源、判据设计、缓解措施与不做承诺）。</blockquote>
+<h3>二、技术路线</h3>
+<p>三条路线共用同一套 GUI 交互与 step1..4 安装逻辑，差别<strong>只在 payload 怎么进 exe、怎么用</strong>。实测基线（2026-11-23，源文件 <code>m0/share/</code>）：ime 955,897 B、dat 1,080,224 B，合计 2,036,121 B；7z -mx9 分别压到 276,875 B（29.0%）/ 151,872 B（14.1%），合计 428,884 B；zip -mx9 为 525,053 B。GUI 外壳代码预计 30–60 KB。</p>
+<div class="table-wrap"><table><thead><tr><th>路线</th><th>做法</th><th>优点</th><th>代价 / 风险</th><th>结论</th></tr></thead><tbody>
+<tr><td><strong>A 纯资源内嵌</strong>（S0 基线）</td><td>ime+dat 原字节作为 PE RCDATA，运行时写 <code>%TEMP%</code> 再拷贝</td><td>零新依赖、零解压失败点、字节直读最容易审计；构建可复现（windres 输入即源文件）</td><td>产物约 2.04 MB + 外壳；体积是 C 的约 4.7 倍</td><td>保底可行，留作 C 出问题时的回退</td></tr>
+<tr><td><strong>B 7z/WinZip 真 SFX</strong></td><td>stub + 压缩包 + 配置拼成 exe，双击由 stub 解压并拉起后续程序</td><td>产物最小（stub 193–213 KB + 428 KB ≈ 623 KB）</td><td>①交互不满足 AC3：SFX 是通用解压进度条，无安装/卸载双按钮、无分步错误码、无覆盖确认，要满足 AC3 得再套一层自写 GUI，SFX 白忙；②兼容风险：实测 stub PE 导入 <code>OLEAUT32.dll</code>/<code>MSVCRT.dll</code>，非静态 CRT，与本项目「静态链接绕开 ReactOS 缺失 API」路线冲突，0.4.16 无证据；③许可证：stub 为 LGPL，随二进制分发须附 LGPL 声明与源码获取途径，WinZip 更严；④CI 要引入 7z + 固定 stub 版本与时间戳，破坏可复现指纹纪律；⑤stub 另起进程执行安装，注册表写入分散，<code>check_m1.py</code> 白名单扫描漏掉真实执行体</td><td><strong>否决</strong></td></tr>
+<tr><td><strong>C 压缩后资源内嵌 + 轻量解压</strong>（用户要求纳入评估的变体）</td><td>用 miniz 的 deflate 把两 payload 压成压缩字节作为 PE RCDATA；运行时 <code>mz_inflate</code>/<code>tinfl</code> 解压到 <code>%TEMP%</code>，CRC32 + 长度校验后走 step1..4；GUI 交互与 A 完全相同</td><td>产物约 525 KB（zip deflate）+ 外壳 + miniz 解压路径，体积接近 SFX 但保住全部 GUI 交互；miniz 为 <strong>public domain / Unlicense</strong>、单头文件用法、无 zlib 外部依赖，静态链接与现有 CRT 路线一致；单一代码路径，红线审计仍扫同一份 install 逻辑；构建期用 Python <code>zlib</code> 压缩，无需 CI 新工具链</td><td>①引入一个 public domain 单文件库（只链解压路径）；②多一层「压缩字节→解压→校验」，宿主测试面变大，须补字节往返、损坏 CRC、长度不符三类用例；③压缩引入确定性要求：固定 deflate 级别/时间戳避免 hash 漂移</td><td><strong>采纳（推荐）</strong></td></tr>
+</tbody></table></div>
+<p><strong>选型理由</strong>：体积不是唯一目标，AC3 的交互与 ReactOS 0.4.16 的兼容性才是硬约束。B 在这两项上都输，还背 LGPL 义务，否决。A 与 C 的 GUI/安装/红线逻辑完全相同，唯一差别是 payload 是否压缩——C 用 525 KB 换来约 1.5 MB 的分发体积下降，代价只是一个 public domain 解压库和三条新测试，收益明显大于代价。C 若解压库集成或可复现性踩坑，回退 A 只需关掉压缩宏、资源段改放原字节，GUI 与安装逻辑零改动（这也是把 A 写进清单 C2 的原因）。</p>
+<p><strong>为什么 C 用 deflate 而不是 7z 的 LZMA</strong>：7z 虽更小（429 KB vs zip 525 KB，省约 96 KB），但 miniz 只做 deflate/zlib 子集、不解 LZMA；要吃 LZMA 得引入 LZMA SDK（多文件、代码量大），与「轻量单文件库」的约束冲突。96 KB 的收益不值得换掉单文件 public domain 的简洁性。7z 的 428 KB 作为对照数据保留，不是 C 的产物预期。</p>
+<p><strong>已定案（owner 已拍板）</strong>：采纳路线 C。依据用户原话「1.C；2.授权」。A 仅作为解压路径集成失败时的回退，回退时 C2/C3/C4 中压缩相关行退化为「资源段直接放原字节」，其余 GUI/平台闸门/文档行不变（见改造清单备注）。</p>
+<h3>三、实现流程</h3>
+<div class="table-wrap"><table><thead><tr><th>步</th><th>动作</th><th>依赖</th><th>验证方式</th></tr></thead><tbody>
+<tr><td>1</td><td>抽出安装步骤编排为宿主可测纯逻辑模块 <code>install_steps.hpp</code>（step1..4 序列、错误码枚举、中文提示映射、进度回调接口），Win32 与注册表调用留在 CLI/GUI 适配层</td><td>—</td><td>宿主单测：正常序列、各步失败短停、错误码→提示映射全覆盖；先红后绿</td></tr>
+<tr><td>2</td><td>新增 payload 资源编解码纯逻辑模块 <code>payload_blob.hpp</code>：压缩字节长度校验、CRC32 校验、解压后大小/字节校验接口（解压实现用 miniz，接口以回调注入便于宿主测）</td><td>1</td><td>宿主单测：合法往返、CRC 损坏、长度不符、尾随垃圾四类；先红后绿</td></tr>
+<tr><td>2a</td><td>新增平台白名单纯逻辑模块 <code>platform_guard.hpp</code>：<code>is_supported_product_name()</code> 只放行当前已验证并显式登记的产品名（现为 <code>ReactOS</code>，大小写不敏感）；<code>libernt</code> 等兼容分支未登记即拒绝。注册表读取留在 GUI 的 Win32 适配层，纯函数只吃字符串</td><td>—</td><td>宿主单测：<code>ReactOS</code>/<code>reactos</code> 放行，Windows/<code>libernt</code>/空串/未列入项拒绝；先红后绿</td></tr>
+<tr><td>3</td><td>构建期压缩：新增 <code>tools/install-rospinyin/pack_payload.py</code>，读 ime+dat → deflate → C 数组/base64 文本落盘（入库为文本，不入库二进制），windres 编进 RCDATA</td><td>—</td><td>由脚本产出的 base64 解码后字节 == 源文件；固定 zlib 级别与时间戳，两次构建 hash 一致</td></tr>
+<tr><td>4</td><td>资源脚本 <code>rospinyin_res.rc</code> 增加两个 RCDATA（GUI 用），CLI 安装器资源脚本不动</td><td>3</td><td>宿主测资源 ID/字节数；CI PE 导入核验保证无新增 DLL 依赖</td></tr>
+<tr><td>5</td><td>新增 GUI 工程 <code>install-rospinyin-gui.exe</code>：Win32 原生对话框（安装/卸载两按钮）、分步进度、重复安装确认框、错误码中文提示；<strong>安装按钮最前面调用步骤 2a 的平台闸门，拒绝时不进入步骤 1；卸载按钮绕过闸门</strong>；内部调步骤 1 的编排与步骤 2 的解压</td><td>1,2,2a,4</td><td>CI 编译；宿主闸门单测；guest 实机 AC3/AC4/AC5/AC6；Windows 实机只跑 CLI <code>/step1..4</code>，不跑 GUI 安装</td></tr>
+<tr><td>6</td><td>CMake 接入 GUI target（静态 CRT + 可复现 PE + <code>-mwindows</code>），CI windows-build 构建，<code>check_m1.py</code> 白名单保持</td><td>5</td><td>双 preset 构建、PE imports 核验、<code>check_m1.py</code> 全绿</td></tr>
+<tr><td>7</td><td>release job 资产清单加入 GUI exe（放在 CLI 之后，CLI 保留给开发者）</td><td>6</td><td>alpha0.0.4 release 6→7 资产，逐一 SHA256 核验</td></tr>
+<tr><td>8</td><td>guest 实机取证 + 文档同步 + 版本 bump alpha0.0.4</td><td>7</td><td>AC6 截图、check_docs/seams 全绿</td></tr>
+</tbody></table></div>
+<p><strong>顺序理由</strong>：1、2 是纯逻辑底座，宿主 TDD 必须先红后绿，是 5（GUI）的前置阻塞；3 是 4 的资源数据源，必须在 windres 之前；6 依赖 GUI 工程存在；7、8 是发布与取证，放最后。miniz 只在步骤 2 的解压接口里出现，不污染其他层。</p>
+<h3>四、架构图</h3>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 908 691" width="100%" style="max-width:908px;height:auto" role="img" aria-label="架构图">
+<defs><marker id="dl-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#64748B"/></marker></defs>
+<path d="M76,51 L454,94" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M250,51 L454,94" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M454,146 L454,172" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M454,224 L454,250" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M454,302 L454,328" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M482,68 L600,406" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M454,380 L600,406" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="466" y="384" width="120" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="527" y="397" text-anchor="middle" font-size="11" fill="#475569">安装按钮：前置闸门</text>
+<path d="M600,458 L310,484" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="420" y="462" width="70" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="455" y="475" text-anchor="middle" font-size="11" fill="#475569">白名单放行</text>
+<path d="M454,380 L310,406" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M310,458 L598,484" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="404" y="462" width="99" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="454" y="475" text-anchor="middle" font-size="11" fill="#475569">miniz inflate</text>
+<path d="M598,536 L342,562" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="431" y="540" width="78" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="470" y="553" text-anchor="middle" font-size="11" fill="#475569">step1 copy</text>
+<path d="M310,536 L562,562" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M562,597 L454,623" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="16" y="16" width="119" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="76" y="38" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">rospinyin.ime</text>
+<rect x="338" y="94" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="454" y="116" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">pack_payload.py&lt;br/&gt;deflate +</text>
+<text x="454" y="133" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155"> base64 文本</text>
+<rect x="191" y="16" width="119" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="250" y="38" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">rospinyin.dat</text>
+<rect x="341" y="172" width="227" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="454" y="194" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">payload_base64.hpp&lt;br/&gt;（文本</text>
+<text x="454" y="211" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">入库，非二进制）</text>
+<rect x="338" y="250" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="454" y="272" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">rospinyin_res.rc&lt;br/&gt;RCDATA ×</text>
+<text x="454" y="289" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">2</text>
+<rect x="195" y="484" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="310" y="506" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">install_steps.hpp&lt;br/&gt;step1..</text>
+<text x="310" y="523" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">4 编排 + 错误码映射</text>
+<rect x="193" y="406" width="235" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="310" y="428" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">payload_blob.hpp&lt;br/&gt;长度/CRC/</text>
+<text x="310" y="445" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">字节校验接口</text>
+<rect x="484" y="406" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="600" y="428" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">platform_guard.hpp&lt;br/&gt;is_sup</text>
+<text x="600" y="445" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">ported_product_name()&lt;br/&gt;白…</text>
+<rect x="338" y="328" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="454" y="350" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">install-rospinyin-gui.exe&lt;br/</text>
+<text x="454" y="367" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">&gt;安装/卸载按钮 + 分步进度 + 确…</text>
+<rect x="366" y="16" width="232" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="482" y="38" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">HKLM ProductName（只读）&lt;br/&gt;W</text>
+<text x="482" y="55" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">in32 适配层</text>
+<rect x="654" y="16" width="238" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="773" y="38" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">拒绝安装&lt;br/&gt;弹产品名不受支持提示</text>
+<rect x="482" y="484" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="598" y="506" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">%TEMP%/rospinyin-&amp;lt;pid&amp;gt;&lt;</text>
+<text x="598" y="523" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">br/&gt;解压落地 + 校验 + 清理</text>
+<rect x="262" y="562" width="161" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="342" y="584" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">system32: ime + dat</text>
+<rect x="338" y="623" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="454" y="645" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">HKCU/.../RosPinyin/Install&lt;br</text>
+<text x="454" y="662" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">/&gt;HKL 记录</text>
+<rect x="478" y="562" width="168" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="562" y="584" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">ImmInstallIMEW → HKL</text>
+</svg><details><summary>mermaid 源码</summary><pre class="code"><code>flowchart TB
+  subgraph 构建期[&quot;构建期（CI / pack_payload.py）&quot;]
+    SRC1[&quot;rospinyin.ime&quot;] --&gt; PACK[&quot;pack_payload.py&lt;br/&gt;deflate + base64 文本&quot;]
+    SRC2[&quot;rospinyin.dat&quot;] --&gt; PACK
+    PACK --&gt; B64[&quot;payload_base64.hpp&lt;br/&gt;（文本入库，非二进制）&quot;]
+    B64 --&gt; RC[&quot;rospinyin_res.rc&lt;br/&gt;RCDATA ×2&quot;]
+  end
+  subgraph 宿主测试层[&quot;宿主测试层（无 MinGW）&quot;]
+    ST[&quot;install_steps.hpp&lt;br/&gt;step1..4 编排 + 错误码映射&quot;]
+    PB[&quot;payload_blob.hpp&lt;br/&gt;长度/CRC/字节校验接口&quot;]
+    GUARD[&quot;platform_guard.hpp&lt;br/&gt;is_supported_product_name()&lt;br/&gt;白名单：当前仅 ReactOS&quot;]
+  end
+  subgraph GUI层[&quot;GUI 层（win32-mingw 编译）&quot;]
+    GUI[&quot;install-rospinyin-gui.exe&lt;br/&gt;安装/卸载按钮 + 分步进度 + 确认框&quot;]
+    PROD[&quot;HKLM ProductName（只读）&lt;br/&gt;Win32 适配层&quot;]
+    ERR[&quot;拒绝安装&lt;br/&gt;弹产品名不受支持提示&quot;]
+    TMP[&quot;%TEMP%/rospinyin-&amp;lt;pid&amp;gt;&lt;br/&gt;解压落地 + 校验 + 清理&quot;]
+  end
+  subgraph 系统层[&quot;系统层（红线约束）&quot;]
+    SYS[&quot;system32: ime + dat&quot;]
+    REG[&quot;HKCU/.../RosPinyin/Install&lt;br/&gt;HKL 记录&quot;]
+    IMM[&quot;ImmInstallIMEW → HKL&quot;]
+  end
+  RC --&gt; GUI
+  PROD --&gt; GUARD
+  GUI --&gt;|&quot;安装按钮：前置闸门&quot;| GUARD
+  GUARD --&gt;|&quot;白名单放行&quot;| ST
+  GUARD -. &quot;未列入：Windows / libernt / 读不到&quot; .-&gt; ERR
+  GUI -. &quot;卸载按钮：绕过闸门&quot; .-&gt; ST
+  GUI --&gt; PB
+  PB --&gt;|&quot;miniz inflate&quot;| TMP
+  TMP --&gt;|&quot;step1 copy&quot;| SYS
+  ST --&gt; IMM --&gt; REG
+  ST -. &quot;禁止写 Preload / 默认输入法&quot; .-&gt; REG</code></pre></details></figure>
+<p>改动落点：构建期（3）、宿主测试底座（1/2）、GUI 工程（5）、资源脚本（4）、系统写入（沿用现有 install.cpp 逻辑，红线不变）。图里每个框在改造清单都有对应项。</p>
+<h3>五、静态盲区</h3>
+<p><code>blind</code> 报告 0 处盲区（6 个锚点文件无动态调用/反射/DI/拼装路由）。人工补充两类脚本看不见的：</p>
+<div class="table-wrap"><table><thead><tr><th>位置</th><th>类别</th><th>结论</th></tr></thead><tbody>
+<tr><td><code>.github/workflows/ci.yml</code> release job</td><td>配置驱动的发布行为</td><td>静态分析看不见 release 资产清单；必须改 <code>Assemble assets</code> 步骤把 GUI exe 纳入 <code>cp</code> 与 <code>sha256sum</code>，否则 CI 构建成功但发版漏资产（AC1 不闭合）</td></tr>
+<tr><td><code>tools/check_m1.py</code> 注册表白名单扫描</td><td>配置驱动的安全门禁</td><td>脚本按常量扫描安装器源码中禁止写入的注册表路径；GUI 复用同一份 step 逻辑即可过门禁，若 GUI 自写注册表调用会绕开扫描——约束：GUI 不得直接写注册表，只调共享的 step 函数</td></tr>
+<tr><td><code>HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProductName</code></td><td>环境/配置驱动的运行时判据</td><td>静态分析看不见真实机器上的产品名；白名单纯函数不依赖注册表 API，Win32 适配层只读该键，读不到/类型不符统一落入拒绝分支；宿主单测覆盖所有分支，实机只在 guest 与（可选）Windows CLI 路径人工确认</td></tr>
+</tbody></table></div>
+<h3>六、实现约束</h3>
+<div class="table-wrap"><table><thead><tr><th>项</th><th>约束</th></tr></thead><tbody>
+<tr><td>命名与分层</td><td>纯逻辑放 <code>tools/install-rospinyin/install_steps.hpp</code>、<code>payload_blob.hpp</code>（新增）；Win32/注册表/GUI 只留适配层；不新建平行安装实现，GUI 与 CLI 共享同一套 step 函数</td></tr>
+<tr><td>错误处理</td><td>step1..4 任一失败即短停并把错误码映射成中文提示（含「请重启后重试」）；解压 CRC/长度不符视为 payload 损坏，禁止继续拷贝；不吞异常不写静默失败</td></tr>
+<tr><td>日志</td><td>GUI 分步进度即用户可见日志；命令行适配层沿用 <code>fwprintf(stderr, ...)</code>；禁止 <code>print</code>/<code>console.log</code> 进主干；新增日志须带步骤号</td></tr>
+<tr><td>测试</td><td>步骤编排、payload 校验、平台白名单三类纯逻辑各补先红后绿用例；平台用例必须含 <code>ReactOS</code>/大小写变体/Windows/<code>libernt</code>/空串/类型不符；AC7 门禁全绿；CI PE imports 核验保证不引入 <code>OLEAUT32</code>/动态 <code>MSVCRT</code></td></tr>
+<tr><td>兼容</td><td>CLI <code>install-rospinyin.exe</code> 源码与 <code>/step1..4</code> 行为完全不动，继续给开发者诊断用；<strong>Windows 真机安装只走 CLI <code>/step1../step4</code> 分步方式，GUI 不提供 Windows 安装入口</strong>；红线（不写 Preload、不设默认）在 GUI 与 CLI 两侧都不得突破；路线 C 若回退 A，GUI 与安装逻辑零改动，只改资源段；后续兼容分支（如 <code>libernt</code>）须先实机验证再显式加入白名单，未登记默认拒绝</td></tr>
+</tbody></table></div>
+<h3>七、变更意图拆解</h3>
+<div class="table-wrap"><table><thead><tr><th>类型</th><th>对象</th></tr></thead><tbody>
+<tr><td>新增</td><td>宿主可测纯逻辑模块 <code>install_steps.hpp</code>（步骤编排 + 错误码映射）</td></tr>
+<tr><td>新增</td><td>宿主可测纯逻辑模块 <code>payload_blob.hpp</code>（长度/CRC/字节校验接口，miniz 解压注入）</td></tr>
+<tr><td>新增</td><td>宿主可测纯逻辑模块 <code>platform_guard.hpp</code>（ReactOS 平台判据，防 Windows 误装）</td></tr>
+<tr><td>新增</td><td>构建期压缩脚本 <code>pack_payload.py</code> + payload base64 文本头（非二进制入库）</td></tr>
+<tr><td>新增</td><td>GUI 工程源码 + <code>CMakeLists.txt</code>（新 target <code>install-rospinyin-gui</code>）</td></tr>
+<tr><td>修改</td><td>资源脚本 <code>rospinyin_res.rc</code>（加两个 RCDATA）</td></tr>
+<tr><td>修改</td><td>根 <code>CMakeLists.txt</code> / <code>CMakePresets.json</code>（接入 GUI target）</td></tr>
+<tr><td>修改</td><td><code>.github/workflows/ci.yml</code>（构建 + release 资产清单，需授权）</td></tr>
+<tr><td>修改</td><td><code>tools/check_m1.py</code>（白名单覆盖新增 GUI target，可能需加锚点）</td></tr>
+<tr><td>修改</td><td>版本 <code>ime/version.h</code> + release notes alpha0.0.4 + 文档同步</td></tr>
+</tbody></table></div>
+<h3>八、影响面矩阵</h3>
+<div class="table-wrap"><table><thead><tr><th>层级</th><th>对象</th><th>是否受影响</th><th>依据(文件:行)</th></tr></thead><tbody>
+<tr><td>工具</td><td>CLI 安装器源码</td><td>否（行为不动，可被 GUI 复用）</td><td><code>tools/install-rospinyin/install.cpp:16-31</code> 步骤定义</td></tr>
+<tr><td>构建</td><td>安装器 CMake target</td><td>是</td><td><code>tools/install-rospinyin/CMakeLists.txt:6</code> <code>add_executable</code> 单点</td></tr>
+<tr><td>资源</td><td>IME 资源脚本</td><td>是</td><td><code>ime/rospinyin_res.rc:24</code> ICON 资源惯例，RCDATA 依此新增</td></tr>
+<tr><td>构建</td><td>根 CMake / preset</td><td>是</td><td><code>CMakeLists.txt</code> 通过子目录纳入 tools</td></tr>
+<tr><td>CI/CD</td><td>构建与 release job</td><td>是（高危，需授权）</td><td><code>.github/workflows/ci.yml:79</code> windows-build、<code>:260</code> release</td></tr>
+<tr><td>门禁</td><td>红线扫描</td><td>是</td><td><code>tools/check_m1.py:52</code> install 相关扫描</td></tr>
+<tr><td>平台</td><td>ProductName 白名单闸门</td><td>是（新增）</td><td>AC8、本节实现约束「兼容」行；只读 HKLM，不进入禁写路径</td></tr>
+<tr><td>发布</td><td>版本与 release notes</td><td>是</td><td><code>ime/version.h</code>、<code>docs/releases/</code></td></tr>
+<tr><td>文档</td><td>HANDOVER/CHANGELOG/ROADMAP</td><td>是</td><td>25 份 install 相关文档需同步核心三份</td></tr>
+</tbody></table></div>
+<h3>九、改造清单（S3 的验收标准）</h3>
+<div class="table-wrap"><table><thead><tr><th>编号</th><th>文件:行</th><th>动作</th><th>改造理由</th><th>依据</th></tr></thead><tbody>
+<tr><td>C1</td><td><code>tools/install-rospinyin/install_steps.hpp</code> (新)</td><td>增</td><td>步骤编排与错误码映射须宿主可测，且 GUI/CLI 共享单一实现</td><td>S1 §3 步1、§6 分层约束</td></tr>
+<tr><td>C2</td><td><code>tools/install-rospinyin/payload_blob.hpp</code> (新)</td><td>增</td><td>路线 C 的长度/CRC/字节校验接口；回退 A 时此文件保留校验、去掉 inflate 调用</td><td>S1 §3 步2、§2 回退说明</td></tr>
+<tr><td>C3</td><td><code>tools/install-rospinyin/pack_payload.py</code> (新)</td><td>增</td><td>构建期 deflate + base64，确定性压缩，文本入库不提交二进制</td><td>S1 §3 步3、§6 兼容</td></tr>
+<tr><td>C4</td><td><code>tools/install-rospinyin/payload_base64.hpp</code> (新)</td><td>增</td><td>压缩后 payload 的文本载体，windres 的输入源</td><td>S1 §3 步3</td></tr>
+<tr><td>C5</td><td><code>tools/install-rospinyin/gui.cpp</code> (新)</td><td>增</td><td>Win32 原生 GUI：安装/卸载按钮、分步进度、覆盖确认、错误提示</td><td>AC3、S1 §3 步5</td></tr>
+<tr><td>C6</td><td><code>ime/rospinyin_res.rc</code></td><td>改</td><td>加两个 RCDATA 供 GUI 内嵌 payload</td><td>S1 §3 步4、影响面 <code>rospinyin_res.rc:24</code></td></tr>
+<tr><td>C7</td><td><code>tools/install-rospinyin/CMakeLists.txt</code></td><td>改</td><td>新增 GUI target，静态 CRT + 可复现 PE + <code>-mwindows</code></td><td>S1 §3 步6、影响面 <code>CMakeLists.txt:6</code></td></tr>
+<tr><td>C8</td><td><code>.github/workflows/ci.yml</code></td><td>改</td><td>windows-build 构建 GUI exe + release 资产清单纳入（<strong>高危需授权</strong>）</td><td>敏感预检、S1 §5 配置盲区</td></tr>
+<tr><td>C9</td><td><code>tools/check_m1.py</code></td><td>改</td><td>白名单覆盖新增 GUI target 与步骤编排模块，保持红线扫描有效</td><td>AC7、影响面 <code>check_m1.py:52</code></td></tr>
+<tr><td>C10</td><td><code>ime/version.h</code> + <code>docs/releases/alpha0.0.4.md</code> (新)</td><td>改/增</td><td>版本 bump 与发布说明，CI 版本门要求</td><td>S0 发版决策、release 纪律</td></tr>
+<tr><td>C11</td><td><code>docs/handover/CHANGELOG.md</code>、<code>HANDOVER.md</code>、<code>docs/plan/ROADMAP.md</code></td><td>改</td><td>同步 GUI 安装器与路线决策</td><td>S1 §8 文档影响面</td></tr>
+<tr><td>C12（本轮修订）</td><td><code>tools/install-rospinyin/platform_guard.hpp</code> (新) + <code>gui.cpp</code> 调用点</td><td>增</td><td>严格平台白名单闸门：<code>is_supported_product_name()</code> 纯函数（当前仅 ReactOS，大小写不敏感；<code>libernt</code> 等未登记兼容分支一律拒绝）+ GUI 安装按钮前置检查（卸载不限）。不改 CLI <code>/step1..4</code>，Windows 真机安装保留 CLI 分步路径</td><td>AC8、专项评估 §2.4、官方判据、用户原话「检测非reactOS或后续增加的兼容分支（例如libernt），就拒绝安装。在windows实机安装使用命令行step1..4方式」</td></tr>
+<tr><td>C13（本轮修订）</td><td><code>docs/releases/alpha0.0.4.md</code>、<code>README.md</code>、<code>docs/reviews/GUI-INSTALLER-FP-AND-WINDOWS-GUARD.md</code> (新)</td><td>增/改</td><td>杀毒误报说明段（hash 核验/勿关杀软/加白名单）+ 专项评估落档；明确 Windows 真机只用 CLI <code>/step1../step4</code>，GUI 会拒绝；新增兼容分支需先登记白名单</td><td>AC9、专项评估 §1.4 与 §2.5</td></tr>
+</tbody></table></div>
+<blockquote>13 项，按模块分三组：底座 C1–C4（纯逻辑+构建期），外壳 C5–C7（GUI+资源），发布 C8–C11（CI+门禁+文档），安全补充 C12–C13（平台闸门+误报说明）。路线 A 回退时 C2/C3/C4 退化为原字节资源，C1/C5–C13 不变。</blockquote>
+<h3>十、授权项 + 依赖图 + 回归范围</h3>
+<p><strong>已授权</strong>：<code>.github/workflows/ci.yml</code>（高危 CI/CD）——用户原话「1.C；2.授权」，明确同意改动构建步骤与 release 资产清单。CI 版本门与 PE imports 核验作为自动兜底。</p>
+<p><strong>依赖图</strong>（来自 <code>依赖图.md</code>，40 节点 57 边，L0 为 6 个锚点）：新增底座（<code>install_steps.hpp</code>/<code>payload_blob.hpp</code>/<code>platform_guard.hpp</code>）为根，GUI 依赖三者与 RCDATA，CI 与门禁依赖 GUI target 存在。改动顺序：C1/C2/C12 → C3/C4 → C6/C7 → C5 → C8/C9 → C10/C11/C13。</p>
+<p><strong>回归范围</strong>：</p>
+<div class="table-wrap"><table><thead><tr><th>级别</th><th>场景</th><th>理由</th></tr></thead><tbody>
+<tr><td>必测</td><td>宿主纯逻辑：step1..4 正常序列 + 每步失败短停 + 错误码映射</td><td>新增底座，S2 TDD 红绿核心</td></tr>
+<tr><td>必测</td><td>宿主纯逻辑：payload 合法往返 / CRC 损坏 / 长度不符 / 尾随垃圾</td><td>路线 C 新增解压层，字节正确性红线</td></tr>
+<tr><td>必测</td><td>宿主纯逻辑：平台白名单 <code>ReactOS</code>/大小写放行；Windows/<code>libernt</code>/空串/类型不符/未登记项拒绝</td><td>AC8 防 Windows 与未验证兼容分支误装，白名单式拒绝</td></tr>
+<tr><td>必测</td><td><code>check_m1.py</code> 红线门禁 ON/OFF 双配置</td><td>确认 GUI 未突破 Preload/默认输入法红线</td></tr>
+<tr><td>必测</td><td>guest：双击安装→HKL/文件/Alt+Shift/中文标点→双击卸载</td><td>AC6 实机闭环</td></tr>
+<tr><td>抽测（若可用）</td><td>Windows 真机：只执行 CLI <code>/step1../step4</code>，确认四步行为与文档一致；不执行 GUI 安装按钮</td><td>用户明确 Windows 实机安装走 CLI 分步；避免把未验证 IME 注册进 Windows</td></tr>
+<tr><td>抽测</td><td>CI PE imports 无 OLEAUT32/动态 MSVCRT</td><td>路线 C 静态链接声明</td></tr>
+<tr><td>免测</td><td>IME 候选/候选窗/码表逻辑</td><td>本轮只动安装外壳，IME 本体零改动</td></tr>
+</tbody></table></div></section><section class="card" id="file-实现质量.md"><h2>实现质量</h2><div class="src">.devloop/实现质量.md</div><h2>实现质量</h2>
+<ul>
+<li>生成时间：2026-11-23 20:03:23</li>
+<li>对比基线：HEAD</li>
+<li>改动文件：32 个，新增 1245 行</li>
+<li>结果：<strong>P0 0 / P1 5 / P2 1</strong></li>
+</ul>
+<div class="table-wrap"><table><thead><tr><th>级别</th><th>类别</th><th>位置</th><th>问题</th><th>怎么改</th></tr></thead><tbody>
+<tr><td>P1</td><td>硬编码地址</td><td><code>m0/vm/vnc_key.py:17</code></td><td>本地地址进代码，换环境就连不上</td><td>改为配置项，默认值在示例配置里给</td></tr>
+<tr><td>P1</td><td>阻塞等待</td><td><code>m0/vm/vnc_key.py:70</code></td><td>靠 sleep 等结果，机器慢就失败、机器快就浪费</td><td>改轮询 + 超时，或直接同步调用</td></tr>
+<tr><td>P1</td><td>阻塞等待</td><td><code>m0/vm/vnc_key.py:72</code></td><td>靠 sleep 等结果，机器慢就失败、机器快就浪费</td><td>改轮询 + 超时，或直接同步调用</td></tr>
+<tr><td>P1</td><td>阻塞等待</td><td><code>m0/vm/vnc_key.py:130</code></td><td>靠 sleep 等结果，机器慢就失败、机器快就浪费</td><td>改轮询 + 超时，或直接同步调用</td></tr>
+<tr><td>P1</td><td>阻塞等待</td><td><code>m0/vm/vnc_key.py:133</code></td><td>靠 sleep 等结果，机器慢就失败、机器快就浪费</td><td>改轮询 + 超时，或直接同步调用</td></tr>
+<tr><td>P2</td><td>命令行输出</td><td><code>m0/vm/vnc_key.py:108</code></td><td>该文件是命令行入口，print 就是它的输出通道（3 处）</td><td>确认这是面向用户的输出；库函数里仍应走日志</td></tr>
+</tbody></table></div>
+<h3>P1（本次改完，或写明豁免理由）</h3>
+<h4>DBG-03 硬编码地址 — <code>m0/vm/vnc_key.py:17</code></h4>
+<pre class="code"><code>HOST, PORT = &quot;127.0.0.1&quot;, 5901</code></pre>
+<ul>
+<li>为什么：本地地址进代码，换环境就连不上</li>
+<li>怎么改：改为配置项，默认值在示例配置里给</li>
+</ul>
+<h4>DBG-07 阻塞等待 — <code>m0/vm/vnc_key.py:70</code></h4>
+<pre class="code"><code>time.sleep(0.02)</code></pre>
+<ul>
+<li>为什么：靠 sleep 等结果，机器慢就失败、机器快就浪费</li>
+<li>怎么改：改轮询 + 超时，或直接同步调用</li>
+</ul>
+<h4>DBG-07 阻塞等待 — <code>m0/vm/vnc_key.py:72</code></h4>
+<pre class="code"><code>time.sleep(0.03)</code></pre>
+<ul>
+<li>为什么：靠 sleep 等结果，机器慢就失败、机器快就浪费</li>
+<li>怎么改：改轮询 + 超时，或直接同步调用</li>
+</ul>
+<h4>DBG-07 阻塞等待 — <code>m0/vm/vnc_key.py:130</code></h4>
+<pre class="code"><code>time.sleep(0.02)</code></pre>
+<ul>
+<li>为什么：靠 sleep 等结果，机器慢就失败、机器快就浪费</li>
+<li>怎么改：改轮询 + 超时，或直接同步调用</li>
+</ul>
+<h4>DBG-07 阻塞等待 — <code>m0/vm/vnc_key.py:133</code></h4>
+<pre class="code"><code>time.sleep(0.03)</code></pre>
+<ul>
+<li>为什么：靠 sleep 等结果，机器慢就失败、机器快就浪费</li>
+<li>怎么改：改轮询 + 超时，或直接同步调用</li>
+</ul>
+<h3>P2（可排期）</h3>
+<h4>DBG-01 命令行输出 — <code>m0/vm/vnc_key.py:108</code></h4>
+<pre class="code"><code>共 3 处，起于：`print(__doc__)`</code></pre>
+<ul>
+<li>为什么：该文件是命令行入口，print 就是它的输出通道（3 处）</li>
+<li>怎么改：确认这是面向用户的输出；库函数里仍应走日志</li>
+</ul>
+<blockquote>P0 不允许豁免。P1/P2 要豁免，就在 S3 报告里逐条写理由，别默默放过。</blockquote></section><section class="card" id="file-静态盲区.md"><h2>静态分析盲区</h2><div class="src">.devloop/静态盲区.md</div><h2>静态分析盲区</h2>
+<ul>
+<li>生成时间：2026-11-23 22:26:57</li>
+<li>检查文件：6 个</li>
+<li>盲区：0 处</li>
+</ul>
+<p>这些文件里没有发现动态调用、反射、DI、拼装路由等写法。</p>
+<blockquote>只代表「没有命中已知模式」。跨服务的调用、配置驱动的行为，静态分析一律看不见。</blockquote></section><section class="card" id="file-敏感文件预检.md"><h2>敏感文件预检</h2><div class="src">.devloop/敏感文件预检.md</div><h2>敏感文件预检</h2>
+<ul>
+<li>生成时间：2026-11-23 22:26:57</li>
+<li>检查文件：6 个</li>
+<li>需授权：1 个（高危 1 / 中危 0）</li>
+</ul>
+<div class="table-wrap"><table><thead><tr><th>级别</th><th>类别</th><th>文件</th><th>确认方式</th></tr></thead><tbody>
+<tr><td>高危</td><td>CI/CD</td><td><code>.github/workflows/ci.yml</code></td><td>逐文件单独确认</td></tr>
+</tbody></table></div>
+<p>把这些项写进 S1 的「待确认项」，改动前先拿到明确同意。</p></section><section class="card" id="file-影响面.md"><h2>影响面</h2><div class="src">.devloop/影响面.md</div><h2>变更影响面报告</h2>
+<ul>
+<li>生成时间：2026-11-23 22:26:56</li>
+<li>对比基线：HEAD</li>
+<li>改动文件：6 个</li>
+<li>整体风险：<strong>中</strong>（最高 40/100）</li>
+</ul>
+<h3>tools/install-rospinyin/install.cpp  ·  M  ·  风险 40</h3>
+<p>风险来源：被 17 个文件引用 (+30)；被 25 个文档描述 (+10) 改动：+0 / -0，0 个 hunk 涉及符号：<code>install</code> <strong>调用方（15）</strong></p>
+<ul>
+<li><code>tools/check_m1.py</code>:52 — install</li>
+<li><code>tools/mkdat/build_dat.sh</code>:9 — install</li>
+<li><code>m0/vm/run-reactos-install.sh</code>:2 — install</li>
+<li><code>tools/syntax_stub/windows.h</code>:8 — install</li>
+<li><code>framework/include/imfw/scheme_registry.hpp</code>:22 — install</li>
+<li><code>m0/vm/probe-n.sh</code>:56 — install</li>
+<li><code>ime/rospinyin.h</code>:14 — install</li>
+<li><code>framework/src/scheme_registry.cpp</code>:24 — install</li>
+<li><code>m0/vm/common.sh</code>:1 — install</li>
+<li><code>tools/artifact_hashes.py</code>:63 — install</li>
+<li><code>tools/syntax_stub/imm.h</code>:8 — install</li>
+<li><code>tools/httpdl/http_dl.c</code>:9 — install</li>
+</ul>
+<p><strong>相关测试（2）</strong></p>
+<ul>
+<li><code>tests/scheme_registry_test.cpp</code>:10 — install</li>
+<li><code>tests/builtin_gate_test.cpp</code>:10 — install</li>
+</ul>
+<p><strong>相关文档（25）</strong></p>
+<ul>
+<li><code>docs/handover/HANDOVER.md</code>:204 — install</li>
+<li><code>docs/milestones/M0-REDLINE-REVIEW.md</code>:4 — install</li>
+<li><code>docs/milestones/M1-REPORT.md</code>:53 — install</li>
+<li><code>m0/vm/NOVNC-GUIDE.md</code>:88 — install</li>
+<li><code>m0/vm/PRELOAD-PROBE.md</code>:46 — install</li>
+<li><code>libernt/PORTABILITY-ASSESSMENT.md</code>:51 — install</li>
+<li><code>xingma/XINGMA-PLAN.md</code>:346 — install</li>
+<li><code>tools/install-rospinyin/CMakeLists.txt</code>:6 — install</li>
+<li><code>xingma/docs/glyph-tier/GLYPH-TIER-PLAN.md</code>:5 — install</li>
+<li><code>docs/font/FONT-BUNDLING-ASSESSMENT.md</code>:78 — install</li>
+<li><code>docs/handover/CHANGELOG.md</code>:89 — install</li>
+<li><code>docs/reviews/PORTABILITY-UPSTREAM-64BIT-ARM64.md</code>:98 — install</li>
+</ul>
+<h3>tools/install-rospinyin/CMakeLists.txt  ·  M  ·  风险 40</h3>
+<p>风险来源：被 5 个文件引用 (+15)；无测试引用 (+15)；被 25 个文档描述 (+10) 改动：+0 / -0，0 个 hunk 涉及符号：<code>CMakeLists</code> <strong>调用方（5）</strong></p>
+<ul>
+<li><code>tools/check_m1.py</code>:188 — CMakeLists</li>
+<li><code>tools/install-rospinyin/install.cpp</code>:438 — CMakeLists</li>
+<li><code>framework/platform/win32/imm32/dllmain.cpp</code>:30 — CMakeLists</li>
+<li><code>pinyin/src/dat_source.cpp</code>:8 — CMakeLists</li>
+<li><code>pinyin/host/dat_source_win.cpp</code>:6 — CMakeLists</li>
+</ul>
+<p><strong>相关测试（0）</strong></p>
+<ul>
+<li>无</li>
+</ul>
+<p><strong>相关文档（25）</strong></p>
+<ul>
+<li><code>build-tdd/CMakeFiles/CMakeConfigureLog.yaml</code>:8 — CMakeLists</li>
+<li><code>docs/handover/HANDOVER.md</code>:178 — CMakeLists</li>
+<li><code>build-host-off/CMakeFiles/CMakeConfigureLog.yaml</code>:8 — CMakeLists</li>
+<li><code>build-standalone/CMakeFiles/CMakeConfigureLog.yaml</code>:8 — CMakeLists</li>
+<li><code>build-cross/CMakeFiles/CMakeConfigureLog.yaml</code>:8 — CMakeLists</li>
+<li><code>docs/plan/PLAN-MODULARIZATION.md</code>:82 — CMakeLists</li>
+<li><code>xingma/XINGMA-PLAN.md</code>:108 — CMakeLists</li>
+<li><code>docs/reviews/ARCH-AUDIT-VERIFICATION.md</code>:30 — CMakeLists</li>
+<li><code>docs/handover/CHANGELOG.md</code>:279 — CMakeLists</li>
+<li><code>xingma/archive/XINGMA-PLAN-v2.3-DRAFT.md</code>:118 — CMakeLists</li>
+<li><code>xingma/docs/phase0/PHASE0-PLAN.md</code>:26 — CMakeLists</li>
+<li><code>libernt/PORTABILITY-ASSESSMENT.md</code>:51 — CMakeLists</li>
+</ul>
+<h3>CMakeLists.txt  ·  M  ·  风险 40</h3>
+<p>风险来源：被 5 个文件引用 (+15)；无测试引用 (+15)；被 25 个文档描述 (+10) 改动：+0 / -0，0 个 hunk 涉及符号：<code>CMakeLists</code> <strong>调用方（5）</strong></p>
+<ul>
+<li><code>tools/check_m1.py</code>:188 — CMakeLists</li>
+<li><code>tools/install-rospinyin/install.cpp</code>:438 — CMakeLists</li>
+<li><code>framework/platform/win32/imm32/dllmain.cpp</code>:30 — CMakeLists</li>
+<li><code>pinyin/src/dat_source.cpp</code>:8 — CMakeLists</li>
+<li><code>pinyin/host/dat_source_win.cpp</code>:6 — CMakeLists</li>
+</ul>
+<p><strong>相关测试（0）</strong></p>
+<ul>
+<li>无</li>
+</ul>
+<p><strong>相关文档（25）</strong></p>
+<ul>
+<li><code>build-tdd/CMakeFiles/CMakeConfigureLog.yaml</code>:8 — CMakeLists</li>
+<li><code>docs/handover/HANDOVER.md</code>:178 — CMakeLists</li>
+<li><code>build-host-off/CMakeFiles/CMakeConfigureLog.yaml</code>:8 — CMakeLists</li>
+<li><code>build-standalone/CMakeFiles/CMakeConfigureLog.yaml</code>:8 — CMakeLists</li>
+<li><code>build-cross/CMakeFiles/CMakeConfigureLog.yaml</code>:8 — CMakeLists</li>
+<li><code>docs/plan/PLAN-MODULARIZATION.md</code>:82 — CMakeLists</li>
+<li><code>xingma/XINGMA-PLAN.md</code>:108 — CMakeLists</li>
+<li><code>docs/reviews/ARCH-AUDIT-VERIFICATION.md</code>:30 — CMakeLists</li>
+<li><code>docs/handover/CHANGELOG.md</code>:279 — CMakeLists</li>
+<li><code>xingma/archive/XINGMA-PLAN-v2.3-DRAFT.md</code>:118 — CMakeLists</li>
+<li><code>xingma/docs/phase0/PHASE0-PLAN.md</code>:26 — CMakeLists</li>
+<li><code>libernt/PORTABILITY-ASSESSMENT.md</code>:51 — CMakeLists</li>
+</ul>
+<h3>tools/check_m1.py  ·  M  ·  风险 40</h3>
+<p>风险来源：被 37 个文件引用 (+30)；被 25 个文档描述 (+10) 改动：+0 / -0，0 个 hunk 涉及符号：<code>strip_cpp_comments</code>, <code>def_symbols</code>, <code>function_body</code>, <code>strip_trace_blocks</code>, <code>calls_in</code>, <code>call_arguments</code>, <code>split_top_level</code>, <code>reg_key_writes</code>, <code>Checker</code>, <code>check</code>, <code>summary</code>, <code>strip_cmake_comments</code> <strong>调用方（20）</strong></p>
+<ul>
+<li><code>tools/check_docs.py</code>:62 — Checker, check, summary</li>
+<li><code>tools/check_release_version.py</code>:24 — check, check_m1</li>
+<li><code>tools/ime_chain_diff.py</code>:158 — summary</li>
+<li><code>tools/artifact_hashes.py</code>:13 — check</li>
+<li><code>tools/install-rospinyin/install.cpp</code>:11 — check, check_m1</li>
+<li><code>tools/rhash/rhash.c</code>:8 — check</li>
+<li><code>m0/vm/noVNC-1.5.0/app/ui.js</code>:1549 — check</li>
+<li><code>m0/vm/noVNC-1.5.0/core/rfb.js</code>:1032 — check</li>
+<li><code>m0/vm/noVNC-1.5.0/core/util/cursor.js</code>:174 — check</li>
+<li><code>m0/vm/noVNC-1.5.0/snap/local/svc_wrapper.sh</code>:19 — check</li>
+<li><code>ime/rospinyin.h</code>:14 — check_m1</li>
+<li><code>tools/push_via_api.py</code>:42 — check</li>
+</ul>
+<p><strong>相关测试（17）</strong></p>
+<ul>
+<li><code>tests/host_key_test.cpp</code>:37 — check</li>
+<li><code>tests/code_table_test.cpp</code>:13 — check</li>
+<li><code>tests/pinyin_session_test.cpp</code>:19 — check</li>
+<li><code>tests/candidate_pager_test.cpp</code>:15 — check</li>
+<li><code>tests/scheme_test.cpp</code>:23 — check</li>
+<li><code>tests/host_smoke_test.cpp</code>:38 — check</li>
+<li><code>tests/toy_scheme_test.cpp</code>:28 — check</li>
+<li><code>tests/emit_text_test.cpp</code>:21 — check</li>
+<li><code>tests/utf8_test.cpp</code>:19 — check</li>
+<li><code>tests/scheme_registry_test.cpp</code>:28 — check</li>
+<li><code>tests/pinyin_test.cpp</code>:16 — check</li>
+<li><code>tests/builtin_gate_test.cpp</code>:40 — check</li>
+</ul>
+<p><strong>相关文档（25）</strong></p>
+<ul>
+<li><code>docs/handover/HANDOVER.md</code>:165 — check, check_m1, strip_trace_blocks</li>
+<li><code>docs/plan/PLAN-MODULARIZATION.md</code>:28 — check, check_m1</li>
+<li><code>docs/handover/CHANGELOG.md</code>:24 — check, check_m1</li>
+<li><code>xingma/docs/phase0/PHASE0-PLAN.md</code>:11 — check_m1</li>
+<li><code>docs/milestones/M0-REDLINE-REVIEW.md</code>:4 — check_m1</li>
+<li><code>xingma/archive/XINGMA-PLAN-v2.3-DRAFT.md</code>:83 — check, check_m1</li>
+<li><code>xingma/docs/glyph-tier/FRAMEWORK-REQ.md</code>:4 — check_m1</li>
+<li><code>xingma/XINGMA-PLAN.md</code>:7 — check, check_m1</li>
+<li><code>xingma/docs/FRAMEWORK-AUDIT-2026-11-17.md</code>:10 — check_m1</li>
+<li><code>docs/milestones/M1-REPORT.md</code>:75 — check_m1</li>
+<li><code>docs/projectoverall.md</code>:5 — check_m1</li>
+<li><code>docs/plan/PLAN.md</code>:37 — check_m1</li>
+</ul>
+<h3>ime/rospinyin_res.rc  ·  M  ·  风险 31</h3>
+<p>风险来源：被 2 个文件引用 (+6)；无测试引用 (+15)；被 11 个文档描述 (+10) 改动：+0 / -0，0 个 hunk 涉及符号：<code>rospinyin_res</code> <strong>调用方（2）</strong></p>
+<ul>
+<li><code>tools/check_m1.py</code>:399 — rospinyin_res</li>
+<li><code>ime/rospinyin.h</code>:13 — rospinyin_res</li>
+</ul>
+<p><strong>相关测试（0）</strong></p>
+<ul>
+<li>无</li>
+</ul>
+<p><strong>相关文档（11）</strong></p>
+<ul>
+<li><code>docs/handover/HANDOVER.md</code>:196 — rospinyin_res</li>
+<li><code>docs/handover/CHANGELOG.md</code>:353 — rospinyin_res</li>
+<li><code>ime/CMakeLists.txt</code>:63 — rospinyin_res</li>
+<li><code>docs/font/FONT-BUNDLING-ASSESSMENT.md</code>:214 — rospinyin_res</li>
+<li><code>docs/reviews/ARCH-AUDIT-VERIFICATION.md</code>:61 — rospinyin_res</li>
+<li><code>CMakeLists.txt</code>:81 — rospinyin_res</li>
+<li><code>pinyin/README.md</code>:11 — rospinyin_res</li>
+<li><code>libernt/PORTABILITY-ASSESSMENT.md</code>:97 — rospinyin_res</li>
+<li><code>docs/plan/PLAN.md</code>:38 — rospinyin_res</li>
+<li><code>docs/milestones/M1-REPORT.md</code>:68 — rospinyin_res</li>
+<li><code>docs/milestones/m2/M2-DATA-PLAN.md</code>:205 — rospinyin_res</li>
+</ul>
+<h3>.github/workflows/ci.yml  ·  M  ·  风险 15</h3>
+<p>风险来源：无测试引用 (+15) 改动：+0 / -0，0 个 hunk <strong>调用方（0）</strong></p>
+<ul>
+<li>无</li>
+</ul>
+<p><strong>相关测试（0）</strong></p>
+<ul>
+<li>无</li>
+</ul>
+<p><strong>相关文档（0）</strong></p>
+<ul>
+<li>无</li>
+</ul></section><section class="card" id="file-依赖图.md"><h2>依赖图</h2><div class="src">.devloop/依赖图.md</div><h2>改造清单依赖图</h2>
+<ul>
+<li>生成时间：2026-11-23 22:26:57</li>
+<li>改造文件：6 个</li>
+<li>关联文件：34 个（展开 2 层）</li>
+</ul>
+<blockquote>节点过多，已按层级截断 168 个；可收紧 --files 或降低 --depth。</blockquote>
+<h3>终端视图</h3>
+<pre class="code"><code>改造范围（L0）
+├─ .github/workflows/ci.yml
+├─ CMakeLists.txt
+│   ├── ← ime/rospinyin_res.rc　(L0，CMakeLists)
+│   ├── ← tools/check_m1.py　(L0，CMakeLists)
+│   └── ← tools/install-rospinyin/install.cpp　(L0，CMakeLists)
+├─ ime/rospinyin_res.rc
+│   ├── ← .github/workflows/ci.yml　(L0，rospinyin_res)
+│   ├── ← CMakeLists.txt　(L0，rospinyin_res)
+│   ├── ← ime/rospinyin.h　(L1，rospinyin_res)
+│   └── ← tools/check_m1.py　(L0，rospinyin_res)
+├─ tools/check_m1.py
+│   ├── ← .github/workflows/ci.yml　(L0，check, check_m1)
+│   ├── ← CMakeLists.txt　(L0，read)
+│   ├── ← framework/include/imfw/code_table.hpp　(L1，read)
+│   ├── ← framework/include/imfw/dat_format.hpp　(L1，read)
+│   ├── ← framework/include/imfw/host.hpp　(L1，read)
+│   ├── ← framework/include/imfw/scheme.hpp　(L1，read)
+│   ├── ← framework/include/imfw/trace_stamp.hpp　(L1，read)
+│   └── ← framework/platform/win32/imm32/dllmain.cpp　(L1，check_m1)
+│   └── …… 另有 61 个依赖方
+├─ tools/install-rospinyin/CMakeLists.txt
+│   ├── ← framework/platform/win32/imm32/dllmain.cpp　(L1，CMakeLists)
+│   ├── ← ime/rospinyin_res.rc　(L0，CMakeLists)
+│   ├── ← pinyin/host/dat_source_win.cpp　(L1，CMakeLists)
+│   ├── ← pinyin/src/dat_source.cpp　(L1，CMakeLists)
+│   ├── ← tools/check_m1.py　(L0，CMakeLists)
+│   └── ← tools/install-rospinyin/install.cpp　(L0，CMakeLists)
+├─ tools/install-rospinyin/install.cpp
+│   ├── ← .github/workflows/ci.yml　(L0，install)
+│   ├── ← CMakeLists.txt　(L0，install)
+│   ├── ← framework/include/imfw/scheme.hpp　(L1，install)
+│   ├── ← framework/include/imfw/scheme_registry.hpp　(L1，install)
+│   ├── ← framework/src/scheme_registry.cpp　(L1，install)
+│   ├── ← ime/rospinyin.h　(L1，install)
+│   ├── ← m0/vm/common.sh　(L1，install)
+│   └── ← m0/vm/probe-n.sh　(L1，install)
+│   └── …… 另有 12 个依赖方</code></pre>
+<h3>图（Mermaid）</h3>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1446 2583" width="100%" style="max-width:1446px;height:auto" role="img" aria-label="架构图">
+<defs><marker id="dl-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#64748B"/></marker></defs>
+<path d="M212,34 L303,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="208" y="654" width="99" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="258" y="666" text-anchor="middle" font-size="11" fill="#475569">rospinyin_res</text>
+<path d="M212,34 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="404" y="654" width="113" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="460" y="666" text-anchor="middle" font-size="11" fill="#475569">check, check_m1</text>
+<path d="M212,34 L1199,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="677" y="654" width="57" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="706" y="666" text-anchor="middle" font-size="11" fill="#475569">install</text>
+<path d="M653,1292 C679,1274 277,1274 303,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="428" y="1282" width="99" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="1296" text-anchor="middle" font-size="11" fill="#475569">rospinyin_res</text>
+<path d="M653,1292 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="663" y="1282" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="681" y="1296" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M653,1292 L1199,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="898" y="1282" width="57" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="926" y="1296" text-anchor="middle" font-size="11" fill="#475569">install</text>
+<path d="M247,103 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="460" y="688" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="701" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M247,181 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="460" y="727" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="740" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M247,259 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="460" y="766" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="779" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M247,337 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="460" y="805" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="818" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M247,337 L1199,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="694" y="805" width="57" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="723" y="818" text-anchor="middle" font-size="11" fill="#475569">install</text>
+<path d="M247,415 L1199,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="694" y="844" width="57" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="723" y="857" text-anchor="middle" font-size="11" fill="#475569">install</text>
+<path d="M247,493 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="460" y="883" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="896" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M247,571 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="446" y="922" width="64" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="935" text-anchor="middle" font-size="11" fill="#475569">check_m1</text>
+<path d="M247,571 L912,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="540" y="922" width="78" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="580" y="935" text-anchor="middle" font-size="11" fill="#475569">CMakeLists</text>
+<path d="M247,649 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="460" y="961" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="974" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M247,727 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="456" y="1000" width="43" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="1013" text-anchor="middle" font-size="11" fill="#475569">check</text>
+<path d="M247,805 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="460" y="1039" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="1052" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M247,883 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="460" y="1078" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="1091" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M240,952 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="453" y="1113" width="43" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="474" y="1126" text-anchor="middle" font-size="11" fill="#475569">check</text>
+<path d="M247,1022 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="460" y="1148" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="1161" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M247,1022 L1199,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="694" y="1148" width="57" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="723" y="1161" text-anchor="middle" font-size="11" fill="#475569">install</text>
+<path d="M149,1092 L303,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="176" y="1182" width="99" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="226" y="1196" text-anchor="middle" font-size="11" fill="#475569">rospinyin_res</text>
+<path d="M149,1092 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="397" y="1182" width="64" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="429" y="1196" text-anchor="middle" font-size="11" fill="#475569">check_m1</text>
+<path d="M149,1092 L1199,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="646" y="1182" width="57" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="674" y="1196" text-anchor="middle" font-size="11" fill="#475569">install</text>
+<path d="M471,1292 L527,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="460" y="1282" width="78" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="499" y="1296" text-anchor="middle" font-size="11" fill="#475569">CMakeLists</text>
+<path d="M471,1292 L912,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="652" y="1282" width="78" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="692" y="1296" text-anchor="middle" font-size="11" fill="#475569">CMakeLists</text>
+<path d="M149,1152 L1199,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="646" y="1213" width="57" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="674" y="1226" text-anchor="middle" font-size="11" fill="#475569">install</text>
+<path d="M233,1214 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="428" y="1244" width="85" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="471" y="1256" text-anchor="middle" font-size="11" fill="#475569">check, read</text>
+<path d="M247,1283 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="460" y="1278" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="1291" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M247,1352 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="436" y="1313" width="85" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="1326" text-anchor="middle" font-size="11" fill="#475569">check, read</text>
+<path d="M247,1422 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="456" y="1348" width="43" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="1361" text-anchor="middle" font-size="11" fill="#475569">check</text>
+<path d="M247,1500 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="460" y="1387" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="1400" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M247,1578 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="436" y="1426" width="85" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="1439" text-anchor="middle" font-size="11" fill="#475569">check, read</text>
+<path d="M247,1656 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="460" y="1465" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="1478" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M247,1734 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="460" y="1504" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="1517" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M247,1812 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="460" y="1543" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="1556" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M247,1890 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="460" y="1582" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="1595" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M247,1968 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="460" y="1621" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="1634" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M247,2046 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="460" y="1660" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="1673" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M247,2124 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="460" y="1699" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="1712" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M156,2194 L1199,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="649" y="1734" width="57" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="678" y="1746" text-anchor="middle" font-size="11" fill="#475569">install</text>
+<path d="M240,2254 L1199,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="691" y="1764" width="57" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="720" y="1777" text-anchor="middle" font-size="11" fill="#475569">install</text>
+<path d="M247,2324 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="460" y="1799" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="1812" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M247,2324 L912,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="540" y="1799" width="78" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="580" y="1812" text-anchor="middle" font-size="11" fill="#475569">CMakeLists</text>
+<path d="M247,2402 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="460" y="1838" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="1851" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M247,2480 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="460" y="1877" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="478" y="1890" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M219,2550 L709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="446" y="1912" width="36" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="464" y="1924" text-anchor="middle" font-size="11" fill="#475569">read</text>
+<path d="M219,2550 L912,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="526" y="1912" width="78" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="566" y="1924" text-anchor="middle" font-size="11" fill="#475569">CMakeLists</text>
+<path d="M856,1292 C882,1274 501,1274 527,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="652" y="1282" width="78" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="692" y="1296" text-anchor="middle" font-size="11" fill="#475569">CMakeLists</text>
+<path d="M856,1292 C882,1274 277,1274 303,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="530" y="1282" width="99" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="580" y="1296" text-anchor="middle" font-size="11" fill="#475569">rospinyin_res</text>
+<path d="M856,1292 L912,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="845" y="1282" width="78" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="884" y="1296" text-anchor="middle" font-size="11" fill="#475569">CMakeLists</text>
+<path d="M856,1292 L1199,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="999" y="1282" width="57" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="1028" y="1296" text-anchor="middle" font-size="11" fill="#475569">install</text>
+<path d="M1143,1292 L1199,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="1142" y="1282" width="57" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="1171" y="1296" text-anchor="middle" font-size="11" fill="#475569">install</text>
+<path d="M1430,1292 C1456,1274 501,1274 527,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="940" y="1282" width="78" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="978" y="1296" text-anchor="middle" font-size="11" fill="#475569">CMakeLists</text>
+<path d="M1430,1292 C1456,1274 683,1274 709,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="1013" y="1282" width="113" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="1070" y="1296" text-anchor="middle" font-size="11" fill="#475569">check, check_m1</text>
+<path d="M1430,1292 C1456,1274 886,1274 912,1292" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="1132" y="1282" width="78" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="1171" y="1296" text-anchor="middle" font-size="11" fill="#475569">CMakeLists</text>
+<rect x="16" y="16" width="196" height="35" rx="6" fill="#DBEAFE" stroke="#2563EB" stroke-width="1.4"/>
+<text x="114" y="38" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#1E3A8A">.github/workflows/ci.yml</text>
+<rect x="527" y="1274" width="126" height="35" rx="6" fill="#DBEAFE" stroke="#2563EB" stroke-width="1.4"/>
+<text x="590" y="1296" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#1E3A8A">CMakeLists.txt</text>
+<rect x="303" y="1274" width="168" height="35" rx="6" fill="#DBEAFE" stroke="#2563EB" stroke-width="1.4"/>
+<text x="387" y="1296" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#1E3A8A">ime/rospinyin_res.rc</text>
+<rect x="709" y="1274" width="147" height="35" rx="6" fill="#DBEAFE" stroke="#2563EB" stroke-width="1.4"/>
+<text x="782" y="1296" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#1E3A8A">tools/check_m1.py</text>
+<rect x="912" y="1266" width="231" height="52" rx="6" fill="#DBEAFE" stroke="#2563EB" stroke-width="1.4"/>
+<text x="1028" y="1288" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#1E3A8A">…install-rospinyin/CMakeLists</text>
+<text x="1028" y="1304" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#1E3A8A">.txt</text>
+<rect x="1199" y="1266" width="231" height="52" rx="6" fill="#DBEAFE" stroke="#2563EB" stroke-width="1.4"/>
+<text x="1314" y="1288" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#1E3A8A">…ls/install-rospinyin/install</text>
+<text x="1314" y="1304" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#1E3A8A">.cpp</text>
+<rect x="16" y="77" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="99" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">…work/include/imfw/code_table</text>
+<text x="132" y="116" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">.hpp</text>
+<rect x="16" y="155" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="177" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">…work/include/imfw/dat_format</text>
+<text x="132" y="194" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">.hpp</text>
+<rect x="16" y="233" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="255" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">framework/include/imfw/host.h</text>
+<text x="132" y="272" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">pp</text>
+<rect x="16" y="311" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="333" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">framework/include/imfw/scheme</text>
+<text x="132" y="350" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">.hpp</text>
+<rect x="16" y="389" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="411" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">…include/imfw/scheme_registry</text>
+<text x="132" y="428" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">.hpp</text>
+<rect x="16" y="467" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="489" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">…ork/include/imfw/trace_stamp</text>
+<text x="132" y="506" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">.hpp</text>
+<rect x="16" y="545" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="567" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">…platform/win32/imm32/dllmain</text>
+<text x="132" y="584" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">.cpp</text>
+<rect x="16" y="623" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="645" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">…rm/win32/imm32/key_translate</text>
+<text x="132" y="662" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">.cpp</text>
+<rect x="16" y="701" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="723" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">…rm/win32/imm32/session_store</text>
+<text x="132" y="740" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">.cpp</text>
+<rect x="16" y="779" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="801" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">…latform/win32/imm32/win32_ho</text>
+<text x="132" y="818" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">st.h</text>
+<rect x="16" y="857" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="879" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">…ork/platform/win32/ui/ime_ui</text>
+<text x="132" y="896" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">.cpp</text>
+<rect x="16" y="935" width="224" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="128" y="957" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">framework/src/code_table.cpp</text>
+<rect x="16" y="996" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="1018" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">framework/src/scheme_registry</text>
+<text x="132" y="1035" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">.cpp</text>
+<rect x="16" y="1074" width="133" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="82" y="1096" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">ime/rospinyin.h</text>
+<rect x="16" y="1135" width="133" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="82" y="1157" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">m0/vm/common.sh</text>
+<rect x="16" y="1196" width="217" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="125" y="1218" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">m0/vm/noVNC-1.5.0/app/ui.js</text>
+<rect x="16" y="1257" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="1279" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">m0/vm/noVNC-1.5.0/app/webutil</text>
+<text x="132" y="1296" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">.js</text>
+<rect x="16" y="1335" width="231" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="1357" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">m0/vm/noVNC-1.5.0/core/rfb.js</text>
+<rect x="16" y="1396" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="1418" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">…/noVNC-1.5.0/core/util/curso</text>
+<text x="132" y="1435" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">r.js</text>
+<rect x="16" y="1474" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="1496" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">m0/vm/noVNC-1.5.0/core/websoc</text>
+<text x="132" y="1513" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">k.js</text>
+<rect x="16" y="1552" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="1574" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">…-1.5.0/snap/local/svc_wrappe</text>
+<text x="132" y="1591" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">r.sh</text>
+<rect x="16" y="1630" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="1652" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">…oVNC-1.5.0/tests/test.browse</text>
+<text x="132" y="1669" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">r.js</text>
+<rect x="16" y="1708" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="1730" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">…noVNC-1.5.0/tests/test.helpe</text>
+<text x="132" y="1747" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">r.js</text>
+<rect x="16" y="1786" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="1808" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">…VNC-1.5.0/tests/test.keyboar</text>
+<text x="132" y="1825" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">d.js</text>
+<rect x="16" y="1864" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="1886" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">…1.5.0/tests/test.localizatio</text>
+<text x="132" y="1903" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">n.js</text>
+<rect x="16" y="1942" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="1964" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">…vm/noVNC-1.5.0/tests/test.rf</text>
+<text x="132" y="1981" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">b.js</text>
+<rect x="16" y="2020" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="2042" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">…oVNC-1.5.0/tests/test.websoc</text>
+<text x="132" y="2059" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">k.js</text>
+<rect x="16" y="2098" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="2120" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">…oVNC-1.5.0/tests/test.webuti</text>
+<text x="132" y="2137" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">l.js</text>
+<rect x="16" y="2176" width="140" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="86" y="2198" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">m0/vm/probe-n.sh</text>
+<rect x="16" y="2237" width="224" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="128" y="2259" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">m0/vm/run-reactos-install.sh</text>
+<rect x="16" y="2298" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="2320" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">pinyin/host/dat_source_win.cp</text>
+<text x="132" y="2337" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">p</text>
+<rect x="16" y="2376" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="2398" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">…include/rospinyin/dat_source</text>
+<text x="132" y="2415" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">.hpp</text>
+<rect x="16" y="2454" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="2476" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">…yin/include/rospinyin/pinyin</text>
+<text x="132" y="2493" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">.hpp</text>
+<rect x="16" y="2532" width="203" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="118" y="2554" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">pinyin/src/dat_source.cpp</text>
+</svg><details><summary>mermaid 源码</summary><pre class="code"><code>flowchart LR
+  n0[&quot;.github/workflows/ci.yml&quot;]
+  n1[&quot;CMakeLists.txt&quot;]
+  n2[&quot;ime/rospinyin_res.rc&quot;]
+  n3[&quot;tools/check_m1.py&quot;]
+  n4[&quot;…install-rospinyin/CMakeLists.txt&quot;]
+  n5[&quot;…ls/install-rospinyin/install.cpp&quot;]
+  n6[&quot;…work/include/imfw/code_table.hpp&quot;]
+  n7[&quot;…work/include/imfw/dat_format.hpp&quot;]
+  n8[&quot;framework/include/imfw/host.hpp&quot;]
+  n9[&quot;framework/include/imfw/scheme.hpp&quot;]
+  n10[&quot;…include/imfw/scheme_registry.hpp&quot;]
+  n11[&quot;…ork/include/imfw/trace_stamp.hpp&quot;]
+  n12[&quot;…platform/win32/imm32/dllmain.cpp&quot;]
+  n13[&quot;…rm/win32/imm32/key_translate.cpp&quot;]
+  n14[&quot;…rm/win32/imm32/session_store.cpp&quot;]
+  n15[&quot;…latform/win32/imm32/win32_host.h&quot;]
+  n16[&quot;…ork/platform/win32/ui/ime_ui.cpp&quot;]
+  n17[&quot;framework/src/code_table.cpp&quot;]
+  n18[&quot;framework/src/scheme_registry.cpp&quot;]
+  n19[&quot;ime/rospinyin.h&quot;]
+  n20[&quot;m0/vm/common.sh&quot;]
+  n21[&quot;m0/vm/noVNC-1.5.0/app/ui.js&quot;]
+  n22[&quot;m0/vm/noVNC-1.5.0/app/webutil.js&quot;]
+  n23[&quot;m0/vm/noVNC-1.5.0/core/rfb.js&quot;]
+  n24[&quot;…/noVNC-1.5.0/core/util/cursor.js&quot;]
+  n25[&quot;m0/vm/noVNC-1.5.0/core/websock.js&quot;]
+  n26[&quot;…-1.5.0/snap/local/svc_wrapper.sh&quot;]
+  n27[&quot;…oVNC-1.5.0/tests/test.browser.js&quot;]
+  n28[&quot;…noVNC-1.5.0/tests/test.helper.js&quot;]
+  n29[&quot;…VNC-1.5.0/tests/test.keyboard.js&quot;]
+  n30[&quot;…1.5.0/tests/test.localization.js&quot;]
+  n31[&quot;…vm/noVNC-1.5.0/tests/test.rfb.js&quot;]
+  n32[&quot;…oVNC-1.5.0/tests/test.websock.js&quot;]
+  n33[&quot;…oVNC-1.5.0/tests/test.webutil.js&quot;]
+  n34[&quot;m0/vm/probe-n.sh&quot;]
+  n35[&quot;m0/vm/run-reactos-install.sh&quot;]
+  n36[&quot;pinyin/host/dat_source_win.cpp&quot;]
+  n37[&quot;…include/rospinyin/dat_source.hpp&quot;]
+  n38[&quot;…yin/include/rospinyin/pinyin.hpp&quot;]
+  n39[&quot;pinyin/src/dat_source.cpp&quot;]
+  n0 --&gt;|&quot;rospinyin_res&quot;| n2
+  n0 --&gt;|&quot;check, check_m1&quot;| n3
+  n0 --&gt;|&quot;install&quot;| n5
+  n1 --&gt;|&quot;rospinyin_res&quot;| n2
+  n1 --&gt;|&quot;read&quot;| n3
+  n1 --&gt;|&quot;install&quot;| n5
+  n6 --&gt;|&quot;read&quot;| n3
+  n7 --&gt;|&quot;read&quot;| n3
+  n8 --&gt;|&quot;read&quot;| n3
+  n9 --&gt;|&quot;read&quot;| n3
+  n9 --&gt;|&quot;install&quot;| n5
+  n10 --&gt;|&quot;install&quot;| n5
+  n11 --&gt;|&quot;read&quot;| n3
+  n12 --&gt;|&quot;check_m1&quot;| n3
+  n12 --&gt;|&quot;CMakeLists&quot;| n4
+  n13 --&gt;|&quot;read&quot;| n3
+  n14 --&gt;|&quot;check&quot;| n3
+  n15 --&gt;|&quot;read&quot;| n3
+  n16 --&gt;|&quot;read&quot;| n3
+  n17 --&gt;|&quot;check&quot;| n3
+  n18 --&gt;|&quot;read&quot;| n3
+  n18 --&gt;|&quot;install&quot;| n5
+  n19 --&gt;|&quot;rospinyin_res&quot;| n2
+  n19 --&gt;|&quot;check_m1&quot;| n3
+  n19 --&gt;|&quot;install&quot;| n5
+  n2 --&gt;|&quot;CMakeLists&quot;| n1
+  n2 --&gt;|&quot;CMakeLists&quot;| n4
+  n20 --&gt;|&quot;install&quot;| n5
+  n21 --&gt;|&quot;check, read&quot;| n3
+  n22 --&gt;|&quot;read&quot;| n3
+  n23 --&gt;|&quot;check, read&quot;| n3
+  n24 --&gt;|&quot;check&quot;| n3
+  n25 --&gt;|&quot;read&quot;| n3
+  n26 --&gt;|&quot;check, read&quot;| n3
+  n27 --&gt;|&quot;read&quot;| n3
+  n28 --&gt;|&quot;read&quot;| n3
+  n29 --&gt;|&quot;read&quot;| n3
+  n30 --&gt;|&quot;read&quot;| n3
+  n31 --&gt;|&quot;read&quot;| n3
+  n32 --&gt;|&quot;read&quot;| n3
+  n33 --&gt;|&quot;read&quot;| n3
+  n34 --&gt;|&quot;install&quot;| n5
+  n35 --&gt;|&quot;install&quot;| n5
+  n36 --&gt;|&quot;read&quot;| n3
+  n36 --&gt;|&quot;CMakeLists&quot;| n4
+  n37 --&gt;|&quot;read&quot;| n3
+  n38 --&gt;|&quot;read&quot;| n3
+  n39 --&gt;|&quot;read&quot;| n3
+  n39 --&gt;|&quot;CMakeLists&quot;| n4
+  n3 --&gt;|&quot;CMakeLists&quot;| n1
+  n3 --&gt;|&quot;rospinyin_res&quot;| n2
+  n3 --&gt;|&quot;CMakeLists&quot;| n4
+  n3 --&gt;|&quot;install&quot;| n5
+  n4 --&gt;|&quot;install&quot;| n5
+  n5 --&gt;|&quot;CMakeLists&quot;| n1
+  n5 --&gt;|&quot;check, check_m1&quot;| n3
+  n5 --&gt;|&quot;CMakeLists&quot;| n4
+  classDef target fill:#DBEAFE,stroke:#2563EB,stroke-width:2px,color:#1E3A8A
+  classDef dep fill:#F8FAFC,stroke:#CBD5E1,color:#334155
+  classDef newone fill:#FFFBEB,stroke:#F59E0B,stroke-dasharray:5 3,color:#92400E
+  class n5,n4,n2,n1,n0,n3 target
+  class n6,n7,n8,n9,n10,n11,n12,n13,n14,n15,n16,n17,n18,n19,n20,n21,n22,n23,n24,n25,n26,n27,n28,n29,n30,n31,n32,n33,n34,n35,n36,n37,n38,n39 dep</code></pre></details></figure>
+<h3>分层</h3>
+<p><strong>改造范围（S1 清单内）</strong>（6）</p>
+<ul>
+<li><code>.github/workflows/ci.yml</code></li>
+<li><code>CMakeLists.txt</code></li>
+<li><code>ime/rospinyin_res.rc</code></li>
+<li><code>tools/check_m1.py</code></li>
+<li><code>tools/install-rospinyin/CMakeLists.txt</code></li>
+<li><code>tools/install-rospinyin/install.cpp</code></li>
+</ul>
+<p><strong>直接受影响</strong>（34）</p>
+<ul>
+<li><code>framework/include/imfw/code_table.hpp</code></li>
+<li><code>framework/include/imfw/dat_format.hpp</code></li>
+<li><code>framework/include/imfw/host.hpp</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code></li>
+<li><code>framework/include/imfw/scheme_registry.hpp</code></li>
+<li><code>framework/include/imfw/trace_stamp.hpp</code></li>
+<li><code>framework/platform/win32/imm32/dllmain.cpp</code></li>
+<li><code>framework/platform/win32/imm32/key_translate.cpp</code></li>
+<li><code>framework/platform/win32/imm32/session_store.cpp</code></li>
+<li><code>framework/platform/win32/imm32/win32_host.h</code></li>
+<li><code>framework/platform/win32/ui/ime_ui.cpp</code></li>
+<li><code>framework/src/code_table.cpp</code></li>
+<li><code>framework/src/scheme_registry.cpp</code></li>
+<li><code>ime/rospinyin.h</code></li>
+<li><code>m0/vm/common.sh</code></li>
+<li><code>m0/vm/noVNC-1.5.0/app/ui.js</code></li>
+<li><code>m0/vm/noVNC-1.5.0/app/webutil.js</code></li>
+<li><code>m0/vm/noVNC-1.5.0/core/rfb.js</code></li>
+<li><code>m0/vm/noVNC-1.5.0/core/util/cursor.js</code></li>
+<li><code>m0/vm/noVNC-1.5.0/core/websock.js</code></li>
+<li><code>m0/vm/noVNC-1.5.0/snap/local/svc_wrapper.sh</code></li>
+<li><code>m0/vm/noVNC-1.5.0/tests/test.browser.js</code></li>
+<li><code>m0/vm/noVNC-1.5.0/tests/test.helper.js</code></li>
+<li><code>m0/vm/noVNC-1.5.0/tests/test.keyboard.js</code></li>
+<li><code>m0/vm/noVNC-1.5.0/tests/test.localization.js</code></li>
+<li><code>m0/vm/noVNC-1.5.0/tests/test.rfb.js</code></li>
+<li><code>m0/vm/noVNC-1.5.0/tests/test.websock.js</code></li>
+<li><code>m0/vm/noVNC-1.5.0/tests/test.webutil.js</code></li>
+<li><code>m0/vm/probe-n.sh</code></li>
+<li><code>m0/vm/run-reactos-install.sh</code></li>
+<li><code>pinyin/host/dat_source_win.cpp</code></li>
+<li><code>pinyin/include/rospinyin/dat_source.hpp</code></li>
+<li><code>pinyin/include/rospinyin/pinyin.hpp</code></li>
+<li><code>pinyin/src/dat_source.cpp</code></li>
+</ul>
+<h3>依赖关系</h3>
+<div class="table-wrap"><table><thead><tr><th>依赖方</th><th>被依赖</th><th>引用符号</th></tr></thead><tbody>
+<tr><td><code>.github/workflows/ci.yml</code></td><td><code>ime/rospinyin_res.rc</code></td><td>rospinyin_res</td></tr>
+<tr><td><code>.github/workflows/ci.yml</code></td><td><code>tools/check_m1.py</code></td><td>check, check_m1</td></tr>
+<tr><td><code>.github/workflows/ci.yml</code></td><td><code>tools/install-rospinyin/install.cpp</code></td><td>install</td></tr>
+<tr><td><code>CMakeLists.txt</code></td><td><code>ime/rospinyin_res.rc</code></td><td>rospinyin_res</td></tr>
+<tr><td><code>CMakeLists.txt</code></td><td><code>tools/check_m1.py</code></td><td>read</td></tr>
+<tr><td><code>CMakeLists.txt</code></td><td><code>tools/install-rospinyin/install.cpp</code></td><td>install</td></tr>
+<tr><td><code>build-cross/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c</code></td><td><code>framework/platform/win32/imm32/session_store.cpp</code></td><td>Store</td></tr>
+<tr><td><code>build-cross/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c</code></td><td><code>m0/vm/noVNC-1.5.0/core/util/cursor.js</code></td><td>change</td></tr>
+<tr><td><code>build-cross/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c</code></td><td><code>tools/artifact_hashes.py</code></td><td>when</td></tr>
+<tr><td><code>build-cross/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c</code></td><td><code>tools/syntax_stub/windows.h</code></td><td>windows</td></tr>
+<tr><td><code>build-cross/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp</code></td><td><code>framework/platform/win32/imm32/session_store.cpp</code></td><td>Store</td></tr>
+<tr><td><code>build-cross/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp</code></td><td><code>m0/vm/noVNC-1.5.0/core/util/cursor.js</code></td><td>change</td></tr>
+<tr><td><code>build-cross/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp</code></td><td><code>tools/artifact_hashes.py</code></td><td>when</td></tr>
+<tr><td><code>build-cross/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp</code></td><td><code>tools/syntax_stub/windows.h</code></td><td>windows</td></tr>
+<tr><td><code>build-host-off/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c</code></td><td><code>framework/platform/win32/imm32/session_store.cpp</code></td><td>Store</td></tr>
+<tr><td><code>build-host-off/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c</code></td><td><code>m0/vm/noVNC-1.5.0/core/util/cursor.js</code></td><td>change</td></tr>
+<tr><td><code>build-host-off/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c</code></td><td><code>tools/artifact_hashes.py</code></td><td>when</td></tr>
+<tr><td><code>build-host-off/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c</code></td><td><code>tools/syntax_stub/windows.h</code></td><td>windows</td></tr>
+<tr><td><code>build-host-off/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp</code></td><td><code>framework/platform/win32/imm32/session_store.cpp</code></td><td>Store</td></tr>
+<tr><td><code>build-host-off/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp</code></td><td><code>m0/vm/noVNC-1.5.0/core/util/cursor.js</code></td><td>change</td></tr>
+<tr><td><code>build-host-off/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp</code></td><td><code>tools/artifact_hashes.py</code></td><td>when</td></tr>
+<tr><td><code>build-host-off/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp</code></td><td><code>tools/syntax_stub/windows.h</code></td><td>windows</td></tr>
+<tr><td><code>build-host-off/pinyin/CMakeFiles/rospinyin-engine.dir/compiler_depend.ts</code></td><td><code>ime/rospinyin.h</code></td><td>rospinyin</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-builtin-gate.dir/compiler_depend.ts</code></td><td><code>ime/rospinyin.h</code></td><td>rospinyin</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-candidate-pager.dir/compiler_depend.ts</code></td><td><code>ime/rospinyin.h</code></td><td>rospinyin</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-code-table.dir/compiler_depend.ts</code></td><td><code>ime/rospinyin.h</code></td><td>rospinyin</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-emit-text.dir/compiler_depend.ts</code></td><td><code>ime/rospinyin.h</code></td><td>rospinyin</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-host-key.dir/compiler_depend.ts</code></td><td><code>framework/include/imfw/host.hpp</code></td><td>host</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-host-key.dir/compiler_depend.ts</code></td><td><code>ime/rospinyin.h</code></td><td>rospinyin</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-host-smoke.dir/compiler_depend.ts</code></td><td><code>framework/include/imfw/host.hpp</code></td><td>host</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-host-smoke.dir/compiler_depend.ts</code></td><td><code>ime/rospinyin.h</code></td><td>rospinyin</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-key-char.dir/compiler_depend.ts</code></td><td><code>ime/rospinyin.h</code></td><td>rospinyin</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-key-route.dir/compiler_depend.ts</code></td><td><code>ime/rospinyin.h</code></td><td>rospinyin</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-pinyin-session.dir/compiler_depend.ts</code></td><td><code>ime/rospinyin.h</code></td><td>rospinyin</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-pinyin-session.dir/compiler_depend.ts</code></td><td><code>pinyin/include/rospinyin/pinyin.hpp</code></td><td>pinyin</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-pinyin.dir/compiler_depend.ts</code></td><td><code>ime/rospinyin.h</code></td><td>rospinyin</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-pinyin.dir/compiler_depend.ts</code></td><td><code>pinyin/include/rospinyin/pinyin.hpp</code></td><td>pinyin</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-punctuation.dir/compiler_depend.ts</code></td><td><code>ime/rospinyin.h</code></td><td>rospinyin</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-scheme-registry.dir/compiler_depend.ts</code></td><td><code>framework/include/imfw/scheme.hpp</code></td><td>scheme</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-scheme-registry.dir/compiler_depend.ts</code></td><td><code>ime/rospinyin.h</code></td><td>rospinyin</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-scheme.dir/compiler_depend.ts</code></td><td><code>framework/include/imfw/scheme.hpp</code></td><td>scheme</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-scheme.dir/compiler_depend.ts</code></td><td><code>ime/rospinyin.h</code></td><td>rospinyin</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-session.dir/compiler_depend.ts</code></td><td><code>ime/rospinyin.h</code></td><td>rospinyin</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-smoke.dir/compiler_depend.ts</code></td><td><code>ime/rospinyin.h</code></td><td>rospinyin</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-toolbar-text.dir/compiler_depend.ts</code></td><td><code>ime/rospinyin.h</code></td><td>rospinyin</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-toy-scheme.dir/compiler_depend.ts</code></td><td><code>framework/include/imfw/scheme.hpp</code></td><td>scheme</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-toy-scheme.dir/compiler_depend.ts</code></td><td><code>ime/rospinyin.h</code></td><td>rospinyin</td></tr>
+<tr><td><code>build-host-off/tests/CMakeFiles/rospinyin-utf8.dir/compiler_depend.ts</code></td><td><code>ime/rospinyin.h</code></td><td>rospinyin</td></tr>
+<tr><td><code>build-standalone/CMakeFiles/4.5.0/CompilerIdC/CMakeCCompilerId.c</code></td><td><code>framework/platform/win32/imm32/session_store.cpp</code></td><td>Store</td></tr>
+<tr><td><code>build-standalone/CMakeFiles/4.5.0/CompilerIdC/CMakeCCompilerId.c</code></td><td><code>m0/vm/noVNC-1.5.0/core/util/cursor.js</code></td><td>change</td></tr>
+<tr><td><code>build-standalone/CMakeFiles/4.5.0/CompilerIdC/CMakeCCompilerId.c</code></td><td><code>tools/artifact_hashes.py</code></td><td>when</td></tr>
+<tr><td><code>build-standalone/CMakeFiles/4.5.0/CompilerIdC/CMakeCCompilerId.c</code></td><td><code>tools/syntax_stub/windows.h</code></td><td>windows</td></tr>
+<tr><td><code>build-standalone/CMakeFiles/4.5.0/CompilerIdCXX/CMakeCXXCompilerId.cpp</code></td><td><code>framework/platform/win32/imm32/session_store.cpp</code></td><td>Store</td></tr>
+<tr><td><code>build-standalone/CMakeFiles/4.5.0/CompilerIdCXX/CMakeCXXCompilerId.cpp</code></td><td><code>m0/vm/noVNC-1.5.0/core/util/cursor.js</code></td><td>change</td></tr>
+<tr><td><code>build-standalone/CMakeFiles/4.5.0/CompilerIdCXX/CMakeCXXCompilerId.cpp</code></td><td><code>tools/artifact_hashes.py</code></td><td>when</td></tr>
+<tr><td><code>build-standalone/CMakeFiles/4.5.0/CompilerIdCXX/CMakeCXXCompilerId.cpp</code></td><td><code>tools/syntax_stub/windows.h</code></td><td>windows</td></tr>
+<tr><td><code>build-tdd/CMakeFiles/4.5.0/CompilerIdC/CMakeCCompilerId.c</code></td><td><code>framework/platform/win32/imm32/session_store.cpp</code></td><td>Store</td></tr>
+<tr><td><code>build-tdd/CMakeFiles/4.5.0/CompilerIdC/CMakeCCompilerId.c</code></td><td><code>m0/vm/noVNC-1.5.0/core/util/cursor.js</code></td><td>change</td></tr>
+<tr><td><code>build-tdd/CMakeFiles/4.5.0/CompilerIdC/CMakeCCompilerId.c</code></td><td><code>tools/artifact_hashes.py</code></td><td>when</td></tr>
+<tr><td><code>build-tdd/CMakeFiles/4.5.0/CompilerIdC/CMakeCCompilerId.c</code></td><td><code>tools/syntax_stub/windows.h</code></td><td>windows</td></tr>
+<tr><td><code>build-tdd/CMakeFiles/4.5.0/CompilerIdCXX/CMakeCXXCompilerId.cpp</code></td><td><code>framework/platform/win32/imm32/session_store.cpp</code></td><td>Store</td></tr>
+<tr><td><code>build-tdd/CMakeFiles/4.5.0/CompilerIdCXX/CMakeCXXCompilerId.cpp</code></td><td><code>m0/vm/noVNC-1.5.0/core/util/cursor.js</code></td><td>change</td></tr>
+<tr><td><code>build-tdd/CMakeFiles/4.5.0/CompilerIdCXX/CMakeCXXCompilerId.cpp</code></td><td><code>tools/artifact_hashes.py</code></td><td>when</td></tr>
+<tr><td><code>build-tdd/CMakeFiles/4.5.0/CompilerIdCXX/CMakeCXXCompilerId.cpp</code></td><td><code>tools/syntax_stub/windows.h</code></td><td>windows</td></tr>
+<tr><td><code>build-tdd/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c</code></td><td><code>framework/platform/win32/imm32/session_store.cpp</code></td><td>Store</td></tr>
+<tr><td><code>build-tdd/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c</code></td><td><code>m0/vm/noVNC-1.5.0/core/util/cursor.js</code></td><td>change</td></tr>
+<tr><td><code>build-tdd/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c</code></td><td><code>tools/artifact_hashes.py</code></td><td>when</td></tr>
+<tr><td><code>build-tdd/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c</code></td><td><code>tools/syntax_stub/windows.h</code></td><td>windows</td></tr>
+<tr><td><code>build-tdd/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp</code></td><td><code>framework/platform/win32/imm32/session_store.cpp</code></td><td>Store</td></tr>
+<tr><td><code>build-tdd/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp</code></td><td><code>m0/vm/noVNC-1.5.0/core/util/cursor.js</code></td><td>change</td></tr>
+<tr><td><code>build-tdd/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp</code></td><td><code>tools/artifact_hashes.py</code></td><td>when</td></tr>
+<tr><td><code>build-tdd/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp</code></td><td><code>tools/syntax_stub/windows.h</code></td><td>windows</td></tr>
+<tr><td><code>framework/include/imfw/candidate_pager.hpp</code></td><td><code>framework/include/imfw/host.hpp</code></td><td>host</td></tr>
+<tr><td><code>framework/include/imfw/candidate_pager.hpp</code></td><td><code>pinyin/include/rospinyin/pinyin.hpp</code></td><td>pinyin</td></tr>
+<tr><td><code>framework/include/imfw/candidate_pager.hpp</code></td><td><code>tools/artifact_hashes.py</code></td><td>when</td></tr>
+<tr><td><code>framework/include/imfw/code_table.hpp</code></td><td><code>tools/check_m1.py</code></td><td>read</td></tr>
+<tr><td><code>framework/include/imfw/dat_format.hpp</code></td><td><code>tools/check_m1.py</code></td><td>read</td></tr>
+<tr><td><code>framework/include/imfw/emit_text.hpp</code></td><td><code>framework/include/imfw/host.hpp</code></td><td>host</td></tr>
+<tr><td><code>framework/include/imfw/emit_text.hpp</code></td><td><code>pinyin/include/rospinyin/pinyin.hpp</code></td><td>pinyin</td></tr>
+<tr><td><code>framework/include/imfw/emit_text.hpp</code></td><td><code>tools/artifact_hashes.py</code></td><td>when</td></tr>
+<tr><td><code>framework/include/imfw/emit_text.hpp</code></td><td><code>tools/compare_ime.py</code></td><td>runs</td></tr>
+<tr><td><code>framework/include/imfw/emit_text.hpp</code></td><td><code>tools/push_via_api.py</code></td><td>call</td></tr>
+<tr><td><code>framework/include/imfw/engine.hpp</code></td><td><code>framework/include/imfw/host.hpp</code></td><td>host</td></tr>
+<tr><td><code>framework/include/imfw/engine.hpp</code></td><td><code>pinyin/include/rospinyin/pinyin.hpp</code></td><td>pinyin</td></tr>
+<tr><td><code>framework/include/imfw/host.hpp</code></td><td><code>tools/check_m1.py</code></td><td>read</td></tr>
+<tr><td><code>framework/include/imfw/intent.hpp</code></td><td><code>framework/include/imfw/host.hpp</code></td><td>KeyEvent, host</td></tr>
+<tr><td><code>framework/include/imfw/intent.hpp</code></td><td><code>framework/include/imfw/scheme.hpp</code></td><td>Scheme, scheme</td></tr>
+<tr><td><code>framework/include/imfw/intent.hpp</code></td><td><code>m0/vm/noVNC-1.5.0/core/util/cursor.js</code></td><td>change</td></tr>
+<tr><td><code>framework/include/imfw/intent.hpp</code></td><td><code>pinyin/include/rospinyin/pinyin.hpp</code></td><td>Reading</td></tr>
+<tr><td><code>framework/include/imfw/intent.hpp</code></td><td><code>tests/key_route_test.cpp</code></td><td>key_route_test</td></tr>
+<tr><td><code>framework/include/imfw/intent.hpp</code></td><td><code>tools/artifact_hashes.py</code></td><td>when</td></tr>
+<tr><td><code>framework/include/imfw/intent.hpp</code></td><td><code>tools/compare_ime.py</code></td><td>runs</td></tr>
+<tr><td><code>framework/include/imfw/intent.hpp</code></td><td><code>tools/ime_chain_diff.py</code></td><td>pick</td></tr>
+<tr><td><code>framework/include/imfw/intent.hpp</code></td><td><code>tools/push_via_api.py</code></td><td>call</td></tr>
+<tr><td><code>framework/include/imfw/key_char.hpp</code></td><td><code>framework/include/imfw/host.hpp</code></td><td>host</td></tr>
+<tr><td><code>framework/include/imfw/key_char.hpp</code></td><td><code>framework/platform/win32/imm32/key_translate.cpp</code></td><td>key_translate</td></tr>
+<tr><td><code>framework/include/imfw/key_char.hpp</code></td><td><code>tools/push_via_api.py</code></td><td>call</td></tr>
+<tr><td><code>framework/include/imfw/key_char.hpp</code></td><td><code>tools/syntax_stub/windows.h</code></td><td>windows</td></tr>
+<tr><td><code>framework/include/imfw/punctuation.hpp</code></td><td><code>framework/include/imfw/host.hpp</code></td><td>host</td></tr>
+<tr><td><code>framework/include/imfw/punctuation.hpp</code></td><td><code>framework/include/imfw/scheme.hpp</code></td><td>scheme</td></tr>
+<tr><td><code>framework/include/imfw/punctuation.hpp</code></td><td><code>pinyin/include/rospinyin/pinyin.hpp</code></td><td>pinyin</td></tr>
+<tr><td><code>framework/include/imfw/punctuation.hpp</code></td><td><code>tests/punctuation_test.cpp</code></td><td>punctuation_test</td></tr>
+<tr><td><code>framework/include/imfw/punctuation.hpp</code></td><td><code>tools/artifact_hashes.py</code></td><td>when</td></tr>
+<tr><td><code>framework/include/imfw/scheme.hpp</code></td><td><code>tools/check_m1.py</code></td><td>read</td></tr>
+<tr><td><code>framework/include/imfw/scheme.hpp</code></td><td><code>tools/install-rospinyin/install.cpp</code></td><td>install</td></tr>
+<tr><td><code>framework/include/imfw/scheme_registry.hpp</code></td><td><code>tools/install-rospinyin/install.cpp</code></td><td>install</td></tr>
+<tr><td><code>framework/include/imfw/session.hpp</code></td><td><code>framework/include/imfw/host.hpp</code></td><td>host</td></tr>
+<tr><td><code>framework/include/imfw/session.hpp</code></td><td><code>pinyin/include/rospinyin/pinyin.hpp</code></td><td>pinyin</td></tr>
+<tr><td><code>framework/include/imfw/session_state.hpp</code></td><td><code>framework/include/imfw/host.hpp</code></td><td>host</td></tr>
+<tr><td><code>framework/include/imfw/session_state.hpp</code></td><td><code>framework/platform/win32/imm32/session_store.cpp</code></td><td>session_store</td></tr>
+<tr><td><code>framework/include/imfw/session_state.hpp</code></td><td><code>m0/vm/noVNC-1.5.0/core/rfb.js</code></td><td>focus</td></tr>
+<tr><td><code>framework/include/imfw/session_state.hpp</code></td><td><code>m0/vm/noVNC-1.5.0/core/util/cursor.js</code></td><td>change</td></tr>
+<tr><td><code>framework/include/imfw/session_state.hpp</code></td><td><code>tools/artifact_hashes.py</code></td><td>when</td></tr>
+<tr><td><code>framework/include/imfw/toolbar_text.hpp</code></td><td><code>framework/include/imfw/host.hpp</code></td><td>host</td></tr>
+<tr><td><code>framework/include/imfw/toolbar_text.hpp</code></td><td><code>framework/include/imfw/scheme.hpp</code></td><td>Scheme, scheme</td></tr>
+<tr><td><code>framework/include/imfw/toolbar_text.hpp</code></td><td><code>tests/toolbar_text_test.cpp</code></td><td>toolbar_text_test</td></tr>
+<tr><td><code>framework/include/imfw/toolbar_text.hpp</code></td><td><code>tools/artifact_hashes.py</code></td><td>when</td></tr>
+<tr><td><code>framework/include/imfw/toolbar_text.hpp</code></td><td><code>tools/syntax_stub/windows.h</code></td><td>windows</td></tr>
+<tr><td><code>framework/include/imfw/trace_stamp.hpp</code></td><td><code>tools/check_m1.py</code></td><td>read</td></tr>
+<tr><td><code>framework/include/imfw/utf8.hpp</code></td><td><code>framework/include/imfw/host.hpp</code></td><td>host</td></tr>
+</tbody></table></div></section>
+<footer>由 dev-loop 生成 · 报告只读，改动请在 .devloop/ 下的 Markdown 里做</footer>
+</div></body></html>

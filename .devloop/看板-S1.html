@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>S1 · 需求影响面与技术方案</title><style>
+:root{--bg:#f7f8fa;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;
+--accent:#2563eb;--ok:#059669;--warn:#d97706;--bad:#dc2626;--code:#f3f4f6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+font:15px/1.7 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:32px 24px 64px}
+header.top{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:24px}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:.5px}
+.meta{color:var(--muted);font-size:13px}
+.meta span{margin-right:16px}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;
+font-weight:600;border:1px solid transparent}
+.pill.ok{background:#ecfdf5;color:var(--ok);border-color:#a7f3d0}
+.pill.warn{background:#fffbeb;color:var(--warn);border-color:#fde68a}
+.pill.gray{background:#f3f4f6;color:var(--muted);border-color:var(--line)}
+.pill.bad{background:#fef2f2;color:var(--bad);border-color:#fecaca}
+.gates{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;
+margin:0 0 28px}
+.gate{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.gate .st{font-size:12px;color:var(--muted);letter-spacing:1px}
+.gate .nm{font-size:14px;font-weight:600;margin:4px 0 8px}
+.gate .note{font-size:12px;color:var(--muted);margin-top:6px;
+overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin:0 0 24px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;
+padding:12px 18px;min-width:110px}
+.stat b{display:block;font-size:22px;line-height:1.2}
+.stat span{font-size:12px;color:var(--muted)}
+section.card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+padding:24px 28px;margin-bottom:20px}
+section.card>h2{margin:0 0 4px;font-size:19px}
+section.card>.src{color:var(--muted);font-size:12px;margin-bottom:16px}
+h3{font-size:16px;margin:22px 0 8px;padding-left:10px;border-left:3px solid var(--accent)}
+h4,h5,h6{font-size:15px;margin:18px 0 6px}
+p{margin:8px 0}
+code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:13px;
+font-family:"Cascadia Mono",Consolas,monospace}
+pre.code{background:#0f172a;color:#e2e8f0;padding:14px 16px;border-radius:8px;
+overflow:auto;font-size:13px;line-height:1.6}
+pre.code code{background:none;color:inherit;padding:0}
+.nav{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:14px 0;
+font-size:13px;color:var(--muted)}
+.nav a{color:var(--accent);text-decoration:none;padding:3px 9px;border-radius:6px;
+background:#eff6ff;border:1px solid #bfdbfe}
+.nav a:hover{background:#dbeafe}
+figure.diagram{margin:14px 0;padding:14px;background:#fff;border:1px solid var(--line);
+border-radius:10px;overflow:auto}
+figure.diagram svg{display:block;margin:0 auto}
+figure.diagram details{margin-top:8px}
+figure.diagram summary{cursor:pointer;color:var(--muted);font-size:12px}
+figure.diagram pre.code{margin-top:8px}
+.table-wrap{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border:1px solid var(--line);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:#f9fafb;font-weight:600;white-space:nowrap}
+tbody tr:nth-child(even){background:#fcfcfd}
+blockquote{margin:12px 0;padding:10px 16px;background:#f9fafb;
+border-left:3px solid var(--accent);color:#374151;border-radius:0 6px 6px 0}
+hr{border:0;border-top:1px solid var(--line);margin:20px 0}
+ul,ol{margin:8px 0;padding-left:22px}
+li{margin:4px 0}
+a{color:var(--accent)}
+.empty{color:var(--muted);font-style:italic}
+footer{color:var(--muted);font-size:12px;text-align:center;margin-top:32px}
+</style></head>
+<body><div class="wrap">
+<header class="top">
+  <h1>S1 · 需求影响面与技术方案</h1>
+  <div class="meta">
+    <span>dev-loop 1.14.0</span>
+    <span>阶段 S2</span>
+    <span>轮次 自包含 GUI 安装器：内嵌 ime+dat，双击傻瓜式一键安装+卸载，红线不动（不写 Preload/不设默认 IME）</span>
+    
+    <span>生成于 2026-11-23 23:01:58</span>
+    
+  </div>
+</header>
+<div class="gates"><div class="gate"><div class="st">S1 · v4</div><div class="nm">需求影响面与技术方案</div><span class="pill ok">已确认</span><div class="note" title="新增 GUI 资源脚本 (推荐)；新增 miniz.h (推荐)">新增 GUI 资源脚本 (推荐)；新增 miniz.h (推荐)</div></div></div>
+<div class="stats"><div class="stat"><b>2</b><span>阶段已确认</span></div><div class="stat"><b>0</b><span>P0 实现问题</span></div><div class="stat"><b>0</b><span>P1 实现问题</span></div><div class="stat"><b>0</b><span>P2 建议</span></div><div class="stat"><b>0</b><span>未闭环项</span></div></div>
+<div class="nav"><a href="看板.html">← 看整本看板</a><span>本页只含 S1 阶段的报告</span></div>
+<section class="card" id="stage-S1"><h2>S1 · 需求影响面与技术方案</h2><div class="src">.devloop/S1-影响面与方案.md</div><h2>需求影响面与技术方案：自包含 GUI 安装器（含 payload 压缩变体评估）</h2>
+<h3>一、需求理解与验收标准</h3>
+<p>一句话：把 <code>rospinyin.ime</code> + <code>rospinyin.dat</code> 打进一个双击即用的 GUI 安装器，最终用户全程不碰命令行即可完成安装/卸载；红线（不写 Preload、不设默认输入法）不变；同时把「payload 先压缩再内嵌、运行时用轻量解压库释放到 tmp」这一变体（路线 C）与纯内嵌（A）、真 SFX（B）一并评估定案。</p>
+<p>可判定的完成条件（沿用 S0 的 AC1–AC7，本轮补充 AC8–AC9）：</p>
+<ul>
+<li><strong>AC1</strong>：<code>win32-mingw</code> preset 编译出 <code>install-rospinyin-gui.exe</code>，CI Windows job 构建成功，产物进 release 资产。</li>
+<li><strong>AC2</strong>：两 payload 内嵌（路线 A/C 为 PE 资源；C 额外要求压缩字节可还原为源文件字节），运行时释放到 <code>%TEMP%</code> 唯一子目录，安装后清理；宿主纯逻辑测试校验「释放/解压后字节 == 源字节」。</li>
+<li><strong>AC3</strong>：GUI 显示安装/卸载两按钮；安装分步显示拷贝/注册/写入进度；重复安装先弹确认；失败弹具体错误码与下一步提示。</li>
+<li><strong>AC4</strong>：点安装等价于 step1..4（拷贝两文件 + <code>ImmInstallIMEW</code> + Layout Text + Layout Display Name），HKL 记录位置与 CLI 一致；不写 Preload、不设默认。</li>
+<li><strong>AC5</strong>：点卸载等价于 <code>/u</code>：删自己的注册表键与两 payload，不动其他布局；占用中删除失败时提示重启清理。</li>
+<li><strong>AC6</strong>：guest 实机双击安装 → 截图 HKL/文件/Alt+Shift 可切/中文标点冒烟 → 双击卸载 → 截图清理完成。</li>
+<li><strong>AC7</strong>：双配置 ctest 全绿；<code>check_m1.py</code> 红线门禁全绿；<code>check_docs.py</code>/<code>seams.py</code> 全绿。</li>
+<li><strong>AC8（本轮修订·P0）</strong>：GUI「安装」按钮采用<strong>严格平台白名单</strong>：当前白名单只含 <code>ProductName == &quot;ReactOS&quot;</code>（大小写不敏感）；读不到、类型不符、Windows、<code>libernt</code> 等尚未显式列入白名单的兼容分支一律拒绝安装并弹明确提示。后续新增兼容分支（例如 <code>libernt</code>）必须先完成实机验证并显式加入白名单，未登记即默认拒绝；卸载按钮不受此限（误装时要能清理）。判据抽成宿主可测纯函数 <code>is_supported_product_name()</code>，覆盖 <code>&quot;ReactOS&quot;</code>/大小写变体/Windows 值/<code>libernt</code>/空串/类型不符。依据：ReactOS 官方论坛 hbelusca 回帖 + ReactOS 自带 <code>cmd ver.c</code> 读同一键。</li>
+<li><strong>AC9（本轮补充）</strong>：release notes 与 README 含「杀毒误报说明」段（未签名说明、SHA256 核验步骤、勿关闭杀软、加白名单指引）；同时写明 <strong>Windows 真机安装只使用 CLI <code>/step1../step4</code> 分步方式</strong>，GUI 不提供 Windows 安装入口且会拒绝安装；CLI 行为不改，供开发者/诊断使用。GUI 减少可疑特征（固定临时目录+即时清理、不加密 payload、标准 RCDATA）。不承诺零误报、不购买 EV/OV 证书。</li>
+</ul>
+<blockquote>专项评估：<code>docs/reviews/GUI-INSTALLER-FP-AND-WINDOWS-GUARD.md</code>（含官方来源、判据设计、缓解措施与不做承诺）。</blockquote>
+<h3>二、技术路线</h3>
+<p>三条路线共用同一套 GUI 交互与 step1..4 安装逻辑，差别<strong>只在 payload 怎么进 exe、怎么用</strong>。实测基线（2026-11-23，源文件 <code>m0/share/</code>）：ime 955,897 B、dat 1,080,224 B，合计 2,036,121 B；7z -mx9 分别压到 276,875 B（29.0%）/ 151,872 B（14.1%），合计 428,884 B；zip -mx9 为 525,053 B。GUI 外壳代码预计 30–60 KB。</p>
+<div class="table-wrap"><table><thead><tr><th>路线</th><th>做法</th><th>优点</th><th>代价 / 风险</th><th>结论</th></tr></thead><tbody>
+<tr><td><strong>A 纯资源内嵌</strong>（S0 基线）</td><td>ime+dat 原字节作为 PE RCDATA，运行时写 <code>%TEMP%</code> 再拷贝</td><td>零新依赖、零解压失败点、字节直读最容易审计；构建可复现（windres 输入即源文件）</td><td>产物约 2.04 MB + 外壳；体积是 C 的约 4.7 倍</td><td>保底可行，留作 C 出问题时的回退</td></tr>
+<tr><td><strong>B 7z/WinZip 真 SFX</strong></td><td>stub + 压缩包 + 配置拼成 exe，双击由 stub 解压并拉起后续程序</td><td>产物最小（stub 193–213 KB + 428 KB ≈ 623 KB）</td><td>①交互不满足 AC3：SFX 是通用解压进度条，无安装/卸载双按钮、无分步错误码、无覆盖确认，要满足 AC3 得再套一层自写 GUI，SFX 白忙；②兼容风险：实测 stub PE 导入 <code>OLEAUT32.dll</code>/<code>MSVCRT.dll</code>，非静态 CRT，与本项目「静态链接绕开 ReactOS 缺失 API」路线冲突，0.4.16 无证据；③许可证：stub 为 LGPL，随二进制分发须附 LGPL 声明与源码获取途径，WinZip 更严；④CI 要引入 7z + 固定 stub 版本与时间戳，破坏可复现指纹纪律；⑤stub 另起进程执行安装，注册表写入分散，<code>check_m1.py</code> 白名单扫描漏掉真实执行体</td><td><strong>否决</strong></td></tr>
+<tr><td><strong>C 压缩后资源内嵌 + 轻量解压</strong>（用户要求纳入评估的变体）</td><td>用 miniz 的 deflate 把两 payload 压成压缩字节作为 PE RCDATA；运行时 <code>mz_inflate</code>/<code>tinfl</code> 解压到 <code>%TEMP%</code>，CRC32 + 长度校验后走 step1..4；GUI 交互与 A 完全相同</td><td>产物约 525 KB（zip deflate）+ 外壳 + miniz 解压路径，体积接近 SFX 但保住全部 GUI 交互；miniz 为 <strong>public domain / Unlicense</strong>、单头文件用法、无 zlib 外部依赖，静态链接与现有 CRT 路线一致；单一代码路径，红线审计仍扫同一份 install 逻辑；构建期用 Python <code>zlib</code> 压缩，无需 CI 新工具链</td><td>①引入一个 public domain 单文件库（只链解压路径）；②多一层「压缩字节→解压→校验」，宿主测试面变大，须补字节往返、损坏 CRC、长度不符三类用例；③压缩引入确定性要求：固定 deflate 级别/时间戳避免 hash 漂移</td><td><strong>采纳（推荐）</strong></td></tr>
+</tbody></table></div>
+<p><strong>选型理由</strong>：体积不是唯一目标，AC3 的交互与 ReactOS 0.4.16 的兼容性才是硬约束。B 在这两项上都输，还背 LGPL 义务，否决。A 与 C 的 GUI/安装/红线逻辑完全相同，唯一差别是 payload 是否压缩——C 用 525 KB 换来约 1.5 MB 的分发体积下降，代价只是一个 public domain 解压库和三条新测试，收益明显大于代价。C 若解压库集成或可复现性踩坑，回退 A 只需关掉压缩宏、资源段改放原字节，GUI 与安装逻辑零改动（这也是把 A 写进清单 C2 的原因）。</p>
+<p><strong>为什么 C 用 deflate 而不是 7z 的 LZMA</strong>：7z 虽更小（429 KB vs zip 525 KB，省约 96 KB），但 miniz 只做 deflate/zlib 子集、不解 LZMA；要吃 LZMA 得引入 LZMA SDK（多文件、代码量大），与「轻量单文件库」的约束冲突。96 KB 的收益不值得换掉单文件 public domain 的简洁性。7z 的 428 KB 作为对照数据保留，不是 C 的产物预期。</p>
+<p><strong>已定案（owner 已拍板）</strong>：采纳路线 C。依据用户原话「1.C；2.授权」。A 仅作为解压路径集成失败时的回退，回退时 C2/C3/C4 中压缩相关行退化为「资源段直接放原字节」，其余 GUI/平台闸门/文档行不变（见改造清单备注）。</p>
+<h3>三、实现流程</h3>
+<div class="table-wrap"><table><thead><tr><th>步</th><th>动作</th><th>依赖</th><th>验证方式</th></tr></thead><tbody>
+<tr><td>1</td><td>抽出安装步骤编排为宿主可测纯逻辑模块 <code>install_steps.hpp</code>（step1..4 序列、错误码枚举、中文提示映射、进度回调接口），Win32 与注册表调用留在 CLI/GUI 适配层</td><td>—</td><td>宿主单测：正常序列、各步失败短停、错误码→提示映射全覆盖；先红后绿</td></tr>
+<tr><td>2</td><td>新增 payload 资源编解码纯逻辑模块 <code>payload_blob.hpp</code>：压缩字节长度校验、CRC32 校验、解压后大小/字节校验接口；解压实现走新增的 public-domain <code>tools/install-rospinyin/miniz.h</code>，接口以回调注入便于宿主测</td><td>1</td><td>宿主单测：合法往返、CRC 损坏、长度不符、尾随垃圾四类；先红后绿；miniz 字节往返另测</td></tr>
+<tr><td>2a</td><td>新增平台白名单纯逻辑模块 <code>platform_guard.hpp</code>：<code>is_supported_product_name()</code> 只放行当前已验证并显式登记的产品名（现为 <code>ReactOS</code>，大小写不敏感）；<code>libernt</code> 等兼容分支未登记即拒绝。注册表读取留在 GUI 的 Win32 适配层，纯函数只吃字符串</td><td>—</td><td>宿主单测：<code>ReactOS</code>/<code>reactos</code> 放行，Windows/<code>libernt</code>/空串/未列入项拒绝；先红后绿</td></tr>
+<tr><td>3</td><td>构建期压缩：新增 <code>tools/install-rospinyin/pack_payload.py</code>，读 ime+dat → deflate → C 数组/base64 文本落盘（入库为文本，不入库二进制），windres 编进 RCDATA</td><td>—</td><td>由脚本产出的 base64 解码后字节 == 源文件；固定 zlib 级别与时间戳，两次构建 hash 一致</td></tr>
+<tr><td>4</td><td>新增 GUI 专用资源脚本 <code>tools/install-rospinyin/gui_res.rc</code>，把压缩后的两个 payload 作为 RCDATA 编进 GUI exe；<code>ime/rospinyin_res.rc</code> 与 CLI 安装器资源脚本都不动（偏差裁决：不改正式 .ime，避免 hash/体积漂移）</td><td>3</td><td>宿主测资源 ID/字节数；CI PE 导入核验；正式 .ime hash 保持不变</td></tr>
+<tr><td>5</td><td>新增 GUI 工程 <code>install-rospinyin-gui.exe</code>：Win32 原生对话框（安装/卸载两按钮）、分步进度、重复安装确认框、错误码中文提示；<strong>安装按钮最前面调用步骤 2a 的平台闸门，拒绝时不进入步骤 1；卸载按钮绕过闸门</strong>；内部调步骤 1 的编排与步骤 2 的解压</td><td>1,2,2a,4</td><td>CI 编译；宿主闸门单测；guest 实机 AC3/AC4/AC5/AC6；Windows 实机只跑 CLI <code>/step1..4</code>，不跑 GUI 安装</td></tr>
+<tr><td>6</td><td>CMake 接入 GUI target（静态 CRT + 可复现 PE + <code>-mwindows</code>），CI windows-build 构建，<code>check_m1.py</code> 白名单保持</td><td>5</td><td>双 preset 构建、PE imports 核验、<code>check_m1.py</code> 全绿</td></tr>
+<tr><td>7</td><td>release job 资产清单加入 GUI exe（放在 CLI 之后，CLI 保留给开发者）</td><td>6</td><td>alpha0.0.4 release 6→7 资产，逐一 SHA256 核验</td></tr>
+<tr><td>8</td><td>guest 实机取证 + 文档同步 + 版本 bump alpha0.0.4</td><td>7</td><td>AC6 截图、check_docs/seams 全绿</td></tr>
+</tbody></table></div>
+<p><strong>顺序理由</strong>：1、2 是纯逻辑底座，宿主 TDD 必须先红后绿，是 5（GUI）的前置阻塞；3 是 4 的资源数据源，必须在 windres 之前；6 依赖 GUI 工程存在；7、8 是发布与取证，放最后。miniz 只在步骤 2 的解压接口里出现，不污染其他层。</p>
+<h3>四、架构图</h3>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 908 708" width="100%" style="max-width:908px;height:auto" role="img" aria-label="架构图">
+<defs><marker id="dl-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#64748B"/></marker></defs>
+<path d="M76,51 L454,94" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M250,51 L454,94" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M454,146 L454,172" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M454,224 L454,250" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M454,302 L454,328" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M482,68 L600,406" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M454,380 L600,406" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="466" y="384" width="120" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="527" y="397" text-anchor="middle" font-size="11" fill="#475569">安装按钮：前置闸门</text>
+<path d="M600,458 L309,484" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="419" y="462" width="70" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="454" y="475" text-anchor="middle" font-size="11" fill="#475569">白名单放行</text>
+<path d="M454,380 L310,406" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M310,458 L598,484" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M598,536 L342,562" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="441" y="540" width="57" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="470" y="553" text-anchor="middle" font-size="11" fill="#475569">inflate</text>
+<path d="M342,614 L310,640" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="287" y="618" width="78" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="326" y="631" text-anchor="middle" font-size="11" fill="#475569">step1 copy</text>
+<path d="M309,536 L598,562" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M598,597 L562,640" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="16" y="16" width="119" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="76" y="38" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">rospinyin.ime</text>
+<rect x="338" y="94" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="454" y="116" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">pack_payload.py&lt;br/&gt;deflate +</text>
+<text x="454" y="133" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155"> base64 文本</text>
+<rect x="191" y="16" width="119" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="250" y="38" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">rospinyin.dat</text>
+<rect x="341" y="172" width="227" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="454" y="194" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">payload_base64.hpp&lt;br/&gt;（文本</text>
+<text x="454" y="211" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">入库，非二进制）</text>
+<rect x="335" y="250" width="238" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="454" y="272" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">gui_res.rc（新）&lt;br/&gt;GUI 专用 R</text>
+<text x="454" y="289" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">CDATA ×2</text>
+<rect x="194" y="484" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="309" y="506" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">install_steps.hpp&lt;br/&gt;step1..</text>
+<text x="309" y="523" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">4 编排 + 错误码映射</text>
+<rect x="193" y="406" width="235" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="310" y="428" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">payload_blob.hpp&lt;br/&gt;长度/CRC/</text>
+<text x="310" y="445" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">字节校验接口</text>
+<rect x="481" y="484" width="234" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="598" y="506" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">miniz.h（新）&lt;br/&gt;public-domai</text>
+<text x="598" y="523" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">n inflate</text>
+<rect x="484" y="406" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="600" y="428" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">platform_guard.hpp&lt;br/&gt;is_sup</text>
+<text x="600" y="445" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">ported_product_name()&lt;br/&gt;白…</text>
+<rect x="338" y="328" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="454" y="350" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">install-rospinyin-gui.exe&lt;br/</text>
+<text x="454" y="367" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">&gt;安装/卸载按钮 + 分步进度 + 确…</text>
+<rect x="366" y="16" width="232" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="482" y="38" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">HKLM ProductName（只读）&lt;br/&gt;W</text>
+<text x="482" y="55" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">in32 适配层</text>
+<rect x="654" y="16" width="238" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="773" y="38" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">拒绝安装&lt;br/&gt;弹产品名不受支持提示</text>
+<rect x="226" y="562" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="342" y="584" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">%TEMP%/rospinyin-&amp;lt;pid&amp;gt;&lt;</text>
+<text x="342" y="601" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">br/&gt;解压落地 + 校验 + 清理</text>
+<rect x="230" y="640" width="161" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="310" y="662" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">system32: ime + dat</text>
+<rect x="447" y="640" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="562" y="662" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">HKCU/.../RosPinyin/Install&lt;br</text>
+<text x="562" y="679" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">/&gt;HKL 记录</text>
+<rect x="514" y="562" width="168" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="598" y="584" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">ImmInstallIMEW → HKL</text>
+</svg><details><summary>mermaid 源码</summary><pre class="code"><code>flowchart TB
+  subgraph 构建期[&quot;构建期（CI / pack_payload.py）&quot;]
+    SRC1[&quot;rospinyin.ime&quot;] --&gt; PACK[&quot;pack_payload.py&lt;br/&gt;deflate + base64 文本&quot;]
+    SRC2[&quot;rospinyin.dat&quot;] --&gt; PACK
+    PACK --&gt; B64[&quot;payload_base64.hpp&lt;br/&gt;（文本入库，非二进制）&quot;]
+    B64 --&gt; RC[&quot;gui_res.rc（新）&lt;br/&gt;GUI 专用 RCDATA ×2&quot;]
+  end
+  subgraph 宿主测试层[&quot;宿主测试层（无 MinGW）&quot;]
+    ST[&quot;install_steps.hpp&lt;br/&gt;step1..4 编排 + 错误码映射&quot;]
+    PB[&quot;payload_blob.hpp&lt;br/&gt;长度/CRC/字节校验接口&quot;]
+    MZ[&quot;miniz.h（新）&lt;br/&gt;public-domain inflate&quot;]
+    GUARD[&quot;platform_guard.hpp&lt;br/&gt;is_supported_product_name()&lt;br/&gt;白名单：当前仅 ReactOS&quot;]
+  end
+  subgraph GUI层[&quot;GUI 层（win32-mingw 编译）&quot;]
+    GUI[&quot;install-rospinyin-gui.exe&lt;br/&gt;安装/卸载按钮 + 分步进度 + 确认框&quot;]
+    PROD[&quot;HKLM ProductName（只读）&lt;br/&gt;Win32 适配层&quot;]
+    ERR[&quot;拒绝安装&lt;br/&gt;弹产品名不受支持提示&quot;]
+    TMP[&quot;%TEMP%/rospinyin-&amp;lt;pid&amp;gt;&lt;br/&gt;解压落地 + 校验 + 清理&quot;]
+  end
+  subgraph 系统层[&quot;系统层（红线约束）&quot;]
+    SYS[&quot;system32: ime + dat&quot;]
+    REG[&quot;HKCU/.../RosPinyin/Install&lt;br/&gt;HKL 记录&quot;]
+    IMM[&quot;ImmInstallIMEW → HKL&quot;]
+  end
+  RC --&gt; GUI
+  PROD --&gt; GUARD
+  GUI --&gt;|&quot;安装按钮：前置闸门&quot;| GUARD
+  GUARD --&gt;|&quot;白名单放行&quot;| ST
+  GUARD -. &quot;未列入：Windows / libernt / 读不到&quot; .-&gt; ERR
+  GUI -. &quot;卸载按钮：绕过闸门&quot; .-&gt; ST
+  GUI --&gt; PB
+  PB --&gt; MZ
+  MZ --&gt;|&quot;inflate&quot;| TMP
+  TMP --&gt;|&quot;step1 copy&quot;| SYS
+  ST --&gt; IMM --&gt; REG
+  ST -. &quot;禁止写 Preload / 默认输入法&quot; .-&gt; REG</code></pre></details></figure>
+<p>改动落点：构建期（3）、宿主测试底座（1/2）、GUI 工程（5）、资源脚本（4）、系统写入（沿用现有 install.cpp 逻辑，红线不变）。图里每个框在改造清单都有对应项。</p>
+<h3>五、静态盲区</h3>
+<p><code>blind</code> 报告 0 处盲区（6 个锚点文件无动态调用/反射/DI/拼装路由）。人工补充两类脚本看不见的：</p>
+<div class="table-wrap"><table><thead><tr><th>位置</th><th>类别</th><th>结论</th></tr></thead><tbody>
+<tr><td><code>.github/workflows/ci.yml</code> release job</td><td>配置驱动的发布行为</td><td>静态分析看不见 release 资产清单；必须改 <code>Assemble assets</code> 步骤把 GUI exe 纳入 <code>cp</code> 与 <code>sha256sum</code>，否则 CI 构建成功但发版漏资产（AC1 不闭合）</td></tr>
+<tr><td><code>tools/check_m1.py</code> 注册表白名单扫描</td><td>配置驱动的安全门禁</td><td>脚本按常量扫描安装器源码中禁止写入的注册表路径；GUI 复用同一份 step 逻辑即可过门禁，若 GUI 自写注册表调用会绕开扫描——约束：GUI 不得直接写注册表，只调共享的 step 函数</td></tr>
+<tr><td><code>HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProductName</code></td><td>环境/配置驱动的运行时判据</td><td>静态分析看不见真实机器上的产品名；白名单纯函数不依赖注册表 API，Win32 适配层只读该键，读不到/类型不符统一落入拒绝分支；宿主单测覆盖所有分支，实机只在 guest 与（可选）Windows CLI 路径人工确认</td></tr>
+</tbody></table></div>
+<h3>六、实现约束</h3>
+<div class="table-wrap"><table><thead><tr><th>项</th><th>约束</th></tr></thead><tbody>
+<tr><td>命名与分层</td><td>纯逻辑放 <code>tools/install-rospinyin/install_steps.hpp</code>、<code>payload_blob.hpp</code>（新增）；Win32/注册表/GUI 只留适配层；不新建平行安装实现，GUI 与 CLI 共享同一套 step 函数</td></tr>
+<tr><td>错误处理</td><td>step1..4 任一失败即短停并把错误码映射成中文提示（含「请重启后重试」）；解压 CRC/长度不符视为 payload 损坏，禁止继续拷贝；不吞异常不写静默失败</td></tr>
+<tr><td>日志</td><td>GUI 分步进度即用户可见日志；命令行适配层沿用 <code>fwprintf(stderr, ...)</code>；禁止 <code>print</code>/<code>console.log</code> 进主干；新增日志须带步骤号</td></tr>
+<tr><td>测试</td><td>步骤编排、payload 校验、平台白名单三类纯逻辑各补先红后绿用例；平台用例必须含 <code>ReactOS</code>/大小写变体/Windows/<code>libernt</code>/空串/类型不符；AC7 门禁全绿；CI PE imports 核验保证不引入 <code>OLEAUT32</code>/动态 <code>MSVCRT</code></td></tr>
+<tr><td>兼容</td><td>CLI <code>install-rospinyin.exe</code> 源码与 <code>/step1..4</code> 行为完全不动，继续给开发者诊断用；<strong>Windows 真机安装只走 CLI <code>/step1../step4</code> 分步方式，GUI 不提供 Windows 安装入口</strong>；红线（不写 Preload、不设默认）在 GUI 与 CLI 两侧都不得突破；路线 C 若回退 A，GUI 与安装逻辑零改动，只改资源段；后续兼容分支（如 <code>libernt</code>）须先实机验证再显式加入白名单，未登记默认拒绝</td></tr>
+</tbody></table></div>
+<h3>七、变更意图拆解</h3>
+<div class="table-wrap"><table><thead><tr><th>类型</th><th>对象</th></tr></thead><tbody>
+<tr><td>新增</td><td>宿主可测纯逻辑模块 <code>install_steps.hpp</code>（步骤编排 + 错误码映射）</td></tr>
+<tr><td>新增</td><td>宿主可测纯逻辑模块 <code>payload_blob.hpp</code>（长度/CRC/字节校验接口，解压回调注入）</td></tr>
+<tr><td>新增</td><td>宿主可测纯逻辑模块 <code>platform_guard.hpp</code>（严格白名单，当前仅 ReactOS）</td></tr>
+<tr><td>新增</td><td>public-domain 单头文件 <code>tools/install-rospinyin/miniz.h</code>（路线 C 的 inflate 实现，不引系统依赖）</td></tr>
+<tr><td>新增</td><td>构建期压缩脚本 <code>pack_payload.py</code> + payload base64 文本头（非二进制入库）</td></tr>
+<tr><td>新增</td><td>GUI 工程源码 + <code>CMakeLists.txt</code>（新 target <code>install-rospinyin-gui</code>）</td></tr>
+<tr><td>新增</td><td>GUI 专用 <code>tools/install-rospinyin/gui_res.rc</code>（两个 RCDATA；正式 <code>.ime</code> 资源不动）</td></tr>
+<tr><td>修改</td><td>根 <code>CMakeLists.txt</code> / <code>CMakePresets.json</code>（接入 GUI target）</td></tr>
+<tr><td>修改</td><td><code>.github/workflows/ci.yml</code>（构建 + release 资产清单，需授权）</td></tr>
+<tr><td>修改</td><td><code>tools/check_m1.py</code>（白名单覆盖新增 GUI target，可能需加锚点）</td></tr>
+<tr><td>修改</td><td>版本 <code>ime/version.h</code> + release notes alpha0.0.4 + 文档同步</td></tr>
+</tbody></table></div>
+<h3>八、影响面矩阵</h3>
+<div class="table-wrap"><table><thead><tr><th>层级</th><th>对象</th><th>是否受影响</th><th>依据(文件:行)</th></tr></thead><tbody>
+<tr><td>工具</td><td>CLI 安装器源码</td><td>否（行为不动，可被 GUI 复用）</td><td><code>tools/install-rospinyin/install.cpp:16-31</code> 步骤定义</td></tr>
+<tr><td>构建</td><td>安装器 CMake target</td><td>是</td><td><code>tools/install-rospinyin/CMakeLists.txt:6</code> <code>add_executable</code> 单点</td></tr>
+<tr><td>资源</td><td>GUI 专用资源脚本</td><td>是（新增）</td><td>偏差裁决：payload RCDATA 放 <code>tools/install-rospinyin/gui_res.rc</code>；<code>ime/rospinyin_res.rc</code> 不动，正式 .ime hash/体积不变</td></tr>
+<tr><td>构建</td><td>根 CMake / preset</td><td>是</td><td><code>CMakeLists.txt</code> 通过子目录纳入 tools</td></tr>
+<tr><td>CI/CD</td><td>构建与 release job</td><td>是（高危，需授权）</td><td><code>.github/workflows/ci.yml:79</code> windows-build、<code>:260</code> release</td></tr>
+<tr><td>门禁</td><td>红线扫描</td><td>是</td><td><code>tools/check_m1.py:52</code> install 相关扫描</td></tr>
+<tr><td>平台</td><td>ProductName 白名单闸门</td><td>是（新增）</td><td>AC8、本节实现约束「兼容」行；只读 HKLM，不进入禁写路径</td></tr>
+<tr><td>发布</td><td>版本与 release notes</td><td>是</td><td><code>ime/version.h</code>、<code>docs/releases/</code></td></tr>
+<tr><td>文档</td><td>HANDOVER/CHANGELOG/ROADMAP</td><td>是</td><td>25 份 install 相关文档需同步核心三份</td></tr>
+</tbody></table></div>
+<h3>九、改造清单（S3 的验收标准）</h3>
+<div class="table-wrap"><table><thead><tr><th>编号</th><th>文件:行</th><th>动作</th><th>改造理由</th><th>依据</th></tr></thead><tbody>
+<tr><td>C1</td><td><code>tools/install-rospinyin/install_steps.hpp</code> (新)</td><td>增</td><td>步骤编排与错误码映射须宿主可测，且 GUI/CLI 共享单一实现</td><td>S1 §3 步1、§6 分层约束</td></tr>
+<tr><td>C2</td><td><code>tools/install-rospinyin/payload_blob.hpp</code> (新)</td><td>增</td><td>路线 C 的长度/CRC/字节校验接口；回退 A 时此文件保留校验、去掉 inflate 调用</td><td>S1 §3 步2、§2 回退说明</td></tr>
+<tr><td>C2a（偏差补充·已授权）</td><td><code>tools/install-rospinyin/miniz.h</code> (新)</td><td>增</td><td>public-domain 单头文件提供 deflate inflate；仓库/工具链无 miniz，用户裁决「新增 miniz.h (推荐)」，不引系统 zlib</td><td>S1 §2 路线 C；用户裁决原话「新增 miniz.h (推荐)」</td></tr>
+<tr><td>C3</td><td><code>tools/install-rospinyin/pack_payload.py</code> (新)</td><td>增</td><td>构建期 deflate + base64，确定性压缩，文本入库不提交二进制</td><td>S1 §3 步3、§6 兼容</td></tr>
+<tr><td>C4</td><td><code>tools/install-rospinyin/payload_base64.hpp</code> (新)</td><td>增</td><td>压缩后 payload 的文本载体，windres 的输入源</td><td>S1 §3 步3</td></tr>
+<tr><td>C5</td><td><code>tools/install-rospinyin/gui.cpp</code> (新)</td><td>增</td><td>Win32 原生 GUI：安装/卸载按钮、分步进度、覆盖确认、错误提示</td><td>AC3、S1 §3 步5</td></tr>
+<tr><td>C6（偏差修订·已授权）</td><td><code>tools/install-rospinyin/gui_res.rc</code> (新)</td><td>增</td><td>GUI 专用 RCDATA 只进 GUI exe；原方案改 <code>ime/rospinyin_res.rc</code> 会把 payload 塞进正式 .ime、改变 hash/体积，用户裁决「新增 GUI 资源脚本 (推荐)」</td><td>S1 §3 步4、用户裁决原话「新增 GUI 资源脚本 (推荐)」</td></tr>
+<tr><td>C7</td><td><code>tools/install-rospinyin/CMakeLists.txt</code></td><td>改</td><td>新增 GUI target，静态 CRT + 可复现 PE + <code>-mwindows</code></td><td>S1 §3 步6、影响面 <code>CMakeLists.txt:6</code></td></tr>
+<tr><td>C8</td><td><code>.github/workflows/ci.yml</code></td><td>改</td><td>windows-build 构建 GUI exe + release 资产清单纳入（<strong>高危需授权</strong>）</td><td>敏感预检、S1 §5 配置盲区</td></tr>
+<tr><td>C9</td><td><code>tools/check_m1.py</code></td><td>改</td><td>白名单覆盖新增 GUI target 与步骤编排模块，保持红线扫描有效</td><td>AC7、影响面 <code>check_m1.py:52</code></td></tr>
+<tr><td>C10</td><td><code>ime/version.h</code> + <code>docs/releases/alpha0.0.4.md</code> (新)</td><td>改/增</td><td>版本 bump 与发布说明，CI 版本门要求</td><td>S0 发版决策、release 纪律</td></tr>
+<tr><td>C11</td><td><code>docs/handover/CHANGELOG.md</code>、<code>HANDOVER.md</code>、<code>docs/plan/ROADMAP.md</code></td><td>改</td><td>同步 GUI 安装器与路线决策</td><td>S1 §8 文档影响面</td></tr>
+<tr><td>C12（本轮修订）</td><td><code>tools/install-rospinyin/platform_guard.hpp</code> (新) + <code>gui.cpp</code> 调用点</td><td>增</td><td>严格平台白名单闸门：<code>is_supported_product_name()</code> 纯函数（当前仅 ReactOS，大小写不敏感；<code>libernt</code> 等未登记兼容分支一律拒绝）+ GUI 安装按钮前置检查（卸载不限）。不改 CLI <code>/step1..4</code>，Windows 真机安装保留 CLI 分步路径</td><td>AC8、专项评估 §2.4、官方判据、用户原话「检测非reactOS或后续增加的兼容分支（例如libernt），就拒绝安装。在windows实机安装使用命令行step1..4方式」</td></tr>
+<tr><td>C13（本轮修订）</td><td><code>docs/releases/alpha0.0.4.md</code>、<code>README.md</code>、<code>docs/reviews/GUI-INSTALLER-FP-AND-WINDOWS-GUARD.md</code> (新)</td><td>增/改</td><td>杀毒误报说明段（hash 核验/勿关杀软/加白名单）+ 专项评估落档；明确 Windows 真机只用 CLI <code>/step1../step4</code>，GUI 会拒绝；新增兼容分支需先登记白名单</td><td>AC9、专项评估 §1.4 与 §2.5</td></tr>
+</tbody></table></div>
+<blockquote>15 项，按模块分四组：底座 C1–C4 + C2a（纯逻辑+构建期+解压库），外壳 C5–C7（GUI+资源），发布 C8–C11（CI+门禁+文档），安全补充 C12–C13（平台闸门+误报说明）。路线 A 回退时 C2/C3/C4 退化为原字节资源，C1/C2a/C5–C13 不变。C2a/C6 是 S2 发现的偏差，经用户明确裁决后补入清单。</blockquote>
+<h3>十、授权项 + 依赖图 + 回归范围</h3>
+<p><strong>已授权</strong>：<code>.github/workflows/ci.yml</code>（高危 CI/CD）——用户原话「1.C；2.授权」，明确同意改动构建步骤与 release 资产清单。CI 版本门与 PE imports 核验作为自动兜底。</p>
+<p><strong>S2 偏差授权</strong>：用户明确选择「新增 GUI 资源脚本 (推荐)」与「新增 miniz.h (推荐)」，据此新增 C6（<code>gui_res.rc</code>）与 C2a（<code>miniz.h</code>）；正式 <code>ime/rospinyin_res.rc</code> 不再改动。</p>
+<p><strong>依赖图</strong>（来自 <code>依赖图.md</code>，40 节点 57 边，L0 为 6 个锚点）：新增底座（<code>install_steps.hpp</code>/<code>payload_blob.hpp</code>/<code>platform_guard.hpp</code>/<code>miniz.h</code>）为根，GUI 依赖四者与 <code>gui_res.rc</code> 的 RCDATA，CI 与门禁依赖 GUI target 存在。改动顺序：C1/C2/C2a/C12 → C3/C4 → C6/C7 → C5 → C8/C9 → C10/C11/C13。</p>
+<p><strong>回归范围</strong>：</p>
+<div class="table-wrap"><table><thead><tr><th>级别</th><th>场景</th><th>理由</th></tr></thead><tbody>
+<tr><td>必测</td><td>宿主纯逻辑：step1..4 正常序列 + 每步失败短停 + 错误码映射</td><td>新增底座，S2 TDD 红绿核心</td></tr>
+<tr><td>必测</td><td>宿主纯逻辑：payload 合法往返 / CRC 损坏 / 长度不符 / 尾随垃圾</td><td>路线 C 新增解压层，字节正确性红线</td></tr>
+<tr><td>必测</td><td>宿主纯逻辑：平台白名单 <code>ReactOS</code>/大小写放行；Windows/<code>libernt</code>/空串/类型不符/未登记项拒绝</td><td>AC8 防 Windows 与未验证兼容分支误装，白名单式拒绝</td></tr>
+<tr><td>必测</td><td><code>check_m1.py</code> 红线门禁 ON/OFF 双配置</td><td>确认 GUI 未突破 Preload/默认输入法红线</td></tr>
+<tr><td>必测</td><td>guest：双击安装→HKL/文件/Alt+Shift/中文标点→双击卸载</td><td>AC6 实机闭环</td></tr>
+<tr><td>抽测（若可用）</td><td>Windows 真机：只执行 CLI <code>/step1../step4</code>，确认四步行为与文档一致；不执行 GUI 安装按钮</td><td>用户明确 Windows 实机安装走 CLI 分步；避免把未验证 IME 注册进 Windows</td></tr>
+<tr><td>抽测</td><td>CI PE imports 无 OLEAUT32/动态 MSVCRT</td><td>路线 C 静态链接声明</td></tr>
+<tr><td>免测</td><td>IME 候选/候选窗/码表逻辑</td><td>本轮只动安装外壳，IME 本体零改动</td></tr>
+</tbody></table></div></section>
+<footer>由 dev-loop 生成 · 报告只读，改动请在 .devloop/ 下的 Markdown 里做</footer>
+</div></body></html>

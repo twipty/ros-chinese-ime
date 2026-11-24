@@ -197,16 +197,22 @@ def strip_cmake_comments(text: str) -> str:
 def run(root: Path) -> int:
     c = Checker()
 
-    # 1. MIT headers on every new source file.
+    # 1. MIT headers on every new source file, with one narrow vendored
+    # exception: miniz is public domain (Unlicense), so claiming MIT for it
+    # would be both wrong and useless. S1 v4 authorised this single file.
+    vendored_unlicense = {"tools/install-rospinyin/miniz.h"}
     missing_spdx: list[str] = []
     source_files: list[Path] = []
     for d in SCAN_DIRS:
         for p in sorted((root / d).rglob("*")):
             if p.is_file() and p.suffix in SOURCE_SUFFIXES:
                 source_files.append(p)
+                rel = str(p.relative_to(root))
                 head = "\n".join(p.read_text(encoding="utf-8").splitlines()[:6])
                 if "SPDX-License-Identifier: MIT" not in head:
-                    missing_spdx.append(str(p.relative_to(root)))
+                    if not (rel in vendored_unlicense and
+                            "SPDX-License-Identifier: Unlicense" in head):
+                        missing_spdx.append(rel)
     # CMakeLists.txt files are source too (2026-11-19): the residue check
     # below must see them, but they carry no SPDX header line, so they join
     # the residue scan only — the SPDX check above stays suffix-gated.
@@ -500,6 +506,24 @@ def run(root: Path) -> int:
     c.check("installer exposes step-by-step registration commands",
             all(s in code for s in steps),
             ", ".join(s for s in steps if s not in code))
+
+    # The GUI must stay a true single-exe installer. The CLI is the third
+    # RCDATA payload, and windres needs escaped string macros there: bare
+    # 0xHH byte lists are stored as 16-bit words and silently double the blob.
+    gui_res = read(root, "tools/install-rospinyin/gui_res.rc")
+    gui_code = strip_cpp_comments(
+        read(root, "tools/install-rospinyin/gui.cpp"))
+    names = ("IME", "DAT", "CLI")
+    c.check("GUI embeds three byte-exact RCDATA payloads",
+            all(f"ROSPINYIN_IDR_{n}_PAYLOAD" in gui_res and
+                f"ROSPINYIN_{n}_PAYLOAD_RC_BYTES" in gui_res and
+                f"ROSPINYIN_{n}_PAYLOAD_BYTES" not in gui_res
+                for n in names),
+            "RCDATA must use escaped string macros, not 0xHH byte lists")
+    c.check("GUI does not look for a loose CLI beside itself",
+            "module_dir" not in gui_code and
+            "ROSPINYIN_IDR_CLI_PAYLOAD" in gui_code,
+            "single-exe contract")
 
     # 8. One layout name across DLL, resources and installer.
     header = read(root, "ime/rospinyin.h")

@@ -117,6 +117,13 @@ add_executable(rospinyin-code-table code_table_test.cpp)
 target_link_libraries(rospinyin-code-table PRIVATE imfw-engine)
 add_test(NAME code-table COMMAND rospinyin-code-table)
 
+# GUI 安装器的平台白名单 / step1..4 编排 / payload 校验，全部为 Windows-free
+# 纯逻辑。它们是路线 C 与 Windows 误装闸门在 Linux CI 上唯一可直接验的部分。
+add_executable(rospinyin-installer-logic installer_logic_test.cpp)
+target_include_directories(rospinyin-installer-logic PRIVATE
+    "${PROJECT_SOURCE_DIR}/tools/install-rospinyin")
+add_test(NAME installer-logic COMMAND rospinyin-installer-logic)
+
 # Static M1 contract checks (exports, version resource, M0 red lines).
 find_program(ROSPINYIN_PYTHON NAMES python3 python QUIET)
 if(ROSPINYIN_PYTHON)

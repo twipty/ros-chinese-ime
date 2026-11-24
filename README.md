@@ -12,23 +12,28 @@ RosPinyin 以独立 IMM32 输入法模块 `rospinyin.ime` 和码表 `rospinyin.d
 
 ## 使用说明
 
-以 alpha0.0.2 为例（ReactOS 0.4.16+ i386）：
+以 alpha0.0.4 候选版为例（ReactOS 0.4.16+ i386）：
 
-1. 从 Release 下载 `rospinyin.ime` 和 `rospinyin.dat`，两个文件都要。
-2. 在 ReactOS 命令行把它们复制到系统目录（注意是 `C:\ReactOS\system32`，不是 `C:\Windows\system32`）：
+1. 从 Release 下载 `install-rospinyin-gui.exe`（自包含，双击安装/卸载）；需要诊断时用 `install-rospinyin.exe /step1..4`。两个 `.exe` 都已内嵌或分发 `rospinyin.ime` + `rospinyin.dat`。
+2. GUI 安装器只在 `ProductName == "ReactOS"` 时放行；Windows、`libernt` 等未登记平台会拒绝安装。Windows 真机请使用 CLI `/step1../step4` 分步方式，GUI 不支持 Windows 安装。
+3. 若走 CLI 或手工路径，系统目录是 `C:\ReactOS\system32`，不是 `C:\Windows\system32`：
 
    ```bat
    copy /y rospinyin.ime C:\ReactOS\system32\
    copy /y rospinyin.dat C:\ReactOS\system32\
    ```
 
-3. 注册输入法布局（可用仓库 `tools/install-rospinyin` 安装辅助，或调用 `ImmInstallIMEW` 注册 `rospinyin.ime`），然后重启；用 `Alt+Shift` 切到「中文(简体) - RosPinyin」。
-4. 直接输入拼音即可选字：空格/数字选字，`=`/`.` 下一页、`-`/`,` 上一页，`v` 代替 `ü`，Backspace 回退，Esc 取消。
-5. **中英文切换**：单独按一下 `Shift` 在中/英之间切换；英文态按键直接上屏，`Shift+A` 仍是正常的大写 A。
-6. **`[快]` / `[全]` 字形模式**（未发布的新版本）：`[快]` 是默认模式，只显示系统保底字体可绘制的候选；`[全]` 显示全部候选，包含需要额外中文字体支持的生僻字——**未安装相应字体时会显示方框**。按 `Ctrl+Shift+G` 切换，状态显示在工具栏；该设置只对当前输入法会话生效，重选输入法后恢复 `[快]`。
+4. 注册输入法布局（GUI 会调用 CLI step1..4，或手工用 `tools/install-rospinyin` / `ImmInstallIMEW`），然后重启；用 `Alt+Shift` 切到「中文(简体) - RosPinyin」。
+5. 直接输入拼音即可选字：空格/数字选字，`=`/`.` 下一页、`-`/`,` 上一页，`v` 代替 `ü`，Backspace 回退，Esc 取消。
+6. **中英文切换**：单独按一下 `Shift` 在中/英之间切换；英文态按键直接上屏，`Shift+A` 仍是正常的大写 A。
+7. **`[快]` / `[全]` 字形模式**：`[快]` 是默认模式，只显示系统保底字体可绘制的候选；`[全]` 显示全部候选，包含需要额外中文字体支持的生僻字。按 `Ctrl+Shift+G` 切换，状态显示在工具栏；该设置只对当前输入法会话生效，重选输入法后恢复 `[快]`。**注意：当前 `[全]` 模式仍会有很多豆腐块——输入法本身尚不支持按字体渲染扩展区字形，即使装了字体也不完全生效**（详见 alpha0.0.4 发布说明）。GUI 安装器会提示 `[全]` 模式所需文津宋体的 HTTP 下载位置（`http://10.0.2.2:8000/fonts/wenjin-v2.100/`）；该字体不随安装包附带，需自行下载三个平面分片并用 `SHA256SUMS.txt` 校验后安装。在 ReactOS nightly（0.4.17-dev）上还需先自行安装 Droid 字体，否则包括安装器在内的中文界面都会显示 `?`，0.4.16 正式版自带该字体。
+
+> 杀毒误报：未签名安装器可能被 SmartScreen/杀软提示「未知发布者」。请用 `SHA256SUMS.txt` 核对下载文件，不要关闭杀软；详细指引见 [alpha0.0.4 发布说明](docs/releases/alpha0.0.4.md)。
 
 ## Release
 
 - [全部版本](https://github.com/twipty/ros-chinese-ime/releases)
-- [alpha0.0.2（最新，2026-11-18）](https://github.com/twipty/ros-chinese-ime/releases/tag/alpha0.0.2) — [发布说明](docs/releases/alpha0.0.2.md) · [rospinyin.ime](https://github.com/twipty/ros-chinese-ime/releases/download/alpha0.0.2/rospinyin.ime) · [rospinyin.dat](https://github.com/twipty/ros-chinese-ime/releases/download/alpha0.0.2/rospinyin.dat)
+- [alpha0.0.4（GUI 安装器候选，待 tag）](docs/releases/alpha0.0.4.md)
+- [alpha0.0.3（最新已发布，2026-11-23）](https://github.com/twipty/ros-chinese-ime/releases/tag/alpha0.0.3) — [发布说明](docs/releases/alpha0.0.3.md)
+- [alpha0.0.2（2026-11-18）](https://github.com/twipty/ros-chinese-ime/releases/tag/alpha0.0.2) — [发布说明](docs/releases/alpha0.0.2.md)
 - [alpha0.0.1（首个公开版，2026-11-17）](https://github.com/twipty/ros-chinese-ime/releases/tag/alpha0.0.1)

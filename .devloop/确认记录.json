@@ -1,0 +1,95 @@
+{
+  "S0": {
+    "at": "2026-11-23 22:26:31",
+    "status": "approved",
+    "summary": "自包含 GUI 安装器：最终用户双击傻瓜式安装/卸载，内嵌 ime+dat 资源释放到 tmp，红线不动，CI 构建+guest 实机验证，发 alpha0.0.4",
+    "files": [
+      "docs/handover/HANDOVER.md",
+      "ime/rospinyin_res.rc",
+      "tools/check_m1.py",
+      "tools/install-rospinyin/install.cpp"
+    ],
+    "doc": ".devloop/S0-需求澄清.md",
+    "signature": "15dbce0050926a16",
+    "note": "变体纳入S1然后确认",
+    "revision": 1,
+    "doc_sha": "ef51b4478f8b3d74",
+    "revisions": []
+  },
+  "_schema": 2,
+  "S1": {
+    "at": "2026-11-23 23:01:58",
+    "status": "approved",
+    "summary": "S1 v4：S2偏差裁决落清单——GUI专用 gui_res.rc（不动IME资源）+ public-domain miniz.h；其余按v3三条定稿",
+    "files": [
+      ".github/workflows/ci.yml",
+      "docs/releases/alpha0.0.4.md",
+      "ime/rospinyin_res.rc",
+      "ime/version.h",
+      "tools/check_m1.py",
+      "tools/install-rospinyin/CMakeLists.txt",
+      "tools/install-rospinyin/gui.cpp",
+      "tools/install-rospinyin/gui_res.rc",
+      "tools/install-rospinyin/install_steps.hpp",
+      "tools/install-rospinyin/miniz.h",
+      "tools/install-rospinyin/pack_payload.py",
+      "tools/install-rospinyin/payload_base64.hpp",
+      "tools/install-rospinyin/payload_blob.hpp",
+      "tools/install-rospinyin/platform_guard.hpp"
+    ],
+    "doc": ".devloop/S1-影响面与方案.md",
+    "signature": "164b546d7ca227e1",
+    "note": "新增 GUI 资源脚本 (推荐)；新增 miniz.h (推荐)",
+    "revision": 4,
+    "doc_sha": "3d921e8e4ad14068",
+    "revisions": [
+      {
+        "at": "2026-11-23 22:36:47",
+        "revision": 2,
+        "note": "补充用户两点评估：杀毒误报缓解（AC9）+ Windows 误装平台闸门（AC8），新增 C12/C13，专项评估见 docs/reviews/GUI-INSTALLER-FP-AND-WINDOWS-GUARD.md",
+        "status_before": "approved"
+      },
+      {
+        "at": "2026-11-23 22:43:36",
+        "revision": 3,
+        "note": "1.确认方案；2.检测非reactOS或后续增加的兼容分支（例如libernt），就拒绝安装。在windows实机安装使用命令行step1..4方式",
+        "status_before": "pending"
+      }
+    ]
+  },
+  "S2": {
+    "at": "2026-11-24 09:37:10",
+    "status": "pending",
+    "summary": "S2 v2：修复 GUI 客户区背景未绘制（WNDCLASS hbrBackground 缺失），guest before/after 截图闭合；ctest 21/21 与三项门禁复跑全绿",
+    "files": [
+      ".github/workflows/ci.yml",
+      "README.md",
+      "docs/README.md",
+      "docs/handover/CHANGELOG.md",
+      "docs/handover/HANDOVER.md",
+      "docs/plan/ROADMAP.md",
+      "docs/releases/alpha0.0.4.md",
+      "docs/reviews/GUI-INSTALLER-FP-AND-WINDOWS-GUARD.md",
+      "ime/CMakeLists.txt",
+      "ime/version.h",
+      "tests/CMakeLists.txt",
+      "tests/installer_logic_test.cpp",
+      "tools/check_m1.py",
+      "tools/install-rospinyin/CMakeLists.txt",
+      "tools/install-rospinyin/gui.cpp",
+      "tools/install-rospinyin/gui_res.rc",
+      "tools/install-rospinyin/install_steps.hpp",
+      "tools/install-rospinyin/miniz.h",
+      "tools/install-rospinyin/pack_payload.py",
+      "tools/install-rospinyin/payload_base64.hpp",
+      "tools/install-rospinyin/payload_blob.hpp",
+      "tools/install-rospinyin/platform_guard.hpp"
+    ],
+    "doc": ".devloop/S2-实现.md",
+    "signature": "cee3678a12c3b3c6",
+    "note": "",
+    "revision": 2,
+    "doc_sha": "142be3a236dff4ce",
+    "revisions": []
+  }
+}

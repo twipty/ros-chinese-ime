@@ -13,6 +13,9 @@ echo "[run] 磁盘: $HDD（无 ISO，从硬盘引导）"
 echo "[run] VNC: 127.0.0.1:5901   HMP monitor: $VM_DIR/monitor.sock"
 echo
 
+# tools.iso is mounted as a data CD-ROM (D:) so a fresh guest without wget/curl
+# can copy wget.exe + the installer off the disc. Harmless if already installed.
 exec "$QEMU" "${COMMON_ARGS[@]}" \
     -boot c \
+    -cdrom "$VM_DIR/tools.iso" \
     -drive file="$HDD",format=qcow2,if=ide

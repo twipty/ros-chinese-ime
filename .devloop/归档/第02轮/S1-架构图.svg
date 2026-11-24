@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 552 579" width="100%" style="max-width:552px;height:auto" role="img" aria-label="架构图">
+<defs><marker id="dl-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#64748B"/></marker></defs>
+<path d="M131,51 L132,94" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M132,146 L276,172" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M276,207 L276,233" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M276,285 L141,311" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="135" y="289" width="147" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="208" y="302" text-anchor="middle" font-size="11" fill="#475569">表已删项: ｛｝＝＋／－</text>
+<path d="M276,285 L393,311" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="318" y="289" width="33" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="335" y="302" text-anchor="middle" font-size="11" fill="#475569">认领</text>
+<path d="M374,68 L420,94" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M420,146 L132,372" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M393,346 L132,372" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M393,346 L418,372" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M418,424 L192,450" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="288" y="428" width="33" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="305" y="441" text-anchor="middle" font-size="11" fill="#475569">引号</text>
+<path d="M418,424 L420,450" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="362" y="428" width="114" height="17" rx="3" fill="#FFFFFF" opacity="0.92"/>
+<text x="419" y="441" text-anchor="middle" font-size="11" fill="#475569">非引号含 —— …… ·</text>
+<path d="M192,502 L276,528" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<path d="M420,485 L276,528" fill="none" stroke="#64748B" stroke-width="1.4" marker-end="url(#dl-arrow)"/>
+<rect x="61" y="16" width="140" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="131" y="38" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">物理键 shift 两态</text>
+<rect x="16" y="94" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="116" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">key_event_from → key_char vk,</text>
+<text x="132" y="133" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">shift</text>
+<rect x="224" y="172" width="105" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="276" y="194" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">KeyEvent ch</text>
+<rect x="160" y="233" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="276" y="255" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">wants_key&lt;br/&gt;punctuation ch </text>
+<text x="276" y="272" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">非空 → 认领</text>
+<rect x="52" y="311" width="178" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="141" y="333" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">不认领 → 系统半角 ASCII</text>
+<rect x="286" y="311" width="214" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="393" y="333" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">handle_key Punctuation 分支</text>
+<rect x="256" y="16" width="235" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="374" y="38" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">fullwidth_punctuation 收敛表&lt;b</text>
+<text x="374" y="55" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">r/&gt;真中文标点 + —— ￥ 、 ·&lt;br/…</text>
+<rect x="303" y="94" width="233" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="420" y="116" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">route_key 纯函数&lt;br/&gt;三参数签名</text>
+<text x="420" y="133" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">不变</text>
+<rect x="18" y="372" width="228" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="132" y="394" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">Intent.ch 源键 + Intent.text </text>
+<text x="132" y="411" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">码点串</text>
+<rect x="302" y="372" width="231" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="418" y="394" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">session parity&lt;br/&gt;dquote/squ</text>
+<text x="418" y="411" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">ote_open</text>
+<rect x="76" y="450" width="232" height="52" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="192" y="472" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">按 ch 选 text 0 开 / 1 合&lt;br/&gt;</text>
+<text x="192" y="489" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">翻转 parity</text>
+<rect x="364" y="450" width="113" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="420" y="472" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">text 整体提交</text>
+<rect x="174" y="528" width="203" height="35" rx="6" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.4"/>
+<text x="276" y="550" text-anchor="middle" font-size="12.5" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Malgun Gothic,Microsoft YaHei,Hiragino Sans GB,sans-serif" fill="#334155">emit_commit → WM_IME_CHAR</text>
+</svg>

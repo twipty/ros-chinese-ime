@@ -1,0 +1,103 @@
+flowchart LR
+  n0[".github/workflows/ci.yml"]
+  n1["CMakeLists.txt"]
+  n2["ime/rospinyin_res.rc"]
+  n3["tools/check_m1.py"]
+  n4["…install-rospinyin/CMakeLists.txt"]
+  n5["…ls/install-rospinyin/install.cpp"]
+  n6["…work/include/imfw/code_table.hpp"]
+  n7["…work/include/imfw/dat_format.hpp"]
+  n8["framework/include/imfw/host.hpp"]
+  n9["framework/include/imfw/scheme.hpp"]
+  n10["…include/imfw/scheme_registry.hpp"]
+  n11["…ork/include/imfw/trace_stamp.hpp"]
+  n12["…platform/win32/imm32/dllmain.cpp"]
+  n13["…rm/win32/imm32/key_translate.cpp"]
+  n14["…rm/win32/imm32/session_store.cpp"]
+  n15["…latform/win32/imm32/win32_host.h"]
+  n16["…ork/platform/win32/ui/ime_ui.cpp"]
+  n17["framework/src/code_table.cpp"]
+  n18["framework/src/scheme_registry.cpp"]
+  n19["ime/rospinyin.h"]
+  n20["m0/vm/common.sh"]
+  n21["m0/vm/noVNC-1.5.0/app/ui.js"]
+  n22["m0/vm/noVNC-1.5.0/app/webutil.js"]
+  n23["m0/vm/noVNC-1.5.0/core/rfb.js"]
+  n24["…/noVNC-1.5.0/core/util/cursor.js"]
+  n25["m0/vm/noVNC-1.5.0/core/websock.js"]
+  n26["…-1.5.0/snap/local/svc_wrapper.sh"]
+  n27["…oVNC-1.5.0/tests/test.browser.js"]
+  n28["…noVNC-1.5.0/tests/test.helper.js"]
+  n29["…VNC-1.5.0/tests/test.keyboard.js"]
+  n30["…1.5.0/tests/test.localization.js"]
+  n31["…vm/noVNC-1.5.0/tests/test.rfb.js"]
+  n32["…oVNC-1.5.0/tests/test.websock.js"]
+  n33["…oVNC-1.5.0/tests/test.webutil.js"]
+  n34["m0/vm/probe-n.sh"]
+  n35["m0/vm/run-reactos-install.sh"]
+  n36["pinyin/host/dat_source_win.cpp"]
+  n37["…include/rospinyin/dat_source.hpp"]
+  n38["…yin/include/rospinyin/pinyin.hpp"]
+  n39["pinyin/src/dat_source.cpp"]
+  n0 -->|"rospinyin_res"| n2
+  n0 -->|"check, check_m1"| n3
+  n0 -->|"install"| n5
+  n1 -->|"rospinyin_res"| n2
+  n1 -->|"read"| n3
+  n1 -->|"install"| n5
+  n6 -->|"read"| n3
+  n7 -->|"read"| n3
+  n8 -->|"read"| n3
+  n9 -->|"read"| n3
+  n9 -->|"install"| n5
+  n10 -->|"install"| n5
+  n11 -->|"read"| n3
+  n12 -->|"check_m1"| n3
+  n12 -->|"CMakeLists"| n4
+  n13 -->|"read"| n3
+  n14 -->|"check"| n3
+  n15 -->|"read"| n3
+  n16 -->|"read"| n3
+  n17 -->|"check"| n3
+  n18 -->|"read"| n3
+  n18 -->|"install"| n5
+  n19 -->|"rospinyin_res"| n2
+  n19 -->|"check_m1"| n3
+  n19 -->|"install"| n5
+  n2 -->|"CMakeLists"| n1
+  n2 -->|"CMakeLists"| n4
+  n20 -->|"install"| n5
+  n21 -->|"check, read"| n3
+  n22 -->|"read"| n3
+  n23 -->|"check, read"| n3
+  n24 -->|"check"| n3
+  n25 -->|"read"| n3
+  n26 -->|"check, read"| n3
+  n27 -->|"read"| n3
+  n28 -->|"read"| n3
+  n29 -->|"read"| n3
+  n30 -->|"read"| n3
+  n31 -->|"read"| n3
+  n32 -->|"read"| n3
+  n33 -->|"read"| n3
+  n34 -->|"install"| n5
+  n35 -->|"install"| n5
+  n36 -->|"read"| n3
+  n36 -->|"CMakeLists"| n4
+  n37 -->|"read"| n3
+  n38 -->|"read"| n3
+  n39 -->|"read"| n3
+  n39 -->|"CMakeLists"| n4
+  n3 -->|"CMakeLists"| n1
+  n3 -->|"rospinyin_res"| n2
+  n3 -->|"CMakeLists"| n4
+  n3 -->|"install"| n5
+  n4 -->|"install"| n5
+  n5 -->|"CMakeLists"| n1
+  n5 -->|"check, check_m1"| n3
+  n5 -->|"CMakeLists"| n4
+  classDef target fill:#DBEAFE,stroke:#2563EB,stroke-width:2px,color:#1E3A8A
+  classDef dep fill:#F8FAFC,stroke:#CBD5E1,color:#334155
+  classDef newone fill:#FFFBEB,stroke:#F59E0B,stroke-dasharray:5 3,color:#92400E
+  class n5,n4,n2,n1,n0,n3 target
+  class n6,n7,n8,n9,n10,n11,n12,n13,n14,n15,n16,n17,n18,n19,n20,n21,n22,n23,n24,n25,n26,n27,n28,n29,n30,n31,n32,n33,n34,n35,n36,n37,n38,n39 dep

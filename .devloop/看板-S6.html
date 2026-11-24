@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>S6 · 缺陷定位与修复</title><style>
+:root{--bg:#f7f8fa;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;
+--accent:#2563eb;--ok:#059669;--warn:#d97706;--bad:#dc2626;--code:#f3f4f6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+font:15px/1.7 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:32px 24px 64px}
+header.top{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:24px}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:.5px}
+.meta{color:var(--muted);font-size:13px}
+.meta span{margin-right:16px}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;
+font-weight:600;border:1px solid transparent}
+.pill.ok{background:#ecfdf5;color:var(--ok);border-color:#a7f3d0}
+.pill.warn{background:#fffbeb;color:var(--warn);border-color:#fde68a}
+.pill.gray{background:#f3f4f6;color:var(--muted);border-color:var(--line)}
+.pill.bad{background:#fef2f2;color:var(--bad);border-color:#fecaca}
+.gates{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;
+margin:0 0 28px}
+.gate{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.gate .st{font-size:12px;color:var(--muted);letter-spacing:1px}
+.gate .nm{font-size:14px;font-weight:600;margin:4px 0 8px}
+.gate .note{font-size:12px;color:var(--muted);margin-top:6px;
+overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin:0 0 24px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;
+padding:12px 18px;min-width:110px}
+.stat b{display:block;font-size:22px;line-height:1.2}
+.stat span{font-size:12px;color:var(--muted)}
+section.card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+padding:24px 28px;margin-bottom:20px}
+section.card>h2{margin:0 0 4px;font-size:19px}
+section.card>.src{color:var(--muted);font-size:12px;margin-bottom:16px}
+h3{font-size:16px;margin:22px 0 8px;padding-left:10px;border-left:3px solid var(--accent)}
+h4,h5,h6{font-size:15px;margin:18px 0 6px}
+p{margin:8px 0}
+code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:13px;
+font-family:"Cascadia Mono",Consolas,monospace}
+pre.code{background:#0f172a;color:#e2e8f0;padding:14px 16px;border-radius:8px;
+overflow:auto;font-size:13px;line-height:1.6}
+pre.code code{background:none;color:inherit;padding:0}
+.nav{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:14px 0;
+font-size:13px;color:var(--muted)}
+.nav a{color:var(--accent);text-decoration:none;padding:3px 9px;border-radius:6px;
+background:#eff6ff;border:1px solid #bfdbfe}
+.nav a:hover{background:#dbeafe}
+figure.diagram{margin:14px 0;padding:14px;background:#fff;border:1px solid var(--line);
+border-radius:10px;overflow:auto}
+figure.diagram svg{display:block;margin:0 auto}
+figure.diagram details{margin-top:8px}
+figure.diagram summary{cursor:pointer;color:var(--muted);font-size:12px}
+figure.diagram pre.code{margin-top:8px}
+.table-wrap{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border:1px solid var(--line);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:#f9fafb;font-weight:600;white-space:nowrap}
+tbody tr:nth-child(even){background:#fcfcfd}
+blockquote{margin:12px 0;padding:10px 16px;background:#f9fafb;
+border-left:3px solid var(--accent);color:#374151;border-radius:0 6px 6px 0}
+hr{border:0;border-top:1px solid var(--line);margin:20px 0}
+ul,ol{margin:8px 0;padding-left:22px}
+li{margin:4px 0}
+a{color:var(--accent)}
+.empty{color:var(--muted);font-style:italic}
+footer{color:var(--muted);font-size:12px;text-align:center;margin-top:32px}
+</style></head>
+<body><div class="wrap">
+<header class="top">
+  <h1>S6 · 缺陷定位与修复</h1>
+  <div class="meta">
+    <span>dev-loop 1.14.0</span>
+    <span>阶段 S2</span>
+    <span>轮次 M3 中文体验补齐：中文标点、全角/半角、中英状态记忆、Shift 临时英文、Ctrl+Space 热键、状态提示</span>
+    
+    <span>生成于 2026-11-23 21:33:06</span>
+    
+  </div>
+</header>
+<div class="gates"><div class="gate"><div class="st">S6</div><div class="nm">缺陷定位与修复</div><span class="pill gray">不适用</span><div class="note" title="确认并提交：本轮健康检查 P0=0，双配置 ctest 20/20、check_m1 111/111、check_docs 7/7、seams 全绿，guest 引号交替实机 PASS，无触发缺陷定位的缺陷；S6 不适用">确认并提交：本轮健康检查 P0=0，双配置 ctest 20/20、check_m1 111/111、check_docs 7/7、seams 全绿，guest 引号交替实机 PASS，无触发缺陷定位的缺陷；S6 不适用</div></div></div>
+<div class="stats"><div class="stat"><b>7</b><span>阶段已确认</span></div><div class="stat"><b>0</b><span>P0 实现问题</span></div><div class="stat"><b>0</b><span>P1 实现问题</span></div><div class="stat"><b>0</b><span>P2 建议</span></div><div class="stat"><b>0</b><span>未闭环项</span></div></div>
+<div class="nav"><a href="看板.html">← 看整本看板</a><span>本页只含 S6 阶段的报告</span></div>
+<section class="card"><h2>还没有报告</h2><p class="empty">先跑任意一个分析命令，产物会出现在这里。</p></section>
+<footer>由 dev-loop 生成 · 报告只读，改动请在 .devloop/ 下的 Markdown 里做</footer>
+</div></body></html>

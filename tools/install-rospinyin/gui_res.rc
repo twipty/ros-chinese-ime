@@ -1,0 +1,28 @@
+// RosPinyin - Simplified Chinese pinyin IME for ReactOS
+// SPDX-License-Identifier: MIT
+// See LICENSE and NOTICE.txt at the repository root.
+//
+// GUI-installer-only RCDATA. Keeping these blobs out of ime/rospinyin_res.rc
+// preserves the frozen rospinyin.ime hash and size; the resource compiler
+// reads the escaped byte-string macros generated into payload_base64.hpp.
+// Bare `0xHH` byte lists are NOT used here: windres stores each item as a
+// 16-bit word, which doubled the payload and made SizeofResource() disagree
+// with the expected compressed size (guest error 6).
+
+#define ROSPINYIN_RC_PAYLOAD_ONLY
+#include "payload_base64.hpp"
+
+ROSPINYIN_IDR_IME_PAYLOAD RCDATA
+{
+    ROSPINYIN_IME_PAYLOAD_RC_BYTES
+}
+
+ROSPINYIN_IDR_DAT_PAYLOAD RCDATA
+{
+    ROSPINYIN_DAT_PAYLOAD_RC_BYTES
+}
+
+ROSPINYIN_IDR_CLI_PAYLOAD RCDATA
+{
+    ROSPINYIN_CLI_PAYLOAD_RC_BYTES
+}

@@ -1,0 +1,1593 @@
+{
+  "generated_at": "2026-11-23 22:26:56",
+  "base": "HEAD",
+  "staged": false,
+  "level": "中",
+  "max_risk": 40,
+  "files": [
+    {
+      "file": "tools/install-rospinyin/install.cpp",
+      "status": "M",
+      "symbols": [
+        "install"
+      ],
+      "refs": {
+        "code": [
+          {
+            "file": "tools/check_m1.py",
+            "symbols": [
+              "install"
+            ],
+            "count": 10,
+            "line": 52
+          },
+          {
+            "file": "tools/mkdat/build_dat.sh",
+            "symbols": [
+              "install"
+            ],
+            "count": 8,
+            "line": 9
+          },
+          {
+            "file": "m0/vm/run-reactos-install.sh",
+            "symbols": [
+              "install"
+            ],
+            "count": 5,
+            "line": 2
+          },
+          {
+            "file": "tools/syntax_stub/windows.h",
+            "symbols": [
+              "install"
+            ],
+            "count": 5,
+            "line": 8
+          },
+          {
+            "file": "framework/include/imfw/scheme_registry.hpp",
+            "symbols": [
+              "install"
+            ],
+            "count": 4,
+            "line": 22
+          },
+          {
+            "file": "m0/vm/probe-n.sh",
+            "symbols": [
+              "install"
+            ],
+            "count": 3,
+            "line": 56
+          },
+          {
+            "file": "ime/rospinyin.h",
+            "symbols": [
+              "install"
+            ],
+            "count": 3,
+            "line": 14
+          },
+          {
+            "file": "framework/src/scheme_registry.cpp",
+            "symbols": [
+              "install"
+            ],
+            "count": 2,
+            "line": 24
+          },
+          {
+            "file": "m0/vm/common.sh",
+            "symbols": [
+              "install"
+            ],
+            "count": 1,
+            "line": 1
+          },
+          {
+            "file": "tools/artifact_hashes.py",
+            "symbols": [
+              "install"
+            ],
+            "count": 1,
+            "line": 63
+          },
+          {
+            "file": "tools/syntax_stub/imm.h",
+            "symbols": [
+              "install"
+            ],
+            "count": 1,
+            "line": 8
+          },
+          {
+            "file": "tools/httpdl/http_dl.c",
+            "symbols": [
+              "install"
+            ],
+            "count": 1,
+            "line": 9
+          },
+          {
+            "file": "framework/include/imfw/scheme.hpp",
+            "symbols": [
+              "install"
+            ],
+            "count": 1,
+            "line": 161
+          },
+          {
+            "file": "pinyin/src/scheme.cpp",
+            "symbols": [
+              "install"
+            ],
+            "count": 1,
+            "line": 11
+          },
+          {
+            "file": "samples/toy-scheme/toy_scheme.hpp",
+            "symbols": [
+              "install"
+            ],
+            "count": 1,
+            "line": 16
+          }
+        ],
+        "tests": [
+          {
+            "file": "tests/scheme_registry_test.cpp",
+            "symbols": [
+              "install"
+            ],
+            "count": 6,
+            "line": 10
+          },
+          {
+            "file": "tests/builtin_gate_test.cpp",
+            "symbols": [
+              "install"
+            ],
+            "count": 1,
+            "line": 10
+          }
+        ],
+        "docs": [
+          {
+            "file": "docs/handover/HANDOVER.md",
+            "symbols": [
+              "install"
+            ],
+            "count": 24,
+            "line": 204
+          },
+          {
+            "file": "docs/milestones/M0-REDLINE-REVIEW.md",
+            "symbols": [
+              "install"
+            ],
+            "count": 22,
+            "line": 4
+          },
+          {
+            "file": "docs/milestones/M1-REPORT.md",
+            "symbols": [
+              "install"
+            ],
+            "count": 13,
+            "line": 53
+          },
+          {
+            "file": "m0/vm/NOVNC-GUIDE.md",
+            "symbols": [
+              "install"
+            ],
+            "count": 10,
+            "line": 88
+          },
+          {
+            "file": "m0/vm/PRELOAD-PROBE.md",
+            "symbols": [
+              "install"
+            ],
+            "count": 10,
+            "line": 46
+          },
+          {
+            "file": "libernt/PORTABILITY-ASSESSMENT.md",
+            "symbols": [
+              "install"
+            ],
+            "count": 9,
+            "line": 51
+          },
+          {
+            "file": "xingma/XINGMA-PLAN.md",
+            "symbols": [
+              "install"
+            ],
+            "count": 8,
+            "line": 346
+          },
+          {
+            "file": "tools/install-rospinyin/CMakeLists.txt",
+            "symbols": [
+              "install"
+            ],
+            "count": 7,
+            "line": 6
+          },
+          {
+            "file": "xingma/docs/glyph-tier/GLYPH-TIER-PLAN.md",
+            "symbols": [
+              "install"
+            ],
+            "count": 7,
+            "line": 5
+          },
+          {
+            "file": "docs/font/FONT-BUNDLING-ASSESSMENT.md",
+            "symbols": [
+              "install"
+            ],
+            "count": 7,
+            "line": 78
+          },
+          {
+            "file": "docs/handover/CHANGELOG.md",
+            "symbols": [
+              "install"
+            ],
+            "count": 6,
+            "line": 89
+          },
+          {
+            "file": "docs/reviews/PORTABILITY-UPSTREAM-64BIT-ARM64.md",
+            "symbols": [
+              "install"
+            ],
+            "count": 6,
+            "line": 98
+          },
+          {
+            "file": "xingma/archive/XINGMA-PLAN-v2.3-DRAFT.md",
+            "symbols": [
+              "install"
+            ],
+            "count": 5,
+            "line": 115
+          },
+          {
+            "file": "m0/probe/mzimeja-v1.0.1.1-LICENSE.txt",
+            "symbols": [
+              "install"
+            ],
+            "count": 4,
+            "line": 50
+          },
+          {
+            "file": "build-standalone/CMakeFiles/TargetDirectories.txt",
+            "symbols": [
+              "install"
+            ],
+            "count": 4,
+            "line": 16
+          },
+          {
+            "file": "build-cross/CMakeFiles/TargetDirectories.txt",
+            "symbols": [
+              "install"
+            ],
+            "count": 4,
+            "line": 16
+          },
+          {
+            "file": "CMakeLists.txt",
+            "symbols": [
+              "install"
+            ],
+            "count": 3,
+            "line": 47
+          },
+          {
+            "file": "docs/milestones/m2/M2-REPORT.md",
+            "symbols": [
+              "install"
+            ],
+            "count": 3,
+            "line": 113
+          },
+          {
+            "file": "docs/releases/alpha0.0.3.md",
+            "symbols": [
+              "install"
+            ],
+            "count": 3,
+            "line": 11
+          },
+          {
+            "file": "m0/vm/noVNC-1.5.0/README.md",
+            "symbols": [
+              "install"
+            ],
+            "count": 2,
+            "line": 128
+          },
+          {
+            "file": "xingma/docs/phase0/PHASE0-PLAN.md",
+            "symbols": [
+              "install"
+            ],
+            "count": 2,
+            "line": 123
+          },
+          {
+            "file": "xingma/docs/glyph-tier/FRAMEWORK-REQ.md",
+            "symbols": [
+              "install"
+            ],
+            "count": 2,
+            "line": 62
+          },
+          {
+            "file": "framework/README.md",
+            "symbols": [
+              "install"
+            ],
+            "count": 2,
+            "line": 46
+          },
+          {
+            "file": "docs/projectoverall.md",
+            "symbols": [
+              "install"
+            ],
+            "count": 2,
+            "line": 150
+          },
+          {
+            "file": "docs/plan/PLAN.md",
+            "symbols": [
+              "install"
+            ],
+            "count": 2,
+            "line": 42
+          }
+        ]
+      },
+      "risk": 40,
+      "reasons": [
+        "被 17 个文件引用 (+30)",
+        "被 25 个文档描述 (+10)"
+      ],
+      "churn": {
+        "added": 0,
+        "removed": 0,
+        "hunks": 0
+      }
+    },
+    {
+      "file": "tools/install-rospinyin/CMakeLists.txt",
+      "status": "M",
+      "symbols": [
+        "CMakeLists"
+      ],
+      "refs": {
+        "code": [
+          {
+            "file": "tools/check_m1.py",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 29,
+            "line": 188
+          },
+          {
+            "file": "tools/install-rospinyin/install.cpp",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 1,
+            "line": 438
+          },
+          {
+            "file": "framework/platform/win32/imm32/dllmain.cpp",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 1,
+            "line": 30
+          },
+          {
+            "file": "pinyin/src/dat_source.cpp",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 1,
+            "line": 8
+          },
+          {
+            "file": "pinyin/host/dat_source_win.cpp",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 1,
+            "line": 6
+          }
+        ],
+        "tests": [],
+        "docs": [
+          {
+            "file": "build-tdd/CMakeFiles/CMakeConfigureLog.yaml",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 46,
+            "line": 8
+          },
+          {
+            "file": "docs/handover/HANDOVER.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 33,
+            "line": 178
+          },
+          {
+            "file": "build-host-off/CMakeFiles/CMakeConfigureLog.yaml",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 33,
+            "line": 8
+          },
+          {
+            "file": "build-standalone/CMakeFiles/CMakeConfigureLog.yaml",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 28,
+            "line": 8
+          },
+          {
+            "file": "build-cross/CMakeFiles/CMakeConfigureLog.yaml",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 28,
+            "line": 8
+          },
+          {
+            "file": "docs/plan/PLAN-MODULARIZATION.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 17,
+            "line": 82
+          },
+          {
+            "file": "xingma/XINGMA-PLAN.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 12,
+            "line": 108
+          },
+          {
+            "file": "docs/reviews/ARCH-AUDIT-VERIFICATION.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 11,
+            "line": 30
+          },
+          {
+            "file": "docs/handover/CHANGELOG.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 10,
+            "line": 279
+          },
+          {
+            "file": "xingma/archive/XINGMA-PLAN-v2.3-DRAFT.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 9,
+            "line": 118
+          },
+          {
+            "file": "xingma/docs/phase0/PHASE0-PLAN.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 6,
+            "line": 26
+          },
+          {
+            "file": "libernt/PORTABILITY-ASSESSMENT.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 6,
+            "line": 51
+          },
+          {
+            "file": "docs/reviews/PORTABILITY-UPSTREAM-64BIT-ARM64.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 4,
+            "line": 96
+          },
+          {
+            "file": "ime/CMakeLists.txt",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 3,
+            "line": 57
+          },
+          {
+            "file": "docs/milestones/M1-REPORT.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 3,
+            "line": 69
+          },
+          {
+            "file": "docs/font/FONT-BUNDLING-ASSESSMENT.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 3,
+            "line": 146
+          },
+          {
+            "file": "build-standalone/CMakeCache.txt",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 3,
+            "line": 371
+          },
+          {
+            "file": "build-tdd/CMakeCache.txt",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 3,
+            "line": 353
+          },
+          {
+            "file": "build-host-off/CMakeCache.txt",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 3,
+            "line": 353
+          },
+          {
+            "file": "build-cross/CMakeCache.txt",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 3,
+            "line": 371
+          },
+          {
+            "file": "xingma/README.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 2,
+            "line": 27
+          },
+          {
+            "file": "framework/platform/win32/CMakeLists.txt",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 2,
+            "line": 7
+          },
+          {
+            "file": "docs/README.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 2,
+            "line": 5
+          },
+          {
+            "file": "docs/milestones/m2/M2-DATA-PLAN.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 2,
+            "line": 186
+          },
+          {
+            "file": "framework/README.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 1,
+            "line": 13
+          }
+        ]
+      },
+      "risk": 40,
+      "reasons": [
+        "被 5 个文件引用 (+15)",
+        "无测试引用 (+15)",
+        "被 25 个文档描述 (+10)"
+      ],
+      "churn": {
+        "added": 0,
+        "removed": 0,
+        "hunks": 0
+      }
+    },
+    {
+      "file": "CMakeLists.txt",
+      "status": "M",
+      "symbols": [
+        "CMakeLists"
+      ],
+      "refs": {
+        "code": [
+          {
+            "file": "tools/check_m1.py",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 29,
+            "line": 188
+          },
+          {
+            "file": "tools/install-rospinyin/install.cpp",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 1,
+            "line": 438
+          },
+          {
+            "file": "framework/platform/win32/imm32/dllmain.cpp",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 1,
+            "line": 30
+          },
+          {
+            "file": "pinyin/src/dat_source.cpp",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 1,
+            "line": 8
+          },
+          {
+            "file": "pinyin/host/dat_source_win.cpp",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 1,
+            "line": 6
+          }
+        ],
+        "tests": [],
+        "docs": [
+          {
+            "file": "build-tdd/CMakeFiles/CMakeConfigureLog.yaml",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 46,
+            "line": 8
+          },
+          {
+            "file": "docs/handover/HANDOVER.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 33,
+            "line": 178
+          },
+          {
+            "file": "build-host-off/CMakeFiles/CMakeConfigureLog.yaml",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 33,
+            "line": 8
+          },
+          {
+            "file": "build-standalone/CMakeFiles/CMakeConfigureLog.yaml",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 28,
+            "line": 8
+          },
+          {
+            "file": "build-cross/CMakeFiles/CMakeConfigureLog.yaml",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 28,
+            "line": 8
+          },
+          {
+            "file": "docs/plan/PLAN-MODULARIZATION.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 17,
+            "line": 82
+          },
+          {
+            "file": "xingma/XINGMA-PLAN.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 12,
+            "line": 108
+          },
+          {
+            "file": "docs/reviews/ARCH-AUDIT-VERIFICATION.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 11,
+            "line": 30
+          },
+          {
+            "file": "docs/handover/CHANGELOG.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 10,
+            "line": 279
+          },
+          {
+            "file": "xingma/archive/XINGMA-PLAN-v2.3-DRAFT.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 9,
+            "line": 118
+          },
+          {
+            "file": "xingma/docs/phase0/PHASE0-PLAN.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 6,
+            "line": 26
+          },
+          {
+            "file": "libernt/PORTABILITY-ASSESSMENT.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 6,
+            "line": 51
+          },
+          {
+            "file": "docs/reviews/PORTABILITY-UPSTREAM-64BIT-ARM64.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 4,
+            "line": 96
+          },
+          {
+            "file": "ime/CMakeLists.txt",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 3,
+            "line": 57
+          },
+          {
+            "file": "docs/milestones/M1-REPORT.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 3,
+            "line": 69
+          },
+          {
+            "file": "docs/font/FONT-BUNDLING-ASSESSMENT.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 3,
+            "line": 146
+          },
+          {
+            "file": "build-standalone/CMakeCache.txt",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 3,
+            "line": 371
+          },
+          {
+            "file": "build-tdd/CMakeCache.txt",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 3,
+            "line": 353
+          },
+          {
+            "file": "build-host-off/CMakeCache.txt",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 3,
+            "line": 353
+          },
+          {
+            "file": "build-cross/CMakeCache.txt",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 3,
+            "line": 371
+          },
+          {
+            "file": "xingma/README.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 2,
+            "line": 27
+          },
+          {
+            "file": "framework/platform/win32/CMakeLists.txt",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 2,
+            "line": 7
+          },
+          {
+            "file": "docs/README.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 2,
+            "line": 5
+          },
+          {
+            "file": "docs/milestones/m2/M2-DATA-PLAN.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 2,
+            "line": 186
+          },
+          {
+            "file": "framework/README.md",
+            "symbols": [
+              "CMakeLists"
+            ],
+            "count": 1,
+            "line": 13
+          }
+        ]
+      },
+      "risk": 40,
+      "reasons": [
+        "被 5 个文件引用 (+15)",
+        "无测试引用 (+15)",
+        "被 25 个文档描述 (+10)"
+      ],
+      "churn": {
+        "added": 0,
+        "removed": 0,
+        "hunks": 0
+      }
+    },
+    {
+      "file": "tools/check_m1.py",
+      "status": "M",
+      "symbols": [
+        "strip_cpp_comments",
+        "def_symbols",
+        "function_body",
+        "strip_trace_blocks",
+        "calls_in",
+        "call_arguments",
+        "split_top_level",
+        "reg_key_writes",
+        "Checker",
+        "check",
+        "summary",
+        "strip_cmake_comments",
+        "check_m1"
+      ],
+      "refs": {
+        "code": [
+          {
+            "file": "tools/check_docs.py",
+            "symbols": [
+              "Checker",
+              "check",
+              "summary"
+            ],
+            "count": 12,
+            "line": 62
+          },
+          {
+            "file": "tools/check_release_version.py",
+            "symbols": [
+              "check",
+              "check_m1"
+            ],
+            "count": 9,
+            "line": 24
+          },
+          {
+            "file": "tools/ime_chain_diff.py",
+            "symbols": [
+              "summary"
+            ],
+            "count": 5,
+            "line": 158
+          },
+          {
+            "file": "tools/artifact_hashes.py",
+            "symbols": [
+              "check"
+            ],
+            "count": 5,
+            "line": 13
+          },
+          {
+            "file": "tools/install-rospinyin/install.cpp",
+            "symbols": [
+              "check",
+              "check_m1"
+            ],
+            "count": 3,
+            "line": 11
+          },
+          {
+            "file": "tools/rhash/rhash.c",
+            "symbols": [
+              "check"
+            ],
+            "count": 3,
+            "line": 8
+          },
+          {
+            "file": "m0/vm/noVNC-1.5.0/app/ui.js",
+            "symbols": [
+              "check"
+            ],
+            "count": 1,
+            "line": 1549
+          },
+          {
+            "file": "m0/vm/noVNC-1.5.0/core/rfb.js",
+            "symbols": [
+              "check"
+            ],
+            "count": 1,
+            "line": 1032
+          },
+          {
+            "file": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+            "symbols": [
+              "check"
+            ],
+            "count": 1,
+            "line": 174
+          },
+          {
+            "file": "m0/vm/noVNC-1.5.0/snap/local/svc_wrapper.sh",
+            "symbols": [
+              "check"
+            ],
+            "count": 1,
+            "line": 19
+          },
+          {
+            "file": "ime/rospinyin.h",
+            "symbols": [
+              "check_m1"
+            ],
+            "count": 1,
+            "line": 14
+          },
+          {
+            "file": "tools/push_via_api.py",
+            "symbols": [
+              "check"
+            ],
+            "count": 1,
+            "line": 42
+          },
+          {
+            "file": "tools/seams.py",
+            "symbols": [
+              "check_m1"
+            ],
+            "count": 1,
+            "line": 17
+          },
+          {
+            "file": "tools/syntax_stub/windows.h",
+            "symbols": [
+              "check"
+            ],
+            "count": 1,
+            "line": 7
+          },
+          {
+            "file": "tools/syntax_stub/imm.h",
+            "symbols": [
+              "check"
+            ],
+            "count": 1,
+            "line": 5
+          },
+          {
+            "file": "tools/httpdl/http_dl.c",
+            "symbols": [
+              "check"
+            ],
+            "count": 1,
+            "line": 305
+          },
+          {
+            "file": "tools/mkdat/fetch_data.py",
+            "symbols": [
+              "check"
+            ],
+            "count": 1,
+            "line": 25
+          },
+          {
+            "file": "framework/src/code_table.cpp",
+            "symbols": [
+              "check"
+            ],
+            "count": 1,
+            "line": 33
+          },
+          {
+            "file": "framework/platform/win32/imm32/dllmain.cpp",
+            "symbols": [
+              "check_m1"
+            ],
+            "count": 1,
+            "line": 8
+          },
+          {
+            "file": "framework/platform/win32/imm32/session_store.cpp",
+            "symbols": [
+              "check"
+            ],
+            "count": 1,
+            "line": 6
+          }
+        ],
+        "tests": [
+          {
+            "file": "tests/host_key_test.cpp",
+            "symbols": [
+              "check"
+            ],
+            "count": 114,
+            "line": 37
+          },
+          {
+            "file": "tests/code_table_test.cpp",
+            "symbols": [
+              "check"
+            ],
+            "count": 70,
+            "line": 13
+          },
+          {
+            "file": "tests/pinyin_session_test.cpp",
+            "symbols": [
+              "check"
+            ],
+            "count": 55,
+            "line": 19
+          },
+          {
+            "file": "tests/candidate_pager_test.cpp",
+            "symbols": [
+              "check"
+            ],
+            "count": 36,
+            "line": 15
+          },
+          {
+            "file": "tests/scheme_test.cpp",
+            "symbols": [
+              "check"
+            ],
+            "count": 33,
+            "line": 23
+          },
+          {
+            "file": "tests/host_smoke_test.cpp",
+            "symbols": [
+              "check"
+            ],
+            "count": 23,
+            "line": 38
+          },
+          {
+            "file": "tests/toy_scheme_test.cpp",
+            "symbols": [
+              "check"
+            ],
+            "count": 20,
+            "line": 28
+          },
+          {
+            "file": "tests/emit_text_test.cpp",
+            "symbols": [
+              "check"
+            ],
+            "count": 19,
+            "line": 21
+          },
+          {
+            "file": "tests/utf8_test.cpp",
+            "symbols": [
+              "check"
+            ],
+            "count": 15,
+            "line": 19
+          },
+          {
+            "file": "tests/scheme_registry_test.cpp",
+            "symbols": [
+              "check"
+            ],
+            "count": 15,
+            "line": 28
+          },
+          {
+            "file": "tests/pinyin_test.cpp",
+            "symbols": [
+              "check"
+            ],
+            "count": 12,
+            "line": 16
+          },
+          {
+            "file": "tests/builtin_gate_test.cpp",
+            "symbols": [
+              "check"
+            ],
+            "count": 12,
+            "line": 40
+          },
+          {
+            "file": "tests/key_route_test.cpp",
+            "symbols": [
+              "check"
+            ],
+            "count": 3,
+            "line": 36
+          },
+          {
+            "file": "tests/toolbar_text_test.cpp",
+            "symbols": [
+              "check"
+            ],
+            "count": 2,
+            "line": 25
+          },
+          {
+            "file": "tests/check_mkdat.py",
+            "symbols": [
+              "check"
+            ],
+            "count": 1,
+            "line": 162
+          },
+          {
+            "file": "tests/punctuation_test.cpp",
+            "symbols": [
+              "check"
+            ],
+            "count": 1,
+            "line": 105
+          },
+          {
+            "file": "tests/key_char_test.cpp",
+            "symbols": [
+              "check"
+            ],
+            "count": 1,
+            "line": 96
+          }
+        ],
+        "docs": [
+          {
+            "file": "docs/handover/HANDOVER.md",
+            "symbols": [
+              "check",
+              "check_m1",
+              "strip_trace_blocks"
+            ],
+            "count": 54,
+            "line": 165
+          },
+          {
+            "file": "docs/plan/PLAN-MODULARIZATION.md",
+            "symbols": [
+              "check",
+              "check_m1"
+            ],
+            "count": 40,
+            "line": 28
+          },
+          {
+            "file": "docs/handover/CHANGELOG.md",
+            "symbols": [
+              "check",
+              "check_m1"
+            ],
+            "count": 34,
+            "line": 24
+          },
+          {
+            "file": "xingma/docs/phase0/PHASE0-PLAN.md",
+            "symbols": [
+              "check_m1"
+            ],
+            "count": 14,
+            "line": 11
+          },
+          {
+            "file": "docs/milestones/M0-REDLINE-REVIEW.md",
+            "symbols": [
+              "check_m1"
+            ],
+            "count": 11,
+            "line": 4
+          },
+          {
+            "file": "xingma/archive/XINGMA-PLAN-v2.3-DRAFT.md",
+            "symbols": [
+              "check",
+              "check_m1"
+            ],
+            "count": 10,
+            "line": 83
+          },
+          {
+            "file": "xingma/docs/glyph-tier/FRAMEWORK-REQ.md",
+            "symbols": [
+              "check_m1"
+            ],
+            "count": 9,
+            "line": 4
+          },
+          {
+            "file": "xingma/XINGMA-PLAN.md",
+            "symbols": [
+              "check",
+              "check_m1"
+            ],
+            "count": 7,
+            "line": 7
+          },
+          {
+            "file": "xingma/docs/FRAMEWORK-AUDIT-2026-11-17.md",
+            "symbols": [
+              "check_m1"
+            ],
+            "count": 7,
+            "line": 10
+          },
+          {
+            "file": "docs/milestones/M1-REPORT.md",
+            "symbols": [
+              "check_m1"
+            ],
+            "count": 6,
+            "line": 75
+          },
+          {
+            "file": "docs/projectoverall.md",
+            "symbols": [
+              "check_m1"
+            ],
+            "count": 5,
+            "line": 5
+          },
+          {
+            "file": "docs/plan/PLAN.md",
+            "symbols": [
+              "check_m1"
+            ],
+            "count": 5,
+            "line": 37
+          },
+          {
+            "file": "docs/reviews/ARCH-AUDIT-VERIFICATION.md",
+            "symbols": [
+              "check_m1"
+            ],
+            "count": 5,
+            "line": 51
+          },
+          {
+            "file": "docs/font/FONT-BUNDLING-ASSESSMENT.md",
+            "symbols": [
+              "check_m1"
+            ],
+            "count": 4,
+            "line": 146
+          },
+          {
+            "file": "m0/vm/PRELOAD-PROBE.md",
+            "symbols": [
+              "check_m1"
+            ],
+            "count": 3,
+            "line": 21
+          },
+          {
+            "file": "xingma/docs/glyph-tier/GLYPH-TIER-PLAN.md",
+            "symbols": [
+              "check",
+              "check_m1"
+            ],
+            "count": 3,
+            "line": 54
+          },
+          {
+            "file": "docs/milestones/m2/M2-REMAINING.md",
+            "symbols": [
+              "check_m1"
+            ],
+            "count": 3,
+            "line": 50
+          },
+          {
+            "file": "docs/reviews/FRAMEWORK-ROUTE-A-REVIEW.md",
+            "symbols": [
+              "check_m1"
+            ],
+            "count": 3,
+            "line": 55
+          },
+          {
+            "file": "tests/CMakeLists.txt",
+            "symbols": [
+              "check",
+              "check_m1"
+            ],
+            "count": 2,
+            "line": 125
+          },
+          {
+            "file": "docs/plan/ROADMAP.md",
+            "symbols": [
+              "check_m1"
+            ],
+            "count": 2,
+            "line": 99
+          },
+          {
+            "file": "docs/milestones/m2/M2-DATA-PLAN.md",
+            "symbols": [
+              "check_m1"
+            ],
+            "count": 2,
+            "line": 219
+          },
+          {
+            "file": "docs/milestones/m2/M2-REPORT.md",
+            "symbols": [
+              "check_m1"
+            ],
+            "count": 2,
+            "line": 69
+          },
+          {
+            "file": "CMakePresets.json",
+            "symbols": [
+              "check_m1"
+            ],
+            "count": 1,
+            "line": 19
+          },
+          {
+            "file": "m0/vm/noVNC-1.5.0/README.md",
+            "symbols": [
+              "check"
+            ],
+            "count": 1,
+            "line": 49
+          },
+          {
+            "file": "m0/vm/noVNC-1.5.0/snap/snapcraft.yaml",
+            "symbols": [
+              "summary"
+            ],
+            "count": 1,
+            "line": 4
+          }
+        ]
+      },
+      "risk": 40,
+      "reasons": [
+        "被 37 个文件引用 (+30)",
+        "被 25 个文档描述 (+10)"
+      ],
+      "churn": {
+        "added": 0,
+        "removed": 0,
+        "hunks": 0
+      }
+    },
+    {
+      "file": "ime/rospinyin_res.rc",
+      "status": "M",
+      "symbols": [
+        "rospinyin_res"
+      ],
+      "refs": {
+        "code": [
+          {
+            "file": "tools/check_m1.py",
+            "symbols": [
+              "rospinyin_res"
+            ],
+            "count": 4,
+            "line": 399
+          },
+          {
+            "file": "ime/rospinyin.h",
+            "symbols": [
+              "rospinyin_res"
+            ],
+            "count": 1,
+            "line": 13
+          }
+        ],
+        "tests": [],
+        "docs": [
+          {
+            "file": "docs/handover/HANDOVER.md",
+            "symbols": [
+              "rospinyin_res"
+            ],
+            "count": 6,
+            "line": 196
+          },
+          {
+            "file": "docs/handover/CHANGELOG.md",
+            "symbols": [
+              "rospinyin_res"
+            ],
+            "count": 3,
+            "line": 353
+          },
+          {
+            "file": "ime/CMakeLists.txt",
+            "symbols": [
+              "rospinyin_res"
+            ],
+            "count": 2,
+            "line": 63
+          },
+          {
+            "file": "docs/font/FONT-BUNDLING-ASSESSMENT.md",
+            "symbols": [
+              "rospinyin_res"
+            ],
+            "count": 2,
+            "line": 214
+          },
+          {
+            "file": "docs/reviews/ARCH-AUDIT-VERIFICATION.md",
+            "symbols": [
+              "rospinyin_res"
+            ],
+            "count": 2,
+            "line": 61
+          },
+          {
+            "file": "CMakeLists.txt",
+            "symbols": [
+              "rospinyin_res"
+            ],
+            "count": 1,
+            "line": 81
+          },
+          {
+            "file": "pinyin/README.md",
+            "symbols": [
+              "rospinyin_res"
+            ],
+            "count": 1,
+            "line": 11
+          },
+          {
+            "file": "libernt/PORTABILITY-ASSESSMENT.md",
+            "symbols": [
+              "rospinyin_res"
+            ],
+            "count": 1,
+            "line": 97
+          },
+          {
+            "file": "docs/plan/PLAN.md",
+            "symbols": [
+              "rospinyin_res"
+            ],
+            "count": 1,
+            "line": 38
+          },
+          {
+            "file": "docs/milestones/M1-REPORT.md",
+            "symbols": [
+              "rospinyin_res"
+            ],
+            "count": 1,
+            "line": 68
+          },
+          {
+            "file": "docs/milestones/m2/M2-DATA-PLAN.md",
+            "symbols": [
+              "rospinyin_res"
+            ],
+            "count": 1,
+            "line": 205
+          }
+        ]
+      },
+      "risk": 31,
+      "reasons": [
+        "被 2 个文件引用 (+6)",
+        "无测试引用 (+15)",
+        "被 11 个文档描述 (+10)"
+      ],
+      "churn": {
+        "added": 0,
+        "removed": 0,
+        "hunks": 0
+      }
+    },
+    {
+      "file": ".github/workflows/ci.yml",
+      "status": "M",
+      "symbols": [],
+      "refs": {
+        "code": [],
+        "tests": [],
+        "docs": []
+      },
+      "risk": 15,
+      "reasons": [
+        "无测试引用 (+15)"
+      ],
+      "churn": {
+        "added": 0,
+        "removed": 0,
+        "hunks": 0
+      }
+    }
+  ]
+}

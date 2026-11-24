@@ -49,7 +49,14 @@ m0/logs/
 m0/extract/
 m0/reactos/
 m0/vm/logs/
-m0/downloads/*.zip
+# Guest screenshot evidence, milestone qcow2 backups, broken-disk forensics,
+# and the generated tools CD are all local verification state - never commit.
+m0/vm/evidence/
+m0/vm/snapshots/
+m0/vm/*.broken-*
+m0/vm/tools.iso
+# Downloaded ISOs/archives/installers are local build inputs, never commit.
+m0/downloads/
 
 # Editors / OS
 .vs/

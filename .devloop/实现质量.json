@@ -1,0 +1,69 @@
+{
+  "files": 32,
+  "added_lines": 1245,
+  "P0": 0,
+  "P1": 5,
+  "P2": 1,
+  "hits": [
+    {
+      "id": "DBG-03",
+      "severity": "P1",
+      "category": "硬编码地址",
+      "file": "m0/vm/vnc_key.py",
+      "line": 17,
+      "code": "HOST, PORT = \"127.0.0.1\", 5901",
+      "why": "本地地址进代码，换环境就连不上",
+      "fix": "改为配置项，默认值在示例配置里给"
+    },
+    {
+      "id": "DBG-07",
+      "severity": "P1",
+      "category": "阻塞等待",
+      "file": "m0/vm/vnc_key.py",
+      "line": 70,
+      "code": "time.sleep(0.02)",
+      "why": "靠 sleep 等结果，机器慢就失败、机器快就浪费",
+      "fix": "改轮询 + 超时，或直接同步调用"
+    },
+    {
+      "id": "DBG-07",
+      "severity": "P1",
+      "category": "阻塞等待",
+      "file": "m0/vm/vnc_key.py",
+      "line": 72,
+      "code": "time.sleep(0.03)",
+      "why": "靠 sleep 等结果，机器慢就失败、机器快就浪费",
+      "fix": "改轮询 + 超时，或直接同步调用"
+    },
+    {
+      "id": "DBG-07",
+      "severity": "P1",
+      "category": "阻塞等待",
+      "file": "m0/vm/vnc_key.py",
+      "line": 130,
+      "code": "time.sleep(0.02)",
+      "why": "靠 sleep 等结果，机器慢就失败、机器快就浪费",
+      "fix": "改轮询 + 超时，或直接同步调用"
+    },
+    {
+      "id": "DBG-07",
+      "severity": "P1",
+      "category": "阻塞等待",
+      "file": "m0/vm/vnc_key.py",
+      "line": 133,
+      "code": "time.sleep(0.03)",
+      "why": "靠 sleep 等结果，机器慢就失败、机器快就浪费",
+      "fix": "改轮询 + 超时，或直接同步调用"
+    },
+    {
+      "id": "DBG-01",
+      "severity": "P2",
+      "category": "命令行输出",
+      "file": "m0/vm/vnc_key.py",
+      "line": 108,
+      "code": "共 3 处，起于：`print(__doc__)`",
+      "why": "该文件是命令行入口，print 就是它的输出通道（3 处）",
+      "fix": "确认这是面向用户的输出；库函数里仍应走日志"
+    }
+  ]
+}

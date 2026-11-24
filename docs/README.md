@@ -15,6 +15,7 @@
 | 要动字体、字形、生僻字 | [font/](font/) 整个目录；**先看 [FONT-PLAN-REVIEW](font/FONT-PLAN-REVIEW.md)，那是裁决** |
 | 要动框架结构 / 想移植平台 | [reviews/](reviews/) |
 | 想验证"某个改动是否合规" | 直接跑 `python3 tools/check_m1.py`（63 项契约断言），不要靠读文档判断 |
+| 要接入 / 替换输入法图标 | [icos/README.md](icos/README.md)：两枚 ICO 的规格与六个 PNG 的场景用法 |
 
 ## 2. 目录约定
 
@@ -26,6 +27,7 @@
 | `font/` | 字体与字形专题：评估、两个候选方案、裁决、落地计划 | 阶段内活、定案后只读 | 做 F 里程碑时整目录读 |
 | `reviews/` | 跨切面评估：框架路线、平台可移植性 | 只读 | 做架构或移植决策前 |
 | `releases/` | 每个 tag 一份发版说明 | 追加，**一个 tag 一个文件** | 由 CI 与版本门禁机器读取，不要改名或移动 |
+| `icos/` | 两款输入法图标的用法与规格说明 | 活文档，随图标替换更新 | 接入托盘 / 工具条 / 按钮图标前 |
 
 ## 3. 文件索引（全量）
 
@@ -86,6 +88,7 @@
 | [FRAMEWORK-ROUTE-A-REVIEW.md](reviews/FRAMEWORK-ROUTE-A-REVIEW.md) | 框架路线 A 的评审：可复用宿主 / UI 模块的边界与代价 |
 | [PORTABILITY-UPSTREAM-64BIT-ARM64.md](reviews/PORTABILITY-UPSTREAM-64BIT-ARM64.md) | 上游 64 位与 ARM64 可移植性评估（与 libernt 自研分支区分，结论不可互换） |
 | [ARCH-AUDIT-VERIFICATION.md](reviews/ARCH-AUDIT-VERIFICATION.md) | 架构审计的逐条复核：13 条结论的判定、3 处需修正、3 条审计漏项、与 X1–X4 的映射 |
+| [GUI-INSTALLER-FP-AND-WINDOWS-GUARD.md](reviews/GUI-INSTALLER-FP-AND-WINDOWS-GUARD.md) | GUI 安装器杀毒误报与非白名单平台误装防护评估 |
 
 ### releases/ — 发版说明
 
@@ -93,6 +96,13 @@
 | --- | --- |
 | [alpha0.0.2.md](releases/alpha0.0.2.md) | alpha0.0.2 的发布说明（CI 用它作为 release notes） |
 | [alpha0.0.3.md](releases/alpha0.0.3.md) | alpha0.0.3 的发布说明（M3 中文标点逐键验收；CI 用它作为 release notes） |
+| [alpha0.0.4.md](releases/alpha0.0.4.md) | alpha0.0.4 的发布说明（自包含 GUI 安装器候选；待实机取证后发布） |
+
+### icos/ — 输入法图标
+
+| 文件 | 内容 |
+| --- | --- |
+| [README.md](icos/README.md) | `ico/` 目录两枚单帧 16×16 ICO 与八个 PNG（16/24/48/512）的清单、场景用法、色值与使用约束 |
 
 ### 留在原处的子系统文档（不归 docs/）
 
@@ -113,6 +123,7 @@
 | 字体、字形相关的评估与方案 | `font/` |
 | 跨切面的架构 / 平台评估 | `reviews/` |
 | 某个 tag 的发版说明 | `releases/<tag>.md`（一个 tag 一个文件） |
+| `ico/` 图标资源的用法与规格 | `icos/README.md` |
 | 讲某个代码目录怎么用 | 跟着代码走，放该目录下 `README.md` |
 
 **三条硬规则**

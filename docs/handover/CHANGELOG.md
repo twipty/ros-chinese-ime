@@ -7,6 +7,15 @@
 
 ## 未发布
 
+### 自包含 GUI 安装器（S1 v4 定稿 / S2 实现中）
+
+- 新增路线 C：把 `rospinyin.ime` + `rospinyin.dat` 用 deflate 压缩后作为 GUI exe 的 RCDATA；运行时 inflate 到 `%TEMP%` 唯一子目录，CRC32/长度/尾随字节全校验，安装结束即清理。
+- GUI 采用**严格平台白名单**：当前只放行 `ProductName == "ReactOS"`（大小写不敏感）；Windows、`libernt` 等未登记兼容分支拒绝安装，卸载不受限。Windows 真机安装只走 CLI `/step1../step4`。
+- 平台白名单、step1..4 编排、payload 校验三块纯逻辑已落地宿主 TDD；GUI 只驱动既有 CLI 安装实现，不另写注册表逻辑；正式 `.ime` 的资源与 hash 不变。
+- 杀毒误报说明与 hash 核验步骤进入 README 与 alpha0.0.4 发布说明；不承诺零误报、不引导关闭杀软。
+- `[全]` 模式字体提示落地：GUI 主窗口常驻一行说明，安装成功弹窗追加 HTTP 下载地址、三个 TTF 分片与 `SHA256SUMS.txt` 校验指引（纯逻辑在 `install_steps.hpp`，宿主测试钉住文案）。字体仍只走 HTTP、不进 payload、不进 release。
+- alpha0.0.4 发布说明如实披露两点：`[全]` 模式当前不支持按字体渲染扩展区字形，装了字体仍有很多豆腐块；stable(0.4.16)+nightly(0.4.17-dev) 双平台已实机验证，nightly 上游移除了 Droid 字体需用户自行补装，否则所有中文界面显示 `?`。README 同步该口径。
+
 ### M3 标点表收敛：真中文标点 + 引号交替 + 间隔号（2026-11-23）
 
 - **标点表收敛到「只留真中文标点」**：owner 逐键核对后，`imfw::fullwidth_punctuation()`

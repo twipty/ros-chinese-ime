@@ -1,0 +1,13 @@
+{
+  "files": [
+    "tools/install-rospinyin/install.cpp",
+    "tools/install-rospinyin/CMakeLists.txt",
+    "ime/rospinyin_res.rc",
+    "CMakeLists.txt",
+    ".github/workflows/ci.yml",
+    "tools/check_m1.py"
+  ],
+  "count": 0,
+  "by_category": {},
+  "spots": []
+}

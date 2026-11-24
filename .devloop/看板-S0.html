@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>S0 · 需求澄清</title><style>
+:root{--bg:#f7f8fa;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;
+--accent:#2563eb;--ok:#059669;--warn:#d97706;--bad:#dc2626;--code:#f3f4f6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+font:15px/1.7 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:32px 24px 64px}
+header.top{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:24px}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:.5px}
+.meta{color:var(--muted);font-size:13px}
+.meta span{margin-right:16px}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;
+font-weight:600;border:1px solid transparent}
+.pill.ok{background:#ecfdf5;color:var(--ok);border-color:#a7f3d0}
+.pill.warn{background:#fffbeb;color:var(--warn);border-color:#fde68a}
+.pill.gray{background:#f3f4f6;color:var(--muted);border-color:var(--line)}
+.pill.bad{background:#fef2f2;color:var(--bad);border-color:#fecaca}
+.gates{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;
+margin:0 0 28px}
+.gate{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.gate .st{font-size:12px;color:var(--muted);letter-spacing:1px}
+.gate .nm{font-size:14px;font-weight:600;margin:4px 0 8px}
+.gate .note{font-size:12px;color:var(--muted);margin-top:6px;
+overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin:0 0 24px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;
+padding:12px 18px;min-width:110px}
+.stat b{display:block;font-size:22px;line-height:1.2}
+.stat span{font-size:12px;color:var(--muted)}
+section.card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+padding:24px 28px;margin-bottom:20px}
+section.card>h2{margin:0 0 4px;font-size:19px}
+section.card>.src{color:var(--muted);font-size:12px;margin-bottom:16px}
+h3{font-size:16px;margin:22px 0 8px;padding-left:10px;border-left:3px solid var(--accent)}
+h4,h5,h6{font-size:15px;margin:18px 0 6px}
+p{margin:8px 0}
+code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:13px;
+font-family:"Cascadia Mono",Consolas,monospace}
+pre.code{background:#0f172a;color:#e2e8f0;padding:14px 16px;border-radius:8px;
+overflow:auto;font-size:13px;line-height:1.6}
+pre.code code{background:none;color:inherit;padding:0}
+.nav{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:14px 0;
+font-size:13px;color:var(--muted)}
+.nav a{color:var(--accent);text-decoration:none;padding:3px 9px;border-radius:6px;
+background:#eff6ff;border:1px solid #bfdbfe}
+.nav a:hover{background:#dbeafe}
+figure.diagram{margin:14px 0;padding:14px;background:#fff;border:1px solid var(--line);
+border-radius:10px;overflow:auto}
+figure.diagram svg{display:block;margin:0 auto}
+figure.diagram details{margin-top:8px}
+figure.diagram summary{cursor:pointer;color:var(--muted);font-size:12px}
+figure.diagram pre.code{margin-top:8px}
+.table-wrap{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border:1px solid var(--line);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:#f9fafb;font-weight:600;white-space:nowrap}
+tbody tr:nth-child(even){background:#fcfcfd}
+blockquote{margin:12px 0;padding:10px 16px;background:#f9fafb;
+border-left:3px solid var(--accent);color:#374151;border-radius:0 6px 6px 0}
+hr{border:0;border-top:1px solid var(--line);margin:20px 0}
+ul,ol{margin:8px 0;padding-left:22px}
+li{margin:4px 0}
+a{color:var(--accent)}
+.empty{color:var(--muted);font-style:italic}
+footer{color:var(--muted);font-size:12px;text-align:center;margin-top:32px}
+</style></head>
+<body><div class="wrap">
+<header class="top">
+  <h1>S0 · 需求澄清</h1>
+  <div class="meta">
+    <span>dev-loop 1.14.0</span>
+    <span>阶段 S0</span>
+    <span>轮次 自包含 GUI 安装器：内嵌 ime+dat，双击傻瓜式一键安装+卸载，红线不动（不写 Preload/不设默认 IME）</span>
+    
+    <span>生成于 2026-11-23 22:26:31</span>
+    
+  </div>
+</header>
+<div class="gates"><div class="gate"><div class="st">S0 · v1</div><div class="nm">需求澄清</div><span class="pill ok">已确认</span><div class="note" title="变体纳入S1然后确认">变体纳入S1然后确认</div></div></div>
+<div class="stats"><div class="stat"><b>1</b><span>阶段已确认</span></div><div class="stat"><b>0</b><span>P0 实现问题</span></div><div class="stat"><b>0</b><span>P1 实现问题</span></div><div class="stat"><b>0</b><span>P2 建议</span></div><div class="stat"><b>0</b><span>未闭环项</span></div></div>
+<div class="nav"><a href="看板.html">← 看整本看板</a><span>本页只含 S0 阶段的报告</span></div>
+<section class="card" id="stage-S0"><h2>S0 · 需求澄清</h2><div class="src">.devloop/S0-需求澄清.md</div><h2>S0 需求澄清</h2>
+<ul>
+<li>生成时间：2026-11-23 22:12:44</li>
+<li>轮次：自包含 GUI 安装器：内嵌 ime+dat，双击傻瓜式一键安装+卸载，红线不动（不写 Preload/不设默认 IME）</li>
+<li>技术栈：C++ / Win32 / MinGW-w64 / CMake / windres；宿主侧纯 C++ 单测（无 MinGW）</li>
+<li>测试命令：宿主 <code>ctest --test-dir build --output-on-failure</code> + <code>ctest --test-dir build-host-off</code>；CI Windows job 构建 exe；guest 实机截图取证</li>
+</ul>
+<h3>需求原话</h3>
+<blockquote>可以把安装文件打包成一个exe或msi,安装时傻瓜式安装无需人工命令安装吗</blockquote>
+<blockquote>用户确认：自包含 GUI exe（推荐）——内嵌 ime+dat，双击一键安装+卸载；保留 /step1..4 给开发者验证；走完整 dev-loop 并发布新版 release。</blockquote>
+<h3>问答表</h3>
+<div class="table-wrap"><table><thead><tr><th>类别</th><th>问题</th><th>用户答案</th><th>对方案的影响</th></tr></thead><tbody>
+<tr><td>目标范围</td><td>这次要解决的具体问题是什么？（谁、什么场景、现在怎么难受）</td><td>最终用户首次安装：拿到一个 exe 双击就装好输入法，全程不碰命令行、不碰注册表</td><td>必须单文件 GUI，零命令行输入；内嵌 ime+dat，不依赖外部文件</td></tr>
+<tr><td>目标范围</td><td>涉及哪些入口（接口/页面/定时任务/消息）？有没有明确不做的范围？</td><td>功能只要一键安装 + 一键卸载；不设默认输入法（M0 0xF4 红线）</td><td>GUI 上放安装/卸载两个主按钮；不写 Preload、不设默认；状态查看不做</td></tr>
+<tr><td>边界异常</td><td>空值、默认值、超大值、重复提交分别怎么处理？</td><td>重复安装：检测到已装先弹确认框，用户点&quot;仍然安装&quot;才覆盖</td><td>需要安装前状态检测；确认后才走覆盖链（沿用 move-aside 退让）</td></tr>
+<tr><td>边界异常</td><td>失败/超时/重试要不要幂等？事务边界卡在哪一层？</td><td>分步显示&quot;正在拷贝/注册/写入…&quot;每步进度；失败给具体原因和下一步（如&quot;请重启后重试&quot;）</td><td>GUI 需要分步回调显示，错误码映射成中文提示；每步可重入</td></tr>
+<tr><td>验收标准</td><td>怎么判断做完了？逐条给可测的标准（带数值或可观察结果）。</td><td>CI 构建 exe 成功、门禁全绿；guest 双击实机安装/卸载成功；装后至少冒烟：敲几个字（含中文标点）候选/上屏正常</td><td>验收标准 AC1-AC6，见下；宿主测纯逻辑红绿，CI 编译，guest 取证</td></tr>
+<tr><td>验收标准</td><td>谁来验、在哪个环境验、用什么数据验？</td><td>owner 在 guest 双击点安装/卸载，agent 截图取证（注册表 HKL、文件、Alt+Shift 可切换）；CI 负责编译</td><td>取证脚本 + 截图存 m0/vm/evidence/</td></tr>
+<tr><td>约束兼容</td><td>存量数据和老接口要不要兼容？能否加表、加字段、改签名？</td><td>保留原命令行安装器（install-rospinyin.exe 的 /step1..4），CLI 供开发者逐键诊断，GUI 给最终用户</td><td>两个安装器目标并存；CLI 源码与行为不动；GUI 与 CLI 共享安装逻辑抽层</td></tr>
+<tr><td>约束兼容</td><td>性能、权限、审计日志有硬要求吗？能不能引入新依赖？</td><td>内嵌方式：ime+dat 作为 PE 资源段内嵌（不额外压缩），运行时写临时目录，再从 tmp 拷到 system32；可引入轻量库但优先只用现有工具链</td><td>零新依赖（MinGW+Win32+windres）；资源释放到 %TEMP% 再拷贝；不用 zip 库</td></tr>
+</tbody></table></div>
+<h3>验收标准</h3>
+<ul>
+<li><strong>AC1</strong>：CMake <code>win32-mingw</code> preset 能编译出 <code>install-rospinyin-gui.exe</code>，CI Windows job 构建成功，产物上传为 release 资产。</li>
+<li><strong>AC2</strong>：exe 内嵌 <code>rospinyin.ime</code> + <code>rospinyin.dat</code> 两个 PE 资源；运行时释放到 <code>%TEMP%</code> 下的唯一子目录，安装后清理临时目录；字节与源资源一致（宿主测纯逻辑：资源释放/字节校验函数）。</li>
+<li><strong>AC3</strong>：双击 exe 显示 GUI：安装 / 卸载两个按钮；安装时分步显示拷贝/注册/写入进度，失败弹具体错误码与下一步提示；重复安装先弹确认框。</li>
+<li><strong>AC4</strong>：点安装等价于依次执行现有 step1..4（拷贝两文件 + ImmInstallIMEW + Layout Text + Layout Display Name），HKL 记录与 CLI 版同位置（<code>HKCU\SOFTWARE\RosPinyin\Install</code>）；不写 Preload、不设默认输入法。</li>
+<li><strong>AC5</strong>：点卸载等价于现有 /u：删除自己的注册表键与两个 payload 文件，不动其他输入法布局；运行中文件删除失败时提示重启后清理。</li>
+<li><strong>AC6</strong>：guest 实机取证：双击安装→截图 regs/HKL + 文件存在 + Alt+Shift 能切到「中文(简体) - RosPinyin」→ 记事本敲字（含中文标点）候选与上屏正常→双击卸载→截图确认键与文件已清理。</li>
+<li><strong>AC7</strong>：宿主侧 ctest 双配置（ON/OFF）全绿；<code>check_m1.py</code> 红线门禁全绿（安装器注册表白名单不被突破）；<code>check_docs.py</code>/<code>seams.py</code> 全绿。</li>
+</ul>
+<h3>待定与假设</h3>
+<ul>
+<li>假设 GUI exe 命名为 <code>install-rospinyin-gui.exe</code>，与原 CLI <code>install-rospinyin.exe</code> 并存；若 owner 希望最终用户只看到一个入口，S1 会给出&quot;只发 GUI、CLI 留源码&quot;的替代方案。</li>
+<li>假设版本号 bump 到 <code>alpha0.0.4</code>（用户已确认发版）。</li>
+<li>假设资源段命名遵循项目现有 <code>rospinyin_res.rc</code> 的 windres 惯例；base64 入库方案仅在没有构建产物可用时作为后备，S1 定稿。</li>
+<li>本地无 MinGW：GUI exe 的本机编译不可行，验收依赖 CI 构建 + guest 实机；宿主侧只测纯逻辑（资源字节校验、步骤编排、错误码映射）。</li>
+</ul>
+<h3>弹窗记录</h3>
+<div class="table-wrap"><table><thead><tr><th>轮次</th><th>时间</th><th>问了什么</th><th>用户怎么回</th></tr></thead><tbody>
+<tr><td>1</td><td>2026-11-23 22:1x</td><td>目标用户/场景、功能范围、不做的范围</td><td>最终用户首次安装；一键安装+一键卸载；不设默认输入法</td></tr>
+<tr><td>2</td><td>2026-11-23 22:1x</td><td>重复安装、CLI 去留、错误提示粒度</td><td>提示已安装再确认；保留 CLI；分步显示+错误码</td></tr>
+<tr><td>3</td><td>2026-11-23 22:1x</td><td>实机验收方式、回归范围、发版决策</td><td>CI 构建+guest 实机；至少冒烟；发 alpha0.0.4</td></tr>
+<tr><td>4</td><td>2026-11-23 22:1x</td><td>内嵌方式、TDD 策略</td><td>资源释放到 tmp；宿主测纯逻辑+CI 构建</td></tr>
+<tr><td>5</td><td>2026-11-23 22:1x</td><td>自解压具体形态、新依赖</td><td>资源释放到 tmp（不额外压缩）；可引入轻量库但优先现有工具链</td></tr>
+</tbody></table></div></section>
+<footer>由 dev-loop 生成 · 报告只读，改动请在 .devloop/ 下的 Markdown 里做</footer>
+</div></body></html>

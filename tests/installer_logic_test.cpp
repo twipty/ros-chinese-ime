@@ -1,0 +1,308 @@
+// RosPinyin - Simplified Chinese pinyin IME for ReactOS
+// SPDX-License-Identifier: MIT
+// See LICENSE and NOTICE.txt at the repository root.
+//
+// GUI 安装器的三块纯逻辑（无 windows.h、无注册表、无文件系统）：
+//   * platform_guard.hpp —— 严格平台白名单（当前仅 ReactOS）
+//   * install_steps.hpp  —— step1..4 序列、错误码与中文提示
+//   * payload_blob.hpp   —— payload 长度 / CRC / 消费字节校验
+// 这些是路线 C 与 Windows 误装闸门在宿主侧唯一能直接验的部分。
+
+#define MINIZ_NO_ARCHIVE_APIS
+#define MINIZ_NO_DEFLATE_APIS
+#define MINIZ_NO_STDIO
+#define MINIZ_NO_TIME
+#define MINIZ_IMPLEMENTATION
+#include "miniz.h"
+
+#include "install_steps.hpp"
+#include "payload_blob.hpp"
+#include "payload_base64.hpp"
+#include "platform_guard.hpp"
+
+#include <array>
+#include <cstdint>
+#include <cstdio>
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace installer = rospinyin::installer;
+
+namespace {
+
+int failures = 0;
+
+void check(bool ok, const char* what) {
+    if (!ok) {
+        std::fprintf(stderr, "installer logic test failed: %s\n", what);
+        ++failures;
+    }
+}
+
+bool contains(std::wstring_view haystack, std::wstring_view needle) {
+    return haystack.find(needle) != std::wstring_view::npos;
+}
+
+void test_platform_guard() {
+    check(installer::is_supported_product_name(L"ReactOS"), "ReactOS allowed");
+    check(installer::is_supported_product_name(L"reactos"),
+          "lowercase reactos allowed");
+    check(installer::is_supported_product_name(L"rEaCtOs"),
+          "mixed case reactos allowed");
+
+    check(!installer::is_supported_product_name(L"Windows 10 Pro"),
+          "Windows rejected");
+    check(!installer::is_supported_product_name(L"libernt"),
+          "unregistered compatible branch rejected");
+    check(!installer::is_supported_product_name(L""), "empty value rejected");
+    check(!installer::is_supported_product_name(L"ReactOS Server"),
+          "prefix-only match rejected");
+
+    // 未来登记兼容分支后同一判据必须生效；不能只为一个字符串写死 if。
+    const std::array<std::wstring_view, 2> future_allowlist = {
+        L"ReactOS", L"libernt"};
+    check(installer::product_name_in_list(L"libernt", future_allowlist.data(),
+                                          future_allowlist.size()),
+          "future registered branch allowed");
+    check(!installer::product_name_in_list(L"Windows 11",
+                                           future_allowlist.data(),
+                                           future_allowlist.size()),
+          "future allowlist still rejects Windows");
+}
+
+void test_install_steps() {
+    std::vector<installer::InstallStep> executed;
+    std::vector<std::size_t> reported;
+
+    const installer::InstallErrorCode all_ok = installer::run_install_steps(
+        [&](installer::InstallStep step, std::size_t index) {
+            executed.push_back(step);
+            check(index == executed.size(), "step index matches execution");
+            return installer::InstallErrorCode::Ok;
+        },
+        [&](std::size_t index, installer::InstallStep,
+            std::wstring_view label) {
+            reported.push_back(index);
+            check(!label.empty(), "step has a Chinese progress label");
+        });
+
+    check(all_ok == installer::InstallErrorCode::Ok, "all steps succeed");
+    check(executed.size() == 4, "step1..4 executed exactly once");
+    check(executed.at(0) == installer::InstallStep::CopyPayload,
+          "step1 copies payload");
+    check(executed.at(1) == installer::InstallStep::RegisterLayout,
+          "step2 registers layout");
+    check(executed.at(2) == installer::InstallStep::WriteLayoutText,
+          "step3 writes Layout Text");
+    check(executed.at(3) == installer::InstallStep::WriteDisplayName,
+          "step4 writes Layout Display Name");
+    check(reported == std::vector<std::size_t>({1, 2, 3, 4}),
+          "progress reported for every step");
+
+    executed.clear();
+    reported.clear();
+    const installer::InstallErrorCode short_stop = installer::run_install_steps(
+        [&](installer::InstallStep step, std::size_t) {
+            executed.push_back(step);
+            if (step == installer::InstallStep::RegisterLayout) {
+                return installer::InstallErrorCode::RegError;
+            }
+            return installer::InstallErrorCode::Ok;
+        },
+        [&](std::size_t index, installer::InstallStep, std::wstring_view) {
+            reported.push_back(index);
+        });
+
+    check(short_stop == installer::InstallErrorCode::RegError,
+          "first failure is returned");
+    check(executed.size() == 2, "execution stops at failing step");
+    check(reported.size() == 2, "progress stops at failing step");
+
+    check(installer::kInstallRegistryKey == L"SOFTWARE\\RosPinyin\\Install",
+          "HKL record location unchanged");
+    check(contains(installer::error_message(installer::InstallErrorCode::Ok),
+                   L"重启"),
+          "success message requires a reboot");
+    check(contains(installer::next_action(installer::InstallErrorCode::Ok),
+                   L"重启"),
+          "success next action requires a reboot");
+    check(contains(installer::error_message(
+                       installer::InstallErrorCode::NeedsReboot),
+                   L"重启"),
+          "reboot error explains the next action");
+    check(contains(installer::error_message(
+                       installer::InstallErrorCode::PlatformUnsupported),
+                   L"平台"),
+          "platform error names the whitelist failure");
+    check(contains(installer::next_action(
+                       installer::InstallErrorCode::PayloadCorrupt),
+                   L"重新下载"),
+          "payload error tells user to redownload");
+}
+
+void test_font_hint() {
+    // The full-glyph font pack is deliberately NOT inside the GUI payload;
+    // the installer can only tell the user where to get it. Both surfaces
+    // (a permanent line on the main window and the post-install message box)
+    // must be pinned here so a wording edit cannot silently drop the URL.
+    check(contains(installer::kFontHintBanner, L"[全]"),
+          "banner names the [full] mode that needs the font");
+    check(contains(installer::kFontHintBanner, L"[快]"),
+          "banner states [fast] mode needs no extra font");
+    check(contains(installer::kFontHintBanner, L"文津"),
+          "banner names the font family");
+
+    const std::wstring hint = installer::font_hint_message();
+    check(contains(hint, installer::kFontHintUrl),
+          "hint carries the HTTP download location");
+    check(contains(hint, L"WenJinMinchoP0-Regular.ttf") &&
+              contains(hint, L"WenJinMinchoP2-Regular.ttf") &&
+              contains(hint, L"WenJinMinchoP3-Regular.ttf"),
+          "hint lists all three plane-split TTFs");
+    check(contains(hint, L"SHA256SUMS"),
+          "hint points at the checksum file");
+    check(contains(hint, L"[快]"),
+          "hint reassures [fast] mode needs no extra font");
+}
+
+struct IdentityInflate {
+    std::size_t consume = 0;
+    installer::PayloadError status = installer::PayloadError::Ok;
+
+    installer::InflateResult operator()(
+        const std::vector<std::uint8_t>& input, std::size_t,
+        std::vector<std::uint8_t>& output) const {
+        output = input;
+        return {status, consume == 0 ? input.size() : consume};
+    }
+};
+
+void test_payload_blob() {
+    // SHA-256 / CRC-32 标准测试向量，防止「用同一个坏函数自证」。
+    const char abc[] = "abc";
+    check(installer::sha256_hex(
+              reinterpret_cast<const std::uint8_t*>(abc), 3) ==
+              "ba7816bf8f01cfea414140de5dae2223"
+              "b00361a396177a9cb410ff61f20015ad",
+          "SHA-256 matches known vector");
+
+    const char digits[] = "123456789";
+    check(installer::crc32(reinterpret_cast<const std::uint8_t*>(digits), 9) ==
+              0xCBF43926u,
+          "CRC-32 matches known vector");
+
+    const std::vector<std::uint8_t> source = {'R', 'S', 'P', 'Y', 'D', 'A', 'T'};
+    const std::uint32_t crc = installer::crc32(source.data(), source.size());
+    std::vector<std::uint8_t> output;
+
+    check(installer::decode_payload(source, source.size(), crc, output,
+                                    IdentityInflate{}) ==
+              installer::PayloadError::Ok,
+          "valid payload decodes");
+    check(output == source, "decoded bytes equal source bytes");
+
+    check(installer::decode_payload(source, source.size(), crc ^ 1u, output,
+                                    IdentityInflate{}) ==
+              installer::PayloadError::CrcMismatch,
+          "CRC mismatch rejected");
+
+    const auto short_inflate =
+        [](const std::vector<std::uint8_t>& input, std::size_t,
+           std::vector<std::uint8_t>& out) {
+            out.assign(input.begin(), input.begin() + 1);
+            return installer::InflateResult{installer::PayloadError::Ok,
+                                            input.size()};
+        };
+    check(installer::decode_payload(source, source.size(), crc, output,
+                                    short_inflate) ==
+              installer::PayloadError::SizeMismatch,
+          "uncompressed size mismatch rejected");
+
+    IdentityInflate trailing;
+    trailing.consume = source.size() - 1;
+    check(installer::decode_payload(source, source.size(), crc, output,
+                                    trailing) ==
+              installer::PayloadError::TrailingData,
+          "unconsumed trailing bytes rejected");
+
+    IdentityInflate failed;
+    failed.status = installer::PayloadError::InflateFailed;
+    check(installer::decode_payload(source, source.size(), crc, output,
+                                    failed) ==
+              installer::PayloadError::InflateFailed,
+          "inflate failure propagated");
+}
+
+void test_miniz_roundtrip() {
+    // zlib.compress(b"RosPinyin miniz round-trip 1234567890", 9).
+    const std::vector<std::uint8_t> compressed = {
+        0x78, 0xDA, 0x0B, 0xCA, 0x2F, 0x0E, 0xC8, 0xCC, 0xAB, 0xCC,
+        0xCC, 0x53, 0xC8, 0xCD, 0xCC, 0xCB, 0xAC, 0x52, 0x28, 0xCA,
+        0x2F, 0xCD, 0x4B, 0xD1, 0x2D, 0x29, 0xCA, 0x2C, 0x50, 0x30,
+        0x34, 0x32, 0x36, 0x31, 0x35, 0x33, 0xB7, 0xB0, 0x34, 0x00,
+        0x00, 0x04, 0xB0, 0x0C, 0x54};
+    const std::string source = "RosPinyin miniz round-trip 1234567890";
+    std::vector<std::uint8_t> output(source.size(), 0);
+    mz_ulong dest_len = static_cast<mz_ulong>(output.size());
+    mz_ulong src_len = static_cast<mz_ulong>(compressed.size());
+    const int status = mz_uncompress2(output.data(), &dest_len,
+                                      compressed.data(), &src_len);
+    check(status == MZ_OK, "miniz accepts a real zlib stream");
+    check(dest_len == source.size(), "miniz output length matches");
+    check(src_len == compressed.size(), "miniz consumed the whole stream");
+    check(std::vector<std::uint8_t>(output.begin(),
+                                    output.begin() + dest_len) ==
+              std::vector<std::uint8_t>(source.begin(), source.end()),
+          "miniz output equals original bytes");
+}
+
+void test_embedded_payloads() {
+    const auto verify = [](const std::vector<std::uint8_t>& compressed,
+                           std::size_t expected_size, std::uint32_t crc,
+                           const char* what) {
+        std::vector<std::uint8_t> output(expected_size, 0);
+        mz_ulong dest_len = static_cast<mz_ulong>(expected_size);
+        mz_ulong src_len = static_cast<mz_ulong>(compressed.size());
+        check(mz_uncompress2(output.data(), &dest_len, compressed.data(),
+                             &src_len) == MZ_OK,
+              what);
+        check(dest_len == expected_size, "embedded payload length matches");
+        check(installer::crc32(output.data(), output.size()) == crc,
+              "embedded payload CRC matches source");
+    };
+
+    const std::vector<std::uint8_t> ime = {
+        ROSPINYIN_IME_PAYLOAD_BYTES};
+    const std::vector<std::uint8_t> dat = {
+        ROSPINYIN_DAT_PAYLOAD_BYTES};
+    const std::vector<std::uint8_t> cli = {
+        ROSPINYIN_CLI_PAYLOAD_BYTES};
+    check(ime.size() == installer::kImeCompressedSize, "IME blob size pinned");
+    check(dat.size() == installer::kDatCompressedSize, "DAT blob size pinned");
+    check(cli.size() == installer::kCliCompressedSize, "CLI blob size pinned");
+    verify(ime, installer::kImeUncompressedSize, installer::kImeCrc32,
+           "embedded IME inflates");
+    verify(dat, installer::kDatUncompressedSize, installer::kDatCrc32,
+           "embedded DAT inflates");
+    verify(cli, installer::kCliUncompressedSize, installer::kCliCrc32,
+           "embedded CLI inflates");
+}
+
+}  // namespace
+
+int main() {
+    test_platform_guard();
+    test_install_steps();
+    test_font_hint();
+    test_payload_blob();
+    test_miniz_roundtrip();
+    test_embedded_payloads();
+
+    if (failures != 0) {
+        std::fprintf(stderr, "%d installer logic check(s) failed\n", failures);
+        return 1;
+    }
+    std::printf("installer logic: all checks passed\n");
+    return 0;
+}

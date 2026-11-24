@@ -83,7 +83,7 @@ jobs:
     # default build version is 0x502). MinGW's CRT uses the legacy
     # InitializeCriticalSection, and -static removes every non-system DLL
     # dependency. The verify step below makes any regression a hard failure.
-    name: MinGW i686 / ReactOS targets (rospinyin.ime + installer)
+    name: MinGW i686 / ReactOS targets (rospinyin.ime + CLI + GUI installer)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -131,14 +131,16 @@ jobs:
           IME=$(find build-standalone -type f -name rospinyin.ime | head -n 1)
           TOY=$(find build-toy -type f -name rospinyin.ime | head -n 1)
           EXE=$(find build-standalone -type f -name install-rospinyin.exe | head -n 1)
+          GUI=$(find build-standalone -type f -name install-rospinyin-gui.exe | head -n 1)
           RHASH=$(find build-standalone -type f -name rhash.exe | head -n 1)
           WGET=$(find build-standalone -type f -name wget.exe | head -n 1)
           CURL=$(find build-standalone -type f -name curl.exe | head -n 1)
-          test -n "$IME" && test -n "$TOY" && test -n "$EXE" && test -n "$RHASH"
-          test -n "$WGET" && test -n "$CURL"
+          test -n "$IME" && test -n "$TOY" && test -n "$EXE" && test -n "$GUI"
+          test -n "$RHASH" && test -n "$WGET" && test -n "$CURL"
           echo "IME=$IME"
           echo "TOY=$TOY"
           echo "EXE=$EXE"
+          echo "GUI=$GUI"
           echo "RHASH=$RHASH"
           echo "WGET=$WGET"
           echo "CURL=$CURL"
@@ -149,7 +151,7 @@ jobs:
             echo "FATAL: -DROSPINYIN_SCHEME=toy produced the pinyin binary"
             exit 1
           fi
-          for f in "$IME" "$TOY" "$EXE" "$RHASH" "$WGET" "$CURL"; do
+          for f in "$IME" "$TOY" "$EXE" "$GUI" "$RHASH" "$WGET" "$CURL"; do
             echo "===== imports of $f ====="
             objdump -p "$f" | sed -n '/The Import Tables/,$p'
             if objdump -p "$f" | grep -Eqi 'InitializeCriticalSectionEx'; then
@@ -169,12 +171,14 @@ jobs:
           set -eu
           IME=$(find build-standalone -type f -name rospinyin.ime | head -n 1)
           EXE=$(find build-standalone -type f -name install-rospinyin.exe | head -n 1)
+          GUI=$(find build-standalone -type f -name install-rospinyin-gui.exe | head -n 1)
           RHASH=$(find build-standalone -type f -name rhash.exe | head -n 1)
           WGET=$(find build-standalone -type f -name wget.exe | head -n 1)
           CURL=$(find build-standalone -type f -name curl.exe | head -n 1)
           mkdir -p stage
           cp "$IME" stage/rospinyin.ime
           cp "$EXE" stage/install-rospinyin.exe
+          cp "$GUI" stage/install-rospinyin-gui.exe
           cp "$RHASH" stage/rhash.exe
           cp "$WGET" stage/wget.exe
           cp "$CURL" stage/curl.exe
@@ -291,15 +295,16 @@ jobs:
         run: |
           set -eu
           mkdir -p out
-          cp stage/rospinyin.ime stage/install-rospinyin.exe stage/rhash.exe \
+          cp stage/rospinyin.ime stage/install-rospinyin.exe \
+             stage/install-rospinyin-gui.exe stage/rhash.exe \
              m2-stage/rospinyin.dat out/
           printf 'tag: %s\nsource commit: %s\nworkflow run: %s\n' \
             "$TAG" "$GITHUB_SHA" \
             "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             > out/INFO.txt
           cd out
-          sha256sum rospinyin.ime rospinyin.dat install-rospinyin.exe rhash.exe \
-            INFO.txt \
+          sha256sum rospinyin.ime rospinyin.dat install-rospinyin.exe \
+            install-rospinyin-gui.exe rhash.exe INFO.txt \
             > SHA256SUMS.txt
           cat SHA256SUMS.txt
       - name: Publish

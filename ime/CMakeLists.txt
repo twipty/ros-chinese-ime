@@ -62,6 +62,12 @@ add_library(rospinyin-ime SHARED
     rospinyin.def
     rospinyin_res.rc)
 
+# windres does not emit a header dependency for #include "version.h". Without
+# this, bumping ime/version.h silently leaves the old FILEVERSION in the .ime
+# and the release gate fails only after a full rebuild.
+set_source_files_properties(rospinyin_res.rc PROPERTIES
+    OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/version.h")
+
 target_include_directories(rospinyin-ime PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
     "${ROSPINYIN_SCHEME_INCLUDE}")

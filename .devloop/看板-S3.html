@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>S3 · 变更审计</title><style>
+:root{--bg:#f7f8fa;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;
+--accent:#2563eb;--ok:#059669;--warn:#d97706;--bad:#dc2626;--code:#f3f4f6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+font:15px/1.7 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:32px 24px 64px}
+header.top{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:24px}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:.5px}
+.meta{color:var(--muted);font-size:13px}
+.meta span{margin-right:16px}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;
+font-weight:600;border:1px solid transparent}
+.pill.ok{background:#ecfdf5;color:var(--ok);border-color:#a7f3d0}
+.pill.warn{background:#fffbeb;color:var(--warn);border-color:#fde68a}
+.pill.gray{background:#f3f4f6;color:var(--muted);border-color:var(--line)}
+.pill.bad{background:#fef2f2;color:var(--bad);border-color:#fecaca}
+.gates{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;
+margin:0 0 28px}
+.gate{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.gate .st{font-size:12px;color:var(--muted);letter-spacing:1px}
+.gate .nm{font-size:14px;font-weight:600;margin:4px 0 8px}
+.gate .note{font-size:12px;color:var(--muted);margin-top:6px;
+overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin:0 0 24px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;
+padding:12px 18px;min-width:110px}
+.stat b{display:block;font-size:22px;line-height:1.2}
+.stat span{font-size:12px;color:var(--muted)}
+section.card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+padding:24px 28px;margin-bottom:20px}
+section.card>h2{margin:0 0 4px;font-size:19px}
+section.card>.src{color:var(--muted);font-size:12px;margin-bottom:16px}
+h3{font-size:16px;margin:22px 0 8px;padding-left:10px;border-left:3px solid var(--accent)}
+h4,h5,h6{font-size:15px;margin:18px 0 6px}
+p{margin:8px 0}
+code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:13px;
+font-family:"Cascadia Mono",Consolas,monospace}
+pre.code{background:#0f172a;color:#e2e8f0;padding:14px 16px;border-radius:8px;
+overflow:auto;font-size:13px;line-height:1.6}
+pre.code code{background:none;color:inherit;padding:0}
+.nav{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:14px 0;
+font-size:13px;color:var(--muted)}
+.nav a{color:var(--accent);text-decoration:none;padding:3px 9px;border-radius:6px;
+background:#eff6ff;border:1px solid #bfdbfe}
+.nav a:hover{background:#dbeafe}
+figure.diagram{margin:14px 0;padding:14px;background:#fff;border:1px solid var(--line);
+border-radius:10px;overflow:auto}
+figure.diagram svg{display:block;margin:0 auto}
+figure.diagram details{margin-top:8px}
+figure.diagram summary{cursor:pointer;color:var(--muted);font-size:12px}
+figure.diagram pre.code{margin-top:8px}
+.table-wrap{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border:1px solid var(--line);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:#f9fafb;font-weight:600;white-space:nowrap}
+tbody tr:nth-child(even){background:#fcfcfd}
+blockquote{margin:12px 0;padding:10px 16px;background:#f9fafb;
+border-left:3px solid var(--accent);color:#374151;border-radius:0 6px 6px 0}
+hr{border:0;border-top:1px solid var(--line);margin:20px 0}
+ul,ol{margin:8px 0;padding-left:22px}
+li{margin:4px 0}
+a{color:var(--accent)}
+.empty{color:var(--muted);font-style:italic}
+footer{color:var(--muted);font-size:12px;text-align:center;margin-top:32px}
+</style></head>
+<body><div class="wrap">
+<header class="top">
+  <h1>S3 · 变更审计</h1>
+  <div class="meta">
+    <span>dev-loop 1.14.0</span>
+    <span>阶段 S3</span>
+    <span>轮次 M3 中文体验补齐：中文标点、全角/半角、中英状态记忆、Shift 临时英文、Ctrl+Space 热键、状态提示</span>
+    
+    <span>生成于 2026-11-23 19:54:00</span>
+    
+  </div>
+</header>
+<div class="gates"><div class="gate"><div class="st">S3 · v2</div><div class="nm">变更审计</div><span class="pill ok">已确认</span><div class="note" title="S3 确认">S3 确认</div></div></div>
+<div class="stats"><div class="stat"><b>4</b><span>阶段已确认</span></div><div class="stat"><b>0</b><span>P0 实现问题</span></div><div class="stat"><b>0</b><span>P1 实现问题</span></div><div class="stat"><b>0</b><span>P2 建议</span></div><div class="stat"><b>0</b><span>未闭环项</span></div></div>
+<div class="nav"><a href="看板.html">← 看整本看板</a><span>本页只含 S3 阶段的报告</span></div>
+<section class="card" id="stage-S3"><h2>S3 · 变更审计</h2><div class="src">.devloop/S3-变更审计.md</div><h2>S3 变更审计</h2>
+<ul>
+<li>生成时间：2026-11-23 19:39:39</li>
+<li>对比基线：HEAD</li>
+</ul>
+<h3>漏改</h3>
+<ul>
+<li><code>tests/host_smoke_test.cpp</code>　← S1 登记：tests/host_smoke_test.cpp</li>
+</ul>
+<h3>越界</h3>
+<ul>
+<li><code>framework/include/imfw/host.hpp</code> </li>
+<li><code>framework/include/imfw/session_state.hpp</code> </li>
+<li><code>framework/src/toolbar_text.cpp</code> </li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> </li>
+<li><code>pinyin/src/scheme.cpp</code> </li>
+<li><code>tests/toolbar_text_test.cpp</code> </li>
+<li><code>m0/vm/evidence/hash-dat-zoom.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/hash-ime-zoom.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-last2-zoom.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-punct-accept-20261123-1934.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-punct-accept-6lines.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-punct-accept-lines.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-punct-accept-small.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-punct-accept-status.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-punct-issue-20261123-174617.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-punct-issue-20261123-174617.ppm</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-punct-release-install-20261123-1900.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-punct-release-install-half.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-punct-release-install-hash.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-reboot-boot-small.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-reboot-boot.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-shift-probe-crop.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-shift-probe-current.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-shift-probe-lines-20261123-1758.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-shift-probe-lines-crop.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-shift-probe-lines-crop2.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-step1-20261123-173024.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-step1-20261123-173024.ppm</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-step1-dat-hash-zoom.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-step1-hash-dat-zoom.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-step1-hash-ime-zoom.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/m3-step1-ime-hash-zoom.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/page-issue-20261123-142436.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/page-issue-20261123-142436.ppm</code> （新增文件）</li>
+<li><code>m0/vm/evidence/probe-L2.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/probe-L3.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/probe-L4.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/probe-L5.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/probe-L6.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/reboot-20261123-142149.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/reboot-20261123-142149.ppm</code> （新增文件）</li>
+<li><code>m0/vm/evidence/reboot-m3-20261123-173307.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/reboot-m3-20261123-173307.ppm</code> （新增文件）</li>
+<li><code>m0/vm/evidence/reboot-m3-tray-wide.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/reboot-m3-tray.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/reboot-newdat-20261123-151215.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/reboot-newdat-20261123-151215.ppm</code> （新增文件）</li>
+<li><code>m0/vm/evidence/reboot-newdat-tray.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/step1-hash-mid.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/step1-hash-zoom.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/step1-newdat-20261123-150851.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/step1-newdat-20261123-150851.ppm</code> （新增文件）</li>
+<li><code>m0/vm/evidence/step1-newdat-hash-zoom.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/step1-rhash-20261123-141815.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/step1-rhash-20261123-141815.ppm</code> （新增文件）</li>
+<li><code>m0/vm/evidence/step1-rhash-crop.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/verify-allpass-20261123-152048.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/verify-allpass-20261123-152048.ppm</code> （新增文件）</li>
+<li><code>m0/vm/evidence/verify-allpass-cand.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/verify-allpass-status.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/verify-allpass-tray.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/verify-item2-20261123-152300.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/verify-item2-20261123-152300.ppm</code> （新增文件）</li>
+<li><code>m0/vm/evidence/verify-item2-cand.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/verify-item2-status-tight.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/verify-item2-status-wide.png</code> （新增文件）</li>
+<li><code>m0/vm/evidence/verify-item2-status.png</code> （新增文件）</li>
+<li><code>m0/vm/vnc_key.py</code> （新增文件）</li>
+<li><code>tools/workarea_probe/dat_probe.c</code> （新增文件）</li>
+<li><code>tools/workarea_probe/hit_probe.c</code> （新增文件）</li>
+<li><code>tools/workarea_probe/ime_reg_probe.c</code> （新增文件）</li>
+<li><code>tools/workarea_probe/toggle_probe.c</code> （新增文件）</li>
+<li><code>tools/workarea_probe/wintree_probe.c</code> （新增文件）</li>
+<li><code>tools/workarea_probe/workarea_probe.c</code> （新增文件）</li>
+</ul>
+<h3>动作不符</h3>
+<p>无</p>
+<h3>一致</h3>
+<ul>
+<li><code>framework/include/imfw/intent.hpp</code>（M）</li>
+<li><code>framework/include/imfw/key_char.hpp</code>（A）</li>
+<li><code>framework/include/imfw/punctuation.hpp</code>（A）</li>
+<li><code>framework/include/imfw/scheme.hpp</code>（M）</li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code>（M）</li>
+<li><code>framework/platform/win32/imm32/key_translate.cpp</code>（M）</li>
+<li><code>framework/src/host_key.cpp</code>（M）</li>
+<li><code>framework/src/key_route.cpp</code>（M）</li>
+<li><code>tests/CMakeLists.txt</code>（M）</li>
+<li><code>tests/host_key_test.cpp</code>（M）</li>
+<li><code>tests/key_char_test.cpp</code>（A）</li>
+<li><code>tests/key_route_test.cpp</code>（M）</li>
+<li><code>tests/punctuation_test.cpp</code>（A）</li>
+<li><code>tests/scheme_test.cpp</code>（M）</li>
+<li><code>tools/check_m1.py</code>（M）</li>
+<li><code>tools/seams.py</code>（M）</li>
+</ul>
+<blockquote>漏改不等于必须改：确认后可以把该项标为 SKIPPED 并写明原因。</blockquote>
+<h3>实现质量</h3>
+<ul>
+<li>生成时间：2026-11-23 19:39:39</li>
+<li>对比基线：HEAD</li>
+<li>改动文件：31 个，新增 1234 行</li>
+<li>结果：<strong>P0 0 / P1 5 / P2 1</strong></li>
+</ul>
+<div class="table-wrap"><table><thead><tr><th>级别</th><th>类别</th><th>位置</th><th>问题</th><th>怎么改</th></tr></thead><tbody>
+<tr><td>P1</td><td>硬编码地址</td><td><code>m0/vm/vnc_key.py:17</code></td><td>本地地址进代码，换环境就连不上</td><td>改为配置项，默认值在示例配置里给</td></tr>
+<tr><td>P1</td><td>阻塞等待</td><td><code>m0/vm/vnc_key.py:70</code></td><td>靠 sleep 等结果，机器慢就失败、机器快就浪费</td><td>改轮询 + 超时，或直接同步调用</td></tr>
+<tr><td>P1</td><td>阻塞等待</td><td><code>m0/vm/vnc_key.py:72</code></td><td>靠 sleep 等结果，机器慢就失败、机器快就浪费</td><td>改轮询 + 超时，或直接同步调用</td></tr>
+<tr><td>P1</td><td>阻塞等待</td><td><code>m0/vm/vnc_key.py:130</code></td><td>靠 sleep 等结果，机器慢就失败、机器快就浪费</td><td>改轮询 + 超时，或直接同步调用</td></tr>
+<tr><td>P1</td><td>阻塞等待</td><td><code>m0/vm/vnc_key.py:133</code></td><td>靠 sleep 等结果，机器慢就失败、机器快就浪费</td><td>改轮询 + 超时，或直接同步调用</td></tr>
+<tr><td>P2</td><td>命令行输出</td><td><code>m0/vm/vnc_key.py:108</code></td><td>该文件是命令行入口，print 就是它的输出通道（3 处）</td><td>确认这是面向用户的输出；库函数里仍应走日志</td></tr>
+</tbody></table></div>
+<h4>P1（本次改完，或写明豁免理由）</h4>
+<h5>DBG-03 硬编码地址 — <code>m0/vm/vnc_key.py:17</code></h5>
+<pre class="code"><code>HOST, PORT = &quot;127.0.0.1&quot;, 5901</code></pre>
+<ul>
+<li>为什么：本地地址进代码，换环境就连不上</li>
+<li>怎么改：改为配置项，默认值在示例配置里给</li>
+</ul>
+<h5>DBG-07 阻塞等待 — <code>m0/vm/vnc_key.py:70</code></h5>
+<pre class="code"><code>time.sleep(0.02)</code></pre>
+<ul>
+<li>为什么：靠 sleep 等结果，机器慢就失败、机器快就浪费</li>
+<li>怎么改：改轮询 + 超时，或直接同步调用</li>
+</ul>
+<h5>DBG-07 阻塞等待 — <code>m0/vm/vnc_key.py:72</code></h5>
+<pre class="code"><code>time.sleep(0.03)</code></pre>
+<ul>
+<li>为什么：靠 sleep 等结果，机器慢就失败、机器快就浪费</li>
+<li>怎么改：改轮询 + 超时，或直接同步调用</li>
+</ul>
+<h5>DBG-07 阻塞等待 — <code>m0/vm/vnc_key.py:130</code></h5>
+<pre class="code"><code>time.sleep(0.02)</code></pre>
+<ul>
+<li>为什么：靠 sleep 等结果，机器慢就失败、机器快就浪费</li>
+<li>怎么改：改轮询 + 超时，或直接同步调用</li>
+</ul>
+<h5>DBG-07 阻塞等待 — <code>m0/vm/vnc_key.py:133</code></h5>
+<pre class="code"><code>time.sleep(0.03)</code></pre>
+<ul>
+<li>为什么：靠 sleep 等结果，机器慢就失败、机器快就浪费</li>
+<li>怎么改：改轮询 + 超时，或直接同步调用</li>
+</ul>
+<h4>P2（可排期）</h4>
+<h5>DBG-01 命令行输出 — <code>m0/vm/vnc_key.py:108</code></h5>
+<pre class="code"><code>共 3 处，起于：`print(__doc__)`</code></pre>
+<ul>
+<li>为什么：该文件是命令行入口，print 就是它的输出通道（3 处）</li>
+<li>怎么改：确认这是面向用户的输出；库函数里仍应走日志</li>
+</ul>
+<blockquote>P0 不允许豁免。P1/P2 要豁免，就在 S3 报告里逐条写理由，别默默放过。</blockquote>
+<h3>人工复核结论（2026-11-23 19:45）</h3>
+<blockquote>自动脚本拿「本轮 S1 清单（21 个代码/文档文件）」对比「工作区全量 diff」， 工作区实际含 M3 第一批 + 本轮 shift 修复两批未提交改动，加取证脚本与截图， 故报出 1 漏改 / 74 越界 / P1 5 项。逐类人工核实如下，<strong>无真实代码缺陷</strong>。</blockquote>
+<h4>漏改 1 项 → SKIPPED</h4>
+<ul>
+<li><code>tests/host_smoke_test.cpp</code>：S1 C14 登记「按 A 解绑改 LanguageToggle 断言」，但该文件</li>
+</ul>
+<p><code>grep -c LanguageToggle == 0</code>，中英切换用的是 lone Shift（<code>shift_event</code> at :361-362）， 本轮把 Ctrl+Shift+Space 解绑为 no-op 对它无影响。清单登记过宽，标 SKIPPED。 该文件已有断言在 run 中全绿（host-key 20/20 内）。</p>
+<h4>越界 74 项 → 分两类，均为清单口径差异</h4>
+<ul>
+<li><strong>68 项取证产物</strong>：<code>m0/vm/evidence/<em>.png|</em>.ppm</code>（安装 hash、重启、六键验收截图）、</li>
+</ul>
+<p><code>m0/vm/vnc_key.py</code>（VNC 手打注入脚本）、<code>tools/workarea_probe/*.c</code>（M0 期工作区探针）。 这些是验证工具与证据，非产品代码，本就不进 S1 源码清单。</p>
+<ul>
+<li><strong>6 项 M3 第一批代码</strong>：<code>host.hpp</code>（LanguageToggle 枚举）、<code>session_state.hpp</code>（punct_fullwidth）、</li>
+</ul>
+<p><code>toolbar_text.cpp</code> + <code>toolbar_text_test.cpp</code>（中英态显示）、<code>pinyin/scheme.hpp</code> + <code>scheme.cpp</code> （punctuation 转发）。它们是上一批已实现、CHANGELOG 已记录、本轮 20/20 测试依赖的改动； 本轮 S1 清单只列 shift 修复触及的文件，未重列第一批，属口径差异。 其中 <code>pinyin/src/scheme.cpp</code> 本轮确有签名调整（char32_t → u32string），diff 与第一批合并显示。</p>
+<h4>实现质量 P1 5 项 + P2 1 项 → 全部豁免（取证脚本）</h4>
+<ul>
+<li>全部落在 <code>m0/vm/vnc_key.py</code>（VNC 注入诊断脚本，非发布代码）：</li>
+<li>DBG-03 硬编码 <code>127.0.0.1:5901</code>：脚本只在本机 HMP/VNC 取证用，非产品配置，豁免。</li>
+<li>DBG-07 <code>sleep(0.02/0.03)</code> × 4：VNC 键注入需要帧间节流，非业务阻塞等待，豁免。</li>
+<li>DBG-01 <code>print</code> × 3：命令行脚本的输出通道，豁免。</li>
+</ul>
+<h4>静态盲区 1 处 → 误报，无需改</h4>
+<ul>
+<li><code>tests/host_key_test.cpp:309 FakeEngine* engine_ptr = engine.get();</code> 被工具当成「动态路由/URL」，</li>
+</ul>
+<p>实际是单测里持有 fake 引擎裸指针，无 URL、无路由语义。人工确认为误报。</p>
+<h3>静态盲区</h3>
+<ul>
+<li>生成时间：2026-11-23 19:39:39</li>
+<li>检查文件：92 个</li>
+<li>盲区：1 处，涉及 1 类</li>
+</ul>
+<blockquote>以下位置<strong>静态分析看不见调用关系</strong>，必须人工确认，别把脚本结果当完整影响面。</blockquote>
+<h4>动态路由（1 处）</h4>
+<p>为什么看不见：路由路径不是字面量，运行期才确定</p>
+<div class="table-wrap"><table><thead><tr><th>位置</th><th>代码</th><th>要确认什么</th></tr></thead><tbody>
+<tr><td><code>tests/host_key_test.cpp:309</code></td><td><code>FakeEngine* engine_ptr = engine.get();</code></td><td>人工核对最终 URL 并补进契约清单</td></tr>
+</tbody></table></div></section>
+<footer>由 dev-loop 生成 · 报告只读，改动请在 .devloop/ 下的 Markdown 里做</footer>
+</div></body></html>

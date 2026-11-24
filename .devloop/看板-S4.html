@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>S4 · 文档同步</title><style>
+:root{--bg:#f7f8fa;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;
+--accent:#2563eb;--ok:#059669;--warn:#d97706;--bad:#dc2626;--code:#f3f4f6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+font:15px/1.7 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:32px 24px 64px}
+header.top{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:24px}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:.5px}
+.meta{color:var(--muted);font-size:13px}
+.meta span{margin-right:16px}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;
+font-weight:600;border:1px solid transparent}
+.pill.ok{background:#ecfdf5;color:var(--ok);border-color:#a7f3d0}
+.pill.warn{background:#fffbeb;color:var(--warn);border-color:#fde68a}
+.pill.gray{background:#f3f4f6;color:var(--muted);border-color:var(--line)}
+.pill.bad{background:#fef2f2;color:var(--bad);border-color:#fecaca}
+.gates{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;
+margin:0 0 28px}
+.gate{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.gate .st{font-size:12px;color:var(--muted);letter-spacing:1px}
+.gate .nm{font-size:14px;font-weight:600;margin:4px 0 8px}
+.gate .note{font-size:12px;color:var(--muted);margin-top:6px;
+overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin:0 0 24px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;
+padding:12px 18px;min-width:110px}
+.stat b{display:block;font-size:22px;line-height:1.2}
+.stat span{font-size:12px;color:var(--muted)}
+section.card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+padding:24px 28px;margin-bottom:20px}
+section.card>h2{margin:0 0 4px;font-size:19px}
+section.card>.src{color:var(--muted);font-size:12px;margin-bottom:16px}
+h3{font-size:16px;margin:22px 0 8px;padding-left:10px;border-left:3px solid var(--accent)}
+h4,h5,h6{font-size:15px;margin:18px 0 6px}
+p{margin:8px 0}
+code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:13px;
+font-family:"Cascadia Mono",Consolas,monospace}
+pre.code{background:#0f172a;color:#e2e8f0;padding:14px 16px;border-radius:8px;
+overflow:auto;font-size:13px;line-height:1.6}
+pre.code code{background:none;color:inherit;padding:0}
+.nav{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:14px 0;
+font-size:13px;color:var(--muted)}
+.nav a{color:var(--accent);text-decoration:none;padding:3px 9px;border-radius:6px;
+background:#eff6ff;border:1px solid #bfdbfe}
+.nav a:hover{background:#dbeafe}
+figure.diagram{margin:14px 0;padding:14px;background:#fff;border:1px solid var(--line);
+border-radius:10px;overflow:auto}
+figure.diagram svg{display:block;margin:0 auto}
+figure.diagram details{margin-top:8px}
+figure.diagram summary{cursor:pointer;color:var(--muted);font-size:12px}
+figure.diagram pre.code{margin-top:8px}
+.table-wrap{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border:1px solid var(--line);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:#f9fafb;font-weight:600;white-space:nowrap}
+tbody tr:nth-child(even){background:#fcfcfd}
+blockquote{margin:12px 0;padding:10px 16px;background:#f9fafb;
+border-left:3px solid var(--accent);color:#374151;border-radius:0 6px 6px 0}
+hr{border:0;border-top:1px solid var(--line);margin:20px 0}
+ul,ol{margin:8px 0;padding-left:22px}
+li{margin:4px 0}
+a{color:var(--accent)}
+.empty{color:var(--muted);font-style:italic}
+footer{color:var(--muted);font-size:12px;text-align:center;margin-top:32px}
+</style></head>
+<body><div class="wrap">
+<header class="top">
+  <h1>S4 · 文档同步</h1>
+  <div class="meta">
+    <span>dev-loop 1.14.0</span>
+    <span>阶段 S2</span>
+    <span>轮次 M3 中文体验补齐：中文标点、全角/半角、中英状态记忆、Shift 临时英文、Ctrl+Space 热键、状态提示</span>
+    
+    <span>生成于 2026-11-23 21:30:19</span>
+    
+  </div>
+</header>
+<div class="gates"><div class="gate"><div class="st">S4 · v2</div><div class="nm">文档同步</div><span class="pill ok">已确认</span><div class="note" title="确认并提交">确认并提交</div></div></div>
+<div class="stats"><div class="stat"><b>5</b><span>阶段已确认</span></div><div class="stat"><b>0</b><span>P0 实现问题</span></div><div class="stat"><b>0</b><span>P1 实现问题</span></div><div class="stat"><b>0</b><span>P2 建议</span></div><div class="stat"><b>0</b><span>未闭环项</span></div></div>
+<div class="nav"><a href="看板.html">← 看整本看板</a><span>本页只含 S4 阶段的报告</span></div>
+<section class="card" id="stage-S4"><h2>S4 · 文档同步</h2><div class="src">.devloop/S4-文档同步.md</div><h2>S4 文档同步（脚本初稿）</h2>
+<ul>
+<li>生成时间：2026-11-23 19:54:02</li>
+</ul>
+<h3>文档现状</h3>
+<h2>文档漂移报告</h2>
+<ul>
+<li>生成时间：2026-11-23 19:54:02</li>
+<li>扫描文档：173 个</li>
+<li>疑似失配：1707 条</li>
+</ul>
+<h3>本次改动涉及的文档（需人工确认是否更新）</h3>
+<ul>
+<li><code>docs/handover/CHANGELOG.md</code> ← <code>README.md</code></li>
+<li><code>docs/handover/CHANGELOG.md</code> ← <code>xingma/docs/glyph-tier/FRAMEWORK-REQ.md</code></li>
+<li><code>docs/handover/CHANGELOG.md</code> ← <code>docs/README.md</code></li>
+<li><code>docs/handover/CHANGELOG.md</code> ← <code>docs/handover/HANDOVER.md</code></li>
+<li><code>docs/handover/CHANGELOG.md</code> ← <code>docs/font/RARE-CHAR-AND-GLYPH-SOLUTION.md</code></li>
+<li><code>docs/plan/ROADMAP.md</code> ← <code>xingma/docs/phase0/PHASE0-PLAN.md</code></li>
+<li><code>docs/plan/ROADMAP.md</code> ← <code>xingma/archive/XINGMA-PLAN-v2.3-DRAFT.md</code></li>
+<li><code>docs/plan/ROADMAP.md</code> ← <code>docs/README.md</code></li>
+<li><code>docs/plan/ROADMAP.md</code> ← <code>docs/plan/PLAN.md</code></li>
+<li><code>docs/plan/ROADMAP.md</code> ← <code>docs/plan/PLAN-MODULARIZATION.md</code></li>
+<li><code>docs/plan/ROADMAP.md</code> ← <code>docs/plan/DAT-FORMAT-V2.md</code></li>
+<li><code>docs/plan/ROADMAP.md</code> ← <code>docs/handover/CHANGELOG.md</code></li>
+<li><code>docs/plan/ROADMAP.md</code> ← <code>docs/handover/HANDOVER.md</code></li>
+<li><code>docs/plan/ROADMAP.md</code> ← <code>docs/milestones/M0-REPORT.md</code></li>
+<li><code>docs/plan/ROADMAP.md</code> ← <code>docs/milestones/M0-REDLINE-REVIEW.md</code></li>
+<li><code>docs/plan/ROADMAP.md</code> ← <code>docs/milestones/m2/M2-EXIT-GAP.md</code></li>
+<li><code>docs/plan/ROADMAP.md</code> ← <code>docs/milestones/m2/M2-REMAINING.md</code></li>
+<li><code>docs/plan/ROADMAP.md</code> ← <code>docs/milestones/m2/M2-REPORT.md</code></li>
+<li><code>docs/plan/ROADMAP.md</code> ← <code>docs/font/RARE-CHAR-AND-GLYPH-SOLUTION.md</code></li>
+<li><code>docs/plan/ROADMAP.md</code> ← <code>docs/font/FONT-BUNDLING-ASSESSMENT.md</code></li>
+<li><code>docs/plan/ROADMAP.md</code> ← <code>docs/font/FONT-PLAN-REVIEW.md</code></li>
+<li><code>docs/plan/ROADMAP.md</code> ← <code>docs/font/FULL-GLYPH-COVERAGE-PLAN.md</code></li>
+<li><code>docs/plan/ROADMAP.md</code> ← <code>docs/font/MINIMAL-FONT-SET-PLAN.md</code></li>
+<li><code>docs/plan/ROADMAP.md</code> ← <code>docs/reviews/FRAMEWORK-ROUTE-A-REVIEW.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>README.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>CMakeLists.txt</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>m0/vm/noVNC-1.5.0/docs/EMBEDDING.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>ime/CMakeLists.txt</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>tests/CMakeLists.txt</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>xingma/XINGMA-PLAN.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>xingma/README.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>xingma/docs/FRAMEWORK-AUDIT-2026-11-17.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>xingma/docs/phase0/PHASE0-PLAN.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>xingma/docs/glyph-tier/FRAMEWORK-REQ.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>xingma/docs/glyph-tier/GLYPH-TIER-PLAN.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>xingma/archive/XINGMA-PLAN-v2.3-DRAFT.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>framework/CMakeLists.txt</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>framework/README.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>framework/platform/win32/CMakeLists.txt</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>pinyin/README.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>pinyin/CMakeLists.txt</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>libernt/PORTABILITY-ASSESSMENT.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>docs/README.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>docs/plan/PLAN.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>docs/plan/PLAN-MODULARIZATION.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>docs/plan/ROADMAP.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>docs/plan/DAT-FORMAT-V2.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>docs/handover/CHANGELOG.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>docs/handover/HANDOVER.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>docs/milestones/M0-REDLINE-REVIEW.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>docs/milestones/M1-REPORT.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>docs/milestones/m2/M2-DATA-PLAN.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>docs/milestones/m2/M2-REMAINING.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>docs/reviews/FRAMEWORK-ROUTE-A-REVIEW.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>docs/reviews/PORTABILITY-UPSTREAM-64BIT-ARM64.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>docs/reviews/ARCH-AUDIT-VERIFICATION.md</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>build-tdd/CMakeFiles/TargetDirectories.txt</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>build-tdd/Testing/Temporary/CTestCostData.txt</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>build-host-off/CMakeCache.txt</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>build-host-off/CMakeFiles/TargetDirectories.txt</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>build-host-off/tests/CMakeFiles/rospinyin-host-key.dir/link.txt</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>build-host-off/tests/CMakeFiles/rospinyin-host-smoke.dir/link.txt</code></li>
+<li><code>framework/include/imfw/host.hpp</code> ← <code>build-host-off/Testing/Temporary/CTestCostData.txt</code></li>
+<li><code>framework/include/imfw/intent.hpp</code> ← <code>m0/vm/noVNC-1.5.0/LICENSE.txt</code></li>
+<li><code>framework/include/imfw/intent.hpp</code> ← <code>framework/README.md</code></li>
+<li><code>framework/include/imfw/intent.hpp</code> ← <code>docs/plan/PLAN-MODULARIZATION.md</code></li>
+<li><code>framework/include/imfw/intent.hpp</code> ← <code>docs/handover/CHANGELOG.md</code></li>
+<li><code>framework/include/imfw/intent.hpp</code> ← <code>docs/handover/HANDOVER.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>README.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>ime/CMakeLists.txt</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>tests/CMakeLists.txt</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>xingma/XINGMA-PLAN.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>xingma/README.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>xingma/docs/FRAMEWORK-AUDIT-2026-11-17.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>xingma/docs/phase0/PHASE0-PLAN.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>xingma/docs/glyph-tier/FRAMEWORK-REQ.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>xingma/docs/glyph-tier/GLYPH-TIER-PLAN.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>xingma/docs/glyph-tier/UNIFIED-DAT-FORMAT.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>xingma/archive/XINGMA-PLAN-v2.3-DRAFT.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>framework/README.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>framework/platform/win32/CMakeLists.txt</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>pinyin/README.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>pinyin/CMakeLists.txt</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>docs/plan/PLAN.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>docs/plan/PLAN-MODULARIZATION.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>docs/plan/ROADMAP.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>docs/plan/DAT-FORMAT-V2.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>docs/handover/CHANGELOG.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>docs/handover/HANDOVER.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>docs/milestones/m2/M2-DATA-PLAN.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>docs/font/FONT-BUNDLING-ASSESSMENT.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>docs/reviews/FRAMEWORK-ROUTE-A-REVIEW.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>docs/reviews/ARCH-AUDIT-VERIFICATION.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>samples/README.md</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>build-standalone/CMakeCache.txt</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>build-tdd/CMakeFiles/TargetDirectories.txt</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>build-tdd/Testing/Temporary/CTestCostData.txt</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>build-host-off/CMakeFiles/TargetDirectories.txt</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>build-host-off/pinyin/CMakeFiles/rospinyin-engine.dir/link.txt</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>build-host-off/tests/CMakeFiles/rospinyin-scheme.dir/link.txt</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>build-host-off/tests/CMakeFiles/rospinyin-scheme-registry.dir/link.txt</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>build-host-off/tests/CMakeFiles/rospinyin-toy-scheme.dir/link.txt</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>build-host-off/Testing/Temporary/CTestCostData.txt</code></li>
+<li><code>framework/include/imfw/scheme.hpp</code> ← <code>build-cross/CMakeCache.txt</code></li>
+<li><code>framework/include/imfw/session_state.hpp</code> ← <code>xingma/docs/glyph-tier/FRAMEWORK-REQ.md</code></li>
+<li><code>framework/include/imfw/session_state.hpp</code> ← <code>framework/README.md</code></li>
+<li><code>framework/include/imfw/session_state.hpp</code> ← <code>docs/handover/CHANGELOG.md</code></li>
+<li><code>framework/include/imfw/session_state.hpp</code> ← <code>docs/handover/HANDOVER.md</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>README.md</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>xingma/XINGMA-PLAN.md</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>xingma/docs/FRAMEWORK-AUDIT-2026-11-17.md</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>xingma/docs/phase0/PHASE0-PLAN.md</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>xingma/docs/glyph-tier/FRAMEWORK-REQ.md</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>xingma/docs/glyph-tier/GLYPH-TIER-PLAN.md</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>xingma/archive/XINGMA-PLAN-v2.3-DRAFT.md</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>framework/README.md</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>framework/platform/win32/CMakeLists.txt</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>libernt/PORTABILITY-ASSESSMENT.md</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>docs/plan/PLAN-MODULARIZATION.md</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>docs/plan/ROADMAP.md</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>docs/handover/CHANGELOG.md</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>docs/handover/HANDOVER.md</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>docs/milestones/M1-REPORT.md</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>docs/milestones/m2/M2-DATA-PLAN.md</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>docs/milestones/m2/M2-REMAINING.md</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>docs/font/RARE-CHAR-AND-GLYPH-SOLUTION.md</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>docs/font/FONT-BUNDLING-ASSESSMENT.md</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>docs/font/FULL-GLYPH-COVERAGE-PLAN.md</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>docs/reviews/FRAMEWORK-ROUTE-A-REVIEW.md</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>docs/reviews/PORTABILITY-UPSTREAM-64BIT-ARM64.md</code></li>
+<li><code>framework/platform/win32/imm32/imm_entry.cpp</code> ← <code>docs/reviews/ARCH-AUDIT-VERIFICATION.md</code></li>
+<li><code>framework/platform/win32/imm32/key_translate.cpp</code> ← <code>xingma/docs/phase0/PHASE0-PLAN.md</code></li>
+<li><code>framework/platform/win32/imm32/key_translate.cpp</code> ← <code>framework/README.md</code></li>
+<li><code>framework/platform/win32/imm32/key_translate.cpp</code> ← <code>framework/platform/win32/CMakeLists.txt</code></li>
+<li><code>framework/platform/win32/imm32/key_translate.cpp</code> ← <code>docs/plan/PLAN-MODULARIZATION.md</code></li>
+<li><code>framework/platform/win32/imm32/key_translate.cpp</code> ← <code>docs/handover/CHANGELOG.md</code></li>
+<li><code>framework/platform/win32/imm32/key_translate.cpp</code> ← <code>docs/handover/HANDOVER.md</code></li>
+<li><code>framework/src/host_key.cpp</code> ← <code>xingma/docs/phase0/PHASE0-PLAN.md</code></li>
+<li><code>framework/src/host_key.cpp</code> ← <code>xingma/docs/glyph-tier/FRAMEWORK-REQ.md</code></li>
+<li><code>framework/src/host_key.cpp</code> ← <code>xingma/docs/glyph-tier/GLYPH-TIER-PLAN.md</code></li>
+<li><code>framework/src/host_key.cpp</code> ← <code>framework/CMakeLists.txt</code></li>
+<li><code>framework/src/host_key.cpp</code> ← <code>framework/README.md</code></li>
+<li><code>framework/src/host_key.cpp</code> ← <code>docs/plan/PLAN-MODULARIZATION.md</code></li>
+<li><code>framework/src/host_key.cpp</code> ← <code>docs/handover/CHANGELOG.md</code></li>
+<li><code>framework/src/host_key.cpp</code> ← <code>docs/handover/HANDOVER.md</code></li>
+<li><code>framework/src/host_key.cpp</code> ← <code>build-host-off/framework/CMakeFiles/imfw-engine.dir/link.txt</code></li>
+<li><code>framework/src/key_route.cpp</code> ← <code>framework/CMakeLists.txt</code></li>
+<li><code>framework/src/key_route.cpp</code> ← <code>framework/README.md</code></li>
+<li><code>framework/src/key_route.cpp</code> ← <code>docs/plan/PLAN-MODULARIZATION.md</code></li>
+<li><code>framework/src/key_route.cpp</code> ← <code>docs/handover/CHANGELOG.md</code></li>
+<li><code>framework/src/key_route.cpp</code> ← <code>docs/handover/HANDOVER.md</code></li>
+<li><code>framework/src/key_route.cpp</code> ← <code>docs/reviews/FRAMEWORK-ROUTE-A-REVIEW.md</code></li>
+<li><code>framework/src/key_route.cpp</code> ← <code>build-host-off/framework/CMakeFiles/imfw-engine.dir/link.txt</code></li>
+<li><code>framework/src/toolbar_text.cpp</code> ← <code>tests/CMakeLists.txt</code></li>
+<li><code>framework/src/toolbar_text.cpp</code> ← <code>framework/CMakeLists.txt</code></li>
+<li><code>framework/src/toolbar_text.cpp</code> ← <code>framework/README.md</code></li>
+<li><code>framework/src/toolbar_text.cpp</code> ← <code>docs/plan/PLAN.md</code></li>
+<li><code>framework/src/toolbar_text.cpp</code> ← <code>docs/plan/PLAN-MODULARIZATION.md</code></li>
+<li><code>framework/src/toolbar_text.cpp</code> ← <code>docs/plan/ROADMAP.md</code></li>
+<li><code>framework/src/toolbar_text.cpp</code> ← <code>docs/handover/CHANGELOG.md</code></li>
+<li><code>framework/src/toolbar_text.cpp</code> ← <code>docs/handover/HANDOVER.md</code></li>
+<li><code>framework/src/toolbar_text.cpp</code> ← <code>build-host-off/framework/CMakeFiles/imfw-engine.dir/link.txt</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>README.md</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>ime/CMakeLists.txt</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>tests/CMakeLists.txt</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>xingma/XINGMA-PLAN.md</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>xingma/README.md</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>xingma/docs/FRAMEWORK-AUDIT-2026-11-17.md</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>xingma/docs/phase0/PHASE0-PLAN.md</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>xingma/docs/glyph-tier/FRAMEWORK-REQ.md</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>xingma/docs/glyph-tier/GLYPH-TIER-PLAN.md</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>xingma/docs/glyph-tier/UNIFIED-DAT-FORMAT.md</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>xingma/archive/XINGMA-PLAN-v2.3-DRAFT.md</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>framework/README.md</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>framework/platform/win32/CMakeLists.txt</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>pinyin/README.md</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>pinyin/CMakeLists.txt</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>docs/plan/PLAN.md</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>docs/plan/PLAN-MODULARIZATION.md</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>docs/plan/ROADMAP.md</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>docs/plan/DAT-FORMAT-V2.md</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>docs/handover/CHANGELOG.md</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>docs/handover/HANDOVER.md</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>docs/milestones/m2/M2-DATA-PLAN.md</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>docs/font/FONT-BUNDLING-ASSESSMENT.md</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>docs/reviews/FRAMEWORK-ROUTE-A-REVIEW.md</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>docs/reviews/ARCH-AUDIT-VERIFICATION.md</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>samples/README.md</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>build-standalone/CMakeCache.txt</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>build-tdd/CMakeFiles/TargetDirectories.txt</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>build-tdd/Testing/Temporary/CTestCostData.txt</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>build-host-off/CMakeFiles/TargetDirectories.txt</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>build-host-off/pinyin/CMakeFiles/rospinyin-engine.dir/link.txt</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>build-host-off/tests/CMakeFiles/rospinyin-scheme.dir/link.txt</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>build-host-off/tests/CMakeFiles/rospinyin-scheme-registry.dir/link.txt</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>build-host-off/tests/CMakeFiles/rospinyin-toy-scheme.dir/link.txt</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>build-host-off/Testing/Temporary/CTestCostData.txt</code></li>
+<li><code>pinyin/include/rospinyin/scheme.hpp</code> ← <code>build-cross/CMakeCache.txt</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>README.md</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>ime/CMakeLists.txt</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>tests/CMakeLists.txt</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>xingma/XINGMA-PLAN.md</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>xingma/README.md</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>xingma/docs/FRAMEWORK-AUDIT-2026-11-17.md</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>xingma/docs/phase0/PHASE0-PLAN.md</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>xingma/docs/glyph-tier/FRAMEWORK-REQ.md</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>xingma/docs/glyph-tier/GLYPH-TIER-PLAN.md</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>xingma/docs/glyph-tier/UNIFIED-DAT-FORMAT.md</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>xingma/archive/XINGMA-PLAN-v2.3-DRAFT.md</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>framework/README.md</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>framework/platform/win32/CMakeLists.txt</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>pinyin/README.md</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>pinyin/CMakeLists.txt</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>docs/plan/PLAN.md</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>docs/plan/PLAN-MODULARIZATION.md</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>docs/plan/ROADMAP.md</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>docs/plan/DAT-FORMAT-V2.md</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>docs/handover/CHANGELOG.md</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>docs/handover/HANDOVER.md</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>docs/milestones/m2/M2-DATA-PLAN.md</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>docs/font/FONT-BUNDLING-ASSESSMENT.md</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>docs/reviews/FRAMEWORK-ROUTE-A-REVIEW.md</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>docs/reviews/ARCH-AUDIT-VERIFICATION.md</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>samples/README.md</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>build-standalone/CMakeCache.txt</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>build-tdd/CMakeFiles/TargetDirectories.txt</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>build-tdd/Testing/Temporary/CTestCostData.txt</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>build-host-off/CMakeFiles/TargetDirectories.txt</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>build-host-off/pinyin/CMakeFiles/rospinyin-engine.dir/link.txt</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>build-host-off/tests/CMakeFiles/rospinyin-scheme.dir/link.txt</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>build-host-off/tests/CMakeFiles/rospinyin-scheme-registry.dir/link.txt</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>build-host-off/tests/CMakeFiles/rospinyin-toy-scheme.dir/link.txt</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>build-host-off/Testing/Temporary/CTestCostData.txt</code></li>
+<li><code>pinyin/src/scheme.cpp</code> ← <code>build-cross/CMakeCache.txt</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>ime/CMakeLists.txt</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>xingma/XINGMA-PLAN.md</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>xingma/README.md</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>xingma/docs/phase0/PHASE0-PLAN.md</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>xingma/archive/XINGMA-PLAN-v2.3-DRAFT.md</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>framework/README.md</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>framework/platform/win32/CMakeLists.txt</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>pinyin/CMakeLists.txt</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>libernt/PORTABILITY-ASSESSMENT.md</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>docs/README.md</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>docs/plan/PLAN-MODULARIZATION.md</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>docs/handover/CHANGELOG.md</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>docs/handover/HANDOVER.md</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>docs/milestones/M0-REPORT.md</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>docs/milestones/M1-REPORT.md</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>docs/milestones/m2/M2-DATA-PLAN.md</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>docs/font/FONT-BUNDLING-ASSESSMENT.md</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>docs/reviews/PORTABILITY-UPSTREAM-64BIT-ARM64.md</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>docs/reviews/ARCH-AUDIT-VERIFICATION.md</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>build-standalone/CMakeCache.txt</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>build-tdd/CMakeCache.txt</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>build-host-off/CMakeCache.txt</code></li>
+<li><code>tests/CMakeLists.txt</code> ← <code>build-cross/CMakeCache.txt</code></li>
+<li><code>tests/host_key_test.cpp</code> ← <code>tests/CMakeLists.txt</code></li>
+<li><code>tests/host_key_test.cpp</code> ← <code>xingma/docs/glyph-tier/FRAMEWORK-REQ.md</code></li>
+<li><code>tests/host_key_test.cpp</code> ← <code>framework/README.md</code></li>
+<li><code>tests/host_key_test.cpp</code> ← <code>docs/plan/PLAN-MODULARIZATION.md</code></li>
+<li><code>tests/host_key_test.cpp</code> ← <code>docs/handover/CHANGELOG.md</code></li>
+<li><code>tests/host_key_test.cpp</code> ← <code>docs/handover/HANDOVER.md</code></li>
+<li><code>tests/host_key_test.cpp</code> ← <code>build-host-off/tests/CMakeFiles/rospinyin-host-key.dir/link.txt</code></li>
+<li><code>tests/key_route_test.cpp</code> ← <code>tests/CMakeLists.txt</code></li>
+<li><code>tests/key_route_test.cpp</code> ← <code>docs/handover/CHANGELOG.md</code></li>
+<li><code>tests/key_route_test.cpp</code> ← <code>docs/handover/HANDOVER.md</code></li>
+<li><code>tests/key_route_test.cpp</code> ← <code>build-host-off/tests/CMakeFiles/rospinyin-key-route.dir/link.txt</code></li>
+<li><code>tests/scheme_test.cpp</code> ← <code>tests/CMakeLists.txt</code></li>
+<li><code>tests/scheme_test.cpp</code> ← <code>build-host-off/tests/CMakeFiles/rospinyin-scheme.dir/link.txt</code></li>
+<li><code>tests/toolbar_text_test.cpp</code> ← <code>tests/CMakeLists.txt</code></li>
+<li><code>tests/toolbar_text_test.cpp</code> ← <code>docs/plan/PLAN.md</code></li>
+<li><code>tests/toolbar_text_test.cpp</code> ← <code>docs/plan/ROADMAP.md</code></li>
+<li><code>tests/toolbar_text_test.cpp</code> ← <code>docs/handover/CHANGELOG.md</code></li>
+<li><code>tests/toolbar_text_test.cpp</code> ← <code>build-host-off/tests/CMakeFiles/rospinyin-toolbar-text.dir/link.txt</code></li>
+<li><code>tools/check_m1.py</code> ← <code>README.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>m0/vm/PRELOAD-PROBE.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>tests/CMakeLists.txt</code></li>
+<li><code>tools/check_m1.py</code> ← <code>xingma/XINGMA-PLAN.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>xingma/README.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>xingma/docs/FRAMEWORK-AUDIT-2026-11-17.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>xingma/docs/phase0/PHASE0-PLAN.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>xingma/docs/glyph-tier/FRAMEWORK-REQ.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>xingma/docs/glyph-tier/GLYPH-TIER-PLAN.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>xingma/archive/XINGMA-PLAN-v2.3-DRAFT.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>framework/README.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>libernt/PORTABILITY-ASSESSMENT.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>docs/README.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>docs/plan/PLAN.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>docs/plan/PLAN-MODULARIZATION.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>docs/plan/ROADMAP.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>docs/handover/CHANGELOG.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>docs/handover/HANDOVER.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>docs/milestones/M0-REDLINE-REVIEW.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>docs/milestones/M1-REPORT.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>docs/milestones/m2/M2-DATA-PLAN.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>docs/milestones/m2/M2-EXIT-GAP.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>docs/milestones/m2/M2-REMAINING.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>docs/milestones/m2/M2-REPORT.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>docs/font/FONT-BUNDLING-ASSESSMENT.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>docs/font/FONT-PLAN-REVIEW.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>docs/font/FULL-GLYPH-COVERAGE-PLAN.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>docs/reviews/FRAMEWORK-ROUTE-A-REVIEW.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>docs/reviews/ARCH-AUDIT-VERIFICATION.md</code></li>
+<li><code>tools/check_m1.py</code> ← <code>docs/releases/alpha0.0.2.md</code></li>
+<li><code>tools/seams.py</code> ← <code>docs/plan/PLAN.md</code></li>
+<li><code>tools/seams.py</code> ← <code>docs/plan/PLAN-MODULARIZATION.md</code></li>
+<li><code>tools/seams.py</code> ← <code>docs/plan/ROADMAP.md</code></li>
+<li><code>tools/seams.py</code> ← <code>docs/handover/CHANGELOG.md</code></li>
+<li><code>tools/seams.py</code> ← <code>docs/handover/HANDOVER.md</code></li>
+<li><code>framework/include/imfw/key_char.hpp</code> ← <code>docs/plan/ROADMAP.md</code></li>
+<li><code>framework/include/imfw/key_char.hpp</code> ← <code>docs/handover/CHANGELOG.md</code></li>
+<li><code>framework/include/imfw/punctuation.hpp</code> ← <code>tests/CMakeLists.txt</code></li>
+<li><code>framework/include/imfw/punctuation.hpp</code> ← <code>docs/handover/CHANGELOG.md</code></li>
+<li><code>framework/include/imfw/punctuation.hpp</code> ← <code>build-tdd/CMakeFiles/TargetDirectories.txt</code></li>
+<li><code>framework/include/imfw/punctuation.hpp</code> ← <code>build-tdd/Testing/Temporary/CTestCostData.txt</code></li>
+<li><code>framework/include/imfw/punctuation.hpp</code> ← <code>build-host-off/CMakeFiles/TargetDirectories.txt</code></li>
+<li><code>framework/include/imfw/punctuation.hpp</code> ← <code>build-host-off/tests/CMakeFiles/rospinyin-punctuation.dir/link.txt</code></li>
+<li><code>framework/include/imfw/punctuation.hpp</code> ← <code>build-host-off/Testing/Temporary/CTestCostData.txt</code></li>
+<li><code>tests/key_char_test.cpp</code> ← <code>tests/CMakeLists.txt</code></li>
+<li><code>tests/key_char_test.cpp</code> ← <code>build-host-off/tests/CMakeFiles/rospinyin-key-char.dir/link.txt</code></li>
+<li><code>tests/punctuation_test.cpp</code> ← <code>tests/CMakeLists.txt</code></li>
+<li><code>tests/punctuation_test.cpp</code> ← <code>docs/handover/CHANGELOG.md</code></li>
+<li><code>tests/punctuation_test.cpp</code> ← <code>build-host-off/tests/CMakeFiles/rospinyin-punctuation.dir/link.txt</code></li>
+</ul>
+<h3>失配明细</h3>
+<div class="table-wrap"><table><thead><tr><th>文档</th><th>行</th><th>类型</th><th>内容</th><th>问题</th></tr></thead><tbody>
+<tr><td><code>README.md</code></td><td>13</td><td>symbol</td><td><code>userinit</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>README.md</code></td><td>49</td><td>path</td><td><code>modules/optional</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>README.md</code></td><td>111</td><td>path</td><td><code>system32\mzimeja.ime</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>README.md</code></td><td>111</td><td>path</td><td><code>m0/vm/logs/bsod*</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>README.md</code></td><td>116</td><td>symbol</td><td><code>RegisterClassEx</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>README.md</code></td><td>121</td><td>symbol</td><td><code>KLF_ACTIVATE</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>README.md</code></td><td>124</td><td>path</td><td><code>zlb\x1a</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>README.md</code></td><td>128</td><td>path</td><td><code>/u</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>README.md</code></td><td>135</td><td>symbol</td><td><code>fbc986d71</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>README.md</code></td><td>139</td><td>symbol</td><td><code>VK_KANJI</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>README.md</code></td><td>150</td><td>path</td><td><code>/step1</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>README.md</code></td><td>150</td><td>path</td><td><code>/step4</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>README.md</code></td><td>150</td><td>path</td><td><code>/status</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>README.md</code></td><td>151</td><td>path</td><td><code>engine/include/rospinyin/engine.hpp</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>README.md</code></td><td>151</td><td>path</td><td><code>ui/</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>README.md</code></td><td>160</td><td>path</td><td><code>ime/imm_entry.cpp</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>README.md</code></td><td>161</td><td>path</td><td><code>nv/lv/lve/nve</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>README.md</code></td><td>167</td><td>symbol</td><td><code>WH_KEYBOARD</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>README.md</code></td><td>178</td><td>symbol</td><td><code>shéi</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>README.md</code></td><td>178</td><td>symbol</td><td><code>shuí</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>README.md</code></td><td>178</td><td>symbol</td><td><code>CodeTable::load_dat</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>README.md</code></td><td>198</td><td>symbol</td><td><code>Result.segments</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>README.md</code></td><td>198</td><td>path</td><td><code>imfw/engine.hpp</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>README.md</code></td><td>201</td><td>symbol</td><td><code>imfw::emit_text</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>README.md</code></td><td>201</td><td>symbol</td><td><code>Scheme::configure</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>README.md</code></td><td>202</td><td>symbol</td><td><code>emit-text</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>README.md</code></td><td>202</td><td>symbol</td><td><code>code-table</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/NOVNC-GUIDE.md</code></td><td>14</td><td>path</td><td><code>C:\ReactOS\system32</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/NOVNC-GUIDE.md</code></td><td>14</td><td>path</td><td><code>C:\windows\system32</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/NOVNC-GUIDE.md</code></td><td>15</td><td>path</td><td><code>C:\ReactOS</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/NOVNC-GUIDE.md</code></td><td>19</td><td>path</td><td><code>http://</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/NOVNC-GUIDE.md</code></td><td>34</td><td>path</td><td><code>type(&#x27;//&#x27;)</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/NOVNC-GUIDE.md</code></td><td>35</td><td>path</td><td><code>~/.workbuddy/tmp/novnc_exact_{dl,copy}.py</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/NOVNC-GUIDE.md</code></td><td>72</td><td>path</td><td><code>C:\windows</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/NOVNC-GUIDE.md</code></td><td>95</td><td>path</td><td><code>/step2</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/NOVNC-GUIDE.md</code></td><td>95</td><td>symbol</td><td><code>e0210804</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/NOVNC-GUIDE.md</code></td><td>145</td><td>path</td><td><code>build-v2-release/tools/httpdl/</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/NOVNC-GUIDE.md</code></td><td>103</td><td>path</td><td><code>http://192.168.0.205:6080/vnc.html?autoconnect=1&amp;resize=remote</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/NOVNC-GUIDE.md</code></td><td>104</td><td>path</td><td><code>http://127.0.0.1:6080/vnc.html?autoconnect=1&amp;resize=remote</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/NOVNC-GUIDE.md</code></td><td>131</td><td>path</td><td><code>http://192.168.0.205:6080</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/NOVNC-GUIDE.md</code></td><td>135</td><td>path</td><td><code>http://10.0.2.2:8000/wget.exe</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>13</td><td>symbol</td><td><code>RegisterClassEx</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>18</td><td>path</td><td><code>/step2</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>25</td><td>symbol</td><td><code>GlobalAddAtom</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>46</td><td>path</td><td><code>http://10.0.2.2:8000/probe-N/</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>55</td><td>path</td><td><code>CreateFileA(&quot;C:\rospinyin-trace.log&quot;)</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>62</td><td>path</td><td><code>/step1</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>63</td><td>path</td><td><code>/status</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>71</td><td>path</td><td><code>http://10.0.2.2:8000/wget.exe</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>94</td><td>symbol</td><td><code>LANGID</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>111</td><td>symbol</td><td><code>nihao</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>121</td><td>symbol</td><td><code>e0260804</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>122</td><td>symbol</td><td><code>e0200409</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>123</td><td>symbol</td><td><code>E0210804</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>133</td><td>path</td><td><code>/u</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>133</td><td>path</td><td><code>/unpreload</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>137</td><td>path</td><td><code>C:\ReactOS\System32</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>144</td><td>path</td><td><code>rospinyin2/4/5/6.ime</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>150</td><td>symbol</td><td><code>Init</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>155</td><td>symbol</td><td><code>rospinyin7</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>166</td><td>path</td><td><code>win32ss/user/imm32/install.c</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>169</td><td>symbol</td><td><code>szImeKey</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>171</td><td>path</td><td><code>win32ss/user/user32/windows/input.c</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>173</td><td>symbol</td><td><code>KLF_ACTIVATE</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>173</td><td>path</td><td><code>win32ss/user/user32/misc/logon.c</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>186</td><td>path</td><td><code>1/4</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>224</td><td>path</td><td><code>C:\boot.ini</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>261</td><td>path</td><td><code>Preload\1</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>261</td><td>symbol</td><td><code>userinit</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>262</td><td>symbol</td><td><code>KLF_RESET</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>262</td><td>symbol</td><td><code>SPI_SETDEFAULTINPUTLANG</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>285</td><td>symbol</td><td><code>pre-default</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>295</td><td>path</td><td><code>N/nprime-preload.png</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>299</td><td>symbol</td><td><code>e0210804</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>304</td><td>symbol</td><td><code>IntLoadPreloadKeyboardLayouts</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>308</td><td>path</td><td><code>N/nprime-preload2.png</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>368</td><td>path</td><td><code>m0/vm/evidence/preload-probe/N/&lt;名字&gt;.png</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>369</td><td>symbol</td><td><code>n-boot1</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>369</td><td>symbol</td><td><code>n-boot2</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>369</td><td>symbol</td><td><code>n-boot3</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>369</td><td>symbol</td><td><code>n-preload</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>369</td><td>symbol</td><td><code>n-bsod</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>370</td><td>path</td><td><code>/DEBUG</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/PRELOAD-PROBE.md</code></td><td>31</td><td>path</td><td><code>VM=/home/twipty/WorkBuddy/2026-11-12-20-02-47/ros-pinyin/m0/vm</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/noVNC-1.5.0/docs/API.md</code></td><td>97</td><td>symbol</td><td><code>RFB.capabilities</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/noVNC-1.5.0/docs/API.md</code></td><td>105</td><td>symbol</td><td><code>RFB.clippingViewport</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/noVNC-1.5.0/docs/API.md</code></td><td>195</td><td>symbol</td><td><code>HTMLElement</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/noVNC-1.5.0/docs/API.md</code></td><td>502</td><td>symbol</td><td><code>Blob</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>m0/vm/noVNC-1.5.0/docs/EMBEDDING.md</code></td><td>15</td><td>path</td><td><code>app/</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/noVNC-1.5.0/docs/EMBEDDING.md</code></td><td>18</td><td>path</td><td><code>core/</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/noVNC-1.5.0/docs/LIBRARY.md</code></td><td>31</td><td>path</td><td><code>lib/</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>m0/vm/evidence/m2-acceptance/result.md</code></td><td>13</td><td>symbol</td><td><code>f28b2606338431d2e7a9adc089f8f053728c2be18061bc066d8fdaba23e9b921</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>10</td><td>symbol</td><td><code>glyph_tier</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>10</td><td>path</td><td><code>[快]/[全]</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>10</td><td>symbol</td><td><code>AutoCommitUnique</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>11</td><td>path</td><td>`framework/host</td><td>ui`</td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>11</td><td>path</td><td><code>framework/platform/win32/{imm32,ui}</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>88</td><td>path</td><td><code>HKCU\SOFTWARE\RosXingMa</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>89</td><td>path</td><td><code>HKLM\SOFTWARE\RosXingMa\Install</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>90</td><td>path</td><td><code>%APPDATA%\RosXingMa\{tables,reports,packs}</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>91</td><td>path</td><td><code>%ProgramFiles%\RosXingMa\</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>92</td><td>symbol</td><td><code>ShapeTable</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>92</td><td>symbol</td><td><code>ShapeSession</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>92</td><td>symbol</td><td><code>ShapeScheme</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>94</td><td>symbol</td><td><code>shape86-jidian</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>94</td><td>symbol</td><td><code>shape98-tables</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>124</td><td>symbol</td><td><code>wubi</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>126</td><td>path</td><td><code>xingma/tools/check_layout.py</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>138</td><td>path</td><td><code>Engine::feed/backspace/cancel/on_select</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>141</td><td>path</td><td><code>reset/select/next_page/prev_page</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>142</td><td>path</td><td><code>framework/host/</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>143</td><td>path</td><td><code>framework/ui/</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>149</td><td>symbol</td><td><code>Result.segments</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>156</td><td>symbol</td><td><code>CharEntry.codepoint</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>158</td><td>symbol</td><td><code>imfw::Engine</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>159</td><td>symbol</td><td><code>imfw::Scheme</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>160</td><td>symbol</td><td><code>ShapeDatLoader</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>160</td><td>path</td><td><code>%APPDATA%\RosXingMa\tables\</code></td><td>文档引用的路径不存在</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>161</td><td>symbol</td><td><code>libtableio</code></td><td>文档提到的符号在代码中找不到</td></tr>
+<tr><td><code>xingma/XINGMA-PLAN.md</code></td><td>177</td><td>path</td><td><code>xingma/CMakeLists.txt</code></td><td>文档引用的路径不存在</td></tr>
+</tbody></table></div>
+<h3>逐文档判定</h3>
+<blockquote>漂移报告扫 173 文档报 1707 条，绝大多数是把 Windows 路径（<code>C:\...</code>）、URL、命令行参数 （<code>/step1</code>）、shell 变量等当成「路径不存在/符号找不到」的历史噪声，与本次改动无关。 文档对账结果为 <strong>漏改 0 / 越界 0 / 动作不符 0 / 一致 2</strong>——脚本认定的真实漂移为零。 下表只列人工判定过的文档。</blockquote>
+<div class="table-wrap"><table><thead><tr><th>文档</th><th>新建/更新/不改</th><th>依据</th></tr></thead><tbody>
+<tr><td><code>docs/handover/CHANGELOG.md</code></td><td><strong>更新</strong></td><td>本轮 M3 shift 修复条目原有「实机验收待执行」，已改为 guest 六键 PASS + hash/码点确证细节；标点收敛条目的 AC9 由「待逐键取证」改为引号交替实机 PASS（文津宋体下 <code>‘’</code>/<code>“”</code> 各三对）+ 四键尚未取证</td></tr>
+<tr><td><code>docs/plan/ROADMAP.md</code></td><td><strong>更新</strong></td><td>M3 段落原有「实机验收待执行」，已改为 PASS + 盲区闭合，指向 CHANGELOG；标点收敛段同步为引号 PASS / 四键待取证</td></tr>
+<tr><td><code>docs/handover/HANDOVER.md</code></td><td><strong>更新</strong></td><td>里程碑表 M3 状态原写「未开始」，已改为「第一批+shift 修复已落地、六键 PASS、剩余项」</td></tr>
+<tr><td><code>docs/plan/PLAN-MODULARIZATION.md</code></td><td>不改</td><td>仅历史设计记录（X2 序、M3 机制清单），无本轮行为/状态事实；旧数字属当时快照，不追改</td></tr>
+<tr><td><code>framework/README.md</code>、<code>pinyin/README.md</code>、<code>README.md</code></td><td>不改</td><td>描述 Scheme/Engine 通用契约，本轮仅标点接口返回类型 char32_t→u32string 的接口微调；<code>grep</code> 未命中需同步的具体断言</td></tr>
+<tr><td><code>docs/handover/HANDOVER.md</code> §技术栈/架构图</td><td>不改</td><td>结构未变（新增的是框架内头文件 key_char.hpp/punctuation.hpp），HANDOVER 目录树不列到头文件级</td></tr>
+<tr><td>其余约 165 份文档 + 全部 1707 条漂移</td><td>不改</td><td>文档对账判定零真实漂移；所列均为 Windows 路径/URL/历史路径/第三方 noVNC 文档的历史噪声，非本轮引入</td></tr>
+</tbody></table></div>
+<h3>同步后门禁复验</h3>
+<ul>
+<li><code>tools/check_docs.py .</code> → <strong>7/7 Passed</strong></li>
+<li><code>tools/check_m1.py --root .</code> → <strong>111/111 Passed</strong></li>
+<li>过程中发现新增 <code>.devloop/文档漂移.json</code> 等闭环工作数据被版本字面量检查（X2-e5）误扫</li>
+</ul>
+<p>（它本意只查代码/构建文件）：<code>skip_dirs</code> 原为 <code>{&quot;.git&quot;,&quot;vendor&quot;,&quot;xingma&quot;,&quot;docs&quot;}</code>， 已加入 <code>&quot;.devloop&quot;</code>。这是门禁扫描范围的修正，不放宽任何检查项——<code>version_exempt</code> 与正则均未动，产品代码仍一个字面量都逃不掉。永久修复，替代以往「挪走临时 JSON」的权宜做法。</p></section>
+<footer>由 dev-loop 生成 · 报告只读，改动请在 .devloop/ 下的 Markdown 里做</footer>
+</div></body></html>

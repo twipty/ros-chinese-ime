@@ -1,0 +1,3819 @@
+{
+  "generated_at": "2026-11-23 22:26:57",
+  "targets": [
+    "tools/install-rospinyin/install.cpp",
+    "tools/install-rospinyin/CMakeLists.txt",
+    "ime/rospinyin_res.rc",
+    "CMakeLists.txt",
+    ".github/workflows/ci.yml",
+    "tools/check_m1.py"
+  ],
+  "nodes": [
+    {
+      "file": ".github/workflows/ci.yml",
+      "level": 0
+    },
+    {
+      "file": "CMakeLists.txt",
+      "level": 0
+    },
+    {
+      "file": "ime/rospinyin_res.rc",
+      "level": 0
+    },
+    {
+      "file": "tools/check_m1.py",
+      "level": 0
+    },
+    {
+      "file": "tools/install-rospinyin/CMakeLists.txt",
+      "level": 0
+    },
+    {
+      "file": "tools/install-rospinyin/install.cpp",
+      "level": 0
+    },
+    {
+      "file": "framework/include/imfw/code_table.hpp",
+      "level": 1
+    },
+    {
+      "file": "framework/include/imfw/dat_format.hpp",
+      "level": 1
+    },
+    {
+      "file": "framework/include/imfw/host.hpp",
+      "level": 1
+    },
+    {
+      "file": "framework/include/imfw/scheme.hpp",
+      "level": 1
+    },
+    {
+      "file": "framework/include/imfw/scheme_registry.hpp",
+      "level": 1
+    },
+    {
+      "file": "framework/include/imfw/trace_stamp.hpp",
+      "level": 1
+    },
+    {
+      "file": "framework/platform/win32/imm32/dllmain.cpp",
+      "level": 1
+    },
+    {
+      "file": "framework/platform/win32/imm32/key_translate.cpp",
+      "level": 1
+    },
+    {
+      "file": "framework/platform/win32/imm32/session_store.cpp",
+      "level": 1
+    },
+    {
+      "file": "framework/platform/win32/imm32/win32_host.h",
+      "level": 1
+    },
+    {
+      "file": "framework/platform/win32/ui/ime_ui.cpp",
+      "level": 1
+    },
+    {
+      "file": "framework/src/code_table.cpp",
+      "level": 1
+    },
+    {
+      "file": "framework/src/scheme_registry.cpp",
+      "level": 1
+    },
+    {
+      "file": "ime/rospinyin.h",
+      "level": 1
+    },
+    {
+      "file": "m0/vm/common.sh",
+      "level": 1
+    },
+    {
+      "file": "m0/vm/noVNC-1.5.0/app/ui.js",
+      "level": 1
+    },
+    {
+      "file": "m0/vm/noVNC-1.5.0/app/webutil.js",
+      "level": 1
+    },
+    {
+      "file": "m0/vm/noVNC-1.5.0/core/rfb.js",
+      "level": 1
+    },
+    {
+      "file": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "level": 1
+    },
+    {
+      "file": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "level": 1
+    },
+    {
+      "file": "m0/vm/noVNC-1.5.0/snap/local/svc_wrapper.sh",
+      "level": 1
+    },
+    {
+      "file": "m0/vm/noVNC-1.5.0/tests/test.browser.js",
+      "level": 1
+    },
+    {
+      "file": "m0/vm/noVNC-1.5.0/tests/test.helper.js",
+      "level": 1
+    },
+    {
+      "file": "m0/vm/noVNC-1.5.0/tests/test.keyboard.js",
+      "level": 1
+    },
+    {
+      "file": "m0/vm/noVNC-1.5.0/tests/test.localization.js",
+      "level": 1
+    },
+    {
+      "file": "m0/vm/noVNC-1.5.0/tests/test.rfb.js",
+      "level": 1
+    },
+    {
+      "file": "m0/vm/noVNC-1.5.0/tests/test.websock.js",
+      "level": 1
+    },
+    {
+      "file": "m0/vm/noVNC-1.5.0/tests/test.webutil.js",
+      "level": 1
+    },
+    {
+      "file": "m0/vm/probe-n.sh",
+      "level": 1
+    },
+    {
+      "file": "m0/vm/run-reactos-install.sh",
+      "level": 1
+    },
+    {
+      "file": "pinyin/host/dat_source_win.cpp",
+      "level": 1
+    },
+    {
+      "file": "pinyin/include/rospinyin/dat_source.hpp",
+      "level": 1
+    },
+    {
+      "file": "pinyin/include/rospinyin/pinyin.hpp",
+      "level": 1
+    },
+    {
+      "file": "pinyin/src/dat_source.cpp",
+      "level": 1
+    }
+  ],
+  "edges": [
+    {
+      "from": "tools/install-rospinyin/install.cpp",
+      "to": "tools/install-rospinyin/CMakeLists.txt",
+      "symbols": [
+        "CMakeLists"
+      ]
+    },
+    {
+      "from": "tools/install-rospinyin/install.cpp",
+      "to": "CMakeLists.txt",
+      "symbols": [
+        "CMakeLists"
+      ]
+    },
+    {
+      "from": "tools/install-rospinyin/install.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check",
+        "check_m1"
+      ]
+    },
+    {
+      "from": "tools/install-rospinyin/CMakeLists.txt",
+      "to": "tools/install-rospinyin/install.cpp",
+      "symbols": [
+        "install"
+      ]
+    },
+    {
+      "from": "ime/rospinyin_res.rc",
+      "to": "tools/install-rospinyin/CMakeLists.txt",
+      "symbols": [
+        "CMakeLists"
+      ]
+    },
+    {
+      "from": "ime/rospinyin_res.rc",
+      "to": "CMakeLists.txt",
+      "symbols": [
+        "CMakeLists"
+      ]
+    },
+    {
+      "from": "CMakeLists.txt",
+      "to": "tools/install-rospinyin/install.cpp",
+      "symbols": [
+        "install"
+      ]
+    },
+    {
+      "from": "CMakeLists.txt",
+      "to": "ime/rospinyin_res.rc",
+      "symbols": [
+        "rospinyin_res"
+      ]
+    },
+    {
+      "from": "CMakeLists.txt",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": ".github/workflows/ci.yml",
+      "to": "tools/install-rospinyin/install.cpp",
+      "symbols": [
+        "install"
+      ]
+    },
+    {
+      "from": ".github/workflows/ci.yml",
+      "to": "ime/rospinyin_res.rc",
+      "symbols": [
+        "rospinyin_res"
+      ]
+    },
+    {
+      "from": ".github/workflows/ci.yml",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check",
+        "check_m1"
+      ]
+    },
+    {
+      "from": "tools/check_m1.py",
+      "to": "tools/install-rospinyin/install.cpp",
+      "symbols": [
+        "install"
+      ]
+    },
+    {
+      "from": "tools/check_m1.py",
+      "to": "tools/install-rospinyin/CMakeLists.txt",
+      "symbols": [
+        "CMakeLists"
+      ]
+    },
+    {
+      "from": "tools/check_m1.py",
+      "to": "ime/rospinyin_res.rc",
+      "symbols": [
+        "rospinyin_res"
+      ]
+    },
+    {
+      "from": "tools/check_m1.py",
+      "to": "CMakeLists.txt",
+      "symbols": [
+        "CMakeLists"
+      ]
+    },
+    {
+      "from": "m0/vm/common.sh",
+      "to": "tools/install-rospinyin/install.cpp",
+      "symbols": [
+        "install"
+      ]
+    },
+    {
+      "from": "m0/vm/run-reactos-install.sh",
+      "to": "tools/install-rospinyin/install.cpp",
+      "symbols": [
+        "install"
+      ]
+    },
+    {
+      "from": "m0/vm/probe-n.sh",
+      "to": "tools/install-rospinyin/install.cpp",
+      "symbols": [
+        "install"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/app/ui.js",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check",
+        "read"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/app/webutil.js",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/rfb.js",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check",
+        "read"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/snap/local/svc_wrapper.sh",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check",
+        "read"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.browser.js",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.helper.js",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.keyboard.js",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.localization.js",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.rfb.js",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.websock.js",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.webutil.js",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "ime/rospinyin.h",
+      "to": "ime/rospinyin_res.rc",
+      "symbols": [
+        "rospinyin_res"
+      ]
+    },
+    {
+      "from": "ime/rospinyin.h",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check_m1"
+      ]
+    },
+    {
+      "from": "ime/rospinyin.h",
+      "to": "tools/install-rospinyin/install.cpp",
+      "symbols": [
+        "install"
+      ]
+    },
+    {
+      "from": "tools/ime_chain_diff.py",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "summary"
+      ]
+    },
+    {
+      "from": "tools/push_via_api.py",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check",
+        "read"
+      ]
+    },
+    {
+      "from": "tools/make_release.py",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "tools/check_release_version.py",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check",
+        "check_m1",
+        "read"
+      ]
+    },
+    {
+      "from": "tools/check_docs.py",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "Checker",
+        "check",
+        "read",
+        "summary"
+      ]
+    },
+    {
+      "from": "tools/compare_ime.py",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "tools/artifact_hashes.py",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check",
+        "read"
+      ]
+    },
+    {
+      "from": "tools/artifact_hashes.py",
+      "to": "tools/install-rospinyin/install.cpp",
+      "symbols": [
+        "install"
+      ]
+    },
+    {
+      "from": "tools/seams.py",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check_m1"
+      ]
+    },
+    {
+      "from": "tools/syntax_stub/windows.h",
+      "to": "tools/install-rospinyin/install.cpp",
+      "symbols": [
+        "install"
+      ]
+    },
+    {
+      "from": "tools/syntax_stub/windows.h",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check"
+      ]
+    },
+    {
+      "from": "tools/syntax_stub/imm.h",
+      "to": "tools/install-rospinyin/install.cpp",
+      "symbols": [
+        "install"
+      ]
+    },
+    {
+      "from": "tools/syntax_stub/imm.h",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check"
+      ]
+    },
+    {
+      "from": "tools/httpdl/http_dl.c",
+      "to": "tools/install-rospinyin/install.cpp",
+      "symbols": [
+        "install"
+      ]
+    },
+    {
+      "from": "tools/httpdl/http_dl.c",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check"
+      ]
+    },
+    {
+      "from": "tools/mkdat/fetch_data.py",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check",
+        "read"
+      ]
+    },
+    {
+      "from": "tools/mkdat/build_dat.sh",
+      "to": "tools/install-rospinyin/install.cpp",
+      "symbols": [
+        "install"
+      ]
+    },
+    {
+      "from": "tools/mkdat/export_cmap.py",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "tools/rhash/rhash.c",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check",
+        "read"
+      ]
+    },
+    {
+      "from": "tools/workarea_probe/wintree_probe.c",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "tools/workarea_probe/dat_probe.c",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "tools/workarea_probe/ime_reg_probe.c",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "tests/check_mkdat.py",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check"
+      ]
+    },
+    {
+      "from": "tests/pinyin_test.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check"
+      ]
+    },
+    {
+      "from": "tests/candidate_pager_test.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check"
+      ]
+    },
+    {
+      "from": "tests/emit_text_test.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check"
+      ]
+    },
+    {
+      "from": "tests/utf8_test.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check"
+      ]
+    },
+    {
+      "from": "tests/code_table_test.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check",
+        "read"
+      ]
+    },
+    {
+      "from": "tests/scheme_registry_test.cpp",
+      "to": "tools/install-rospinyin/install.cpp",
+      "symbols": [
+        "install"
+      ]
+    },
+    {
+      "from": "tests/scheme_registry_test.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check"
+      ]
+    },
+    {
+      "from": "tests/toy_scheme_test.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check"
+      ]
+    },
+    {
+      "from": "tests/host_key_test.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check"
+      ]
+    },
+    {
+      "from": "tests/host_smoke_test.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check"
+      ]
+    },
+    {
+      "from": "tests/key_route_test.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check"
+      ]
+    },
+    {
+      "from": "tests/toolbar_text_test.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check"
+      ]
+    },
+    {
+      "from": "tests/pinyin_session_test.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check"
+      ]
+    },
+    {
+      "from": "tests/builtin_gate_test.cpp",
+      "to": "tools/install-rospinyin/install.cpp",
+      "symbols": [
+        "install"
+      ]
+    },
+    {
+      "from": "tests/builtin_gate_test.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check"
+      ]
+    },
+    {
+      "from": "tests/scheme_test.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check"
+      ]
+    },
+    {
+      "from": "tests/punctuation_test.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check"
+      ]
+    },
+    {
+      "from": "tests/key_char_test.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check"
+      ]
+    },
+    {
+      "from": "xingma/tools/mkdat-shape/make_pack.py",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/dat_format.hpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/code_table.hpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/scheme_registry.hpp",
+      "to": "tools/install-rospinyin/install.cpp",
+      "symbols": [
+        "install"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/host.hpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/trace_stamp.hpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/scheme.hpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/scheme.hpp",
+      "to": "tools/install-rospinyin/install.cpp",
+      "symbols": [
+        "install"
+      ]
+    },
+    {
+      "from": "framework/src/code_table.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check"
+      ]
+    },
+    {
+      "from": "framework/src/scheme_registry.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "framework/src/scheme_registry.cpp",
+      "to": "tools/install-rospinyin/install.cpp",
+      "symbols": [
+        "install"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/dllmain.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check_m1"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/dllmain.cpp",
+      "to": "tools/install-rospinyin/CMakeLists.txt",
+      "symbols": [
+        "CMakeLists"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/session_store.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "check"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/key_translate.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/win32_host.h",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/ime_ui.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "pinyin/include/rospinyin/pinyin.hpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "pinyin/include/rospinyin/dat_source.hpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "pinyin/src/dat_source.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "pinyin/src/dat_source.cpp",
+      "to": "tools/install-rospinyin/CMakeLists.txt",
+      "symbols": [
+        "CMakeLists"
+      ]
+    },
+    {
+      "from": "pinyin/src/scheme.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "pinyin/src/scheme.cpp",
+      "to": "tools/install-rospinyin/install.cpp",
+      "symbols": [
+        "install"
+      ]
+    },
+    {
+      "from": "pinyin/host/dat_source_win.cpp",
+      "to": "tools/check_m1.py",
+      "symbols": [
+        "read"
+      ]
+    },
+    {
+      "from": "pinyin/host/dat_source_win.cpp",
+      "to": "tools/install-rospinyin/CMakeLists.txt",
+      "symbols": [
+        "CMakeLists"
+      ]
+    },
+    {
+      "from": "samples/toy-scheme/toy_scheme.hpp",
+      "to": "tools/install-rospinyin/install.cpp",
+      "symbols": [
+        "install"
+      ]
+    },
+    {
+      "from": "m0/vm/vm-doubleclick.py",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "m0/vm/vm-doubleclick.py",
+      "to": "tests/check_mkdat.py",
+      "symbols": [
+        "decode"
+      ]
+    },
+    {
+      "from": "m0/vm/vnc_key.py",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "m0/vm/vnc_key.py",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "KeyEvent"
+      ]
+    },
+    {
+      "from": "m0/vm/vnc_key.py",
+      "to": "m0/vm/noVNC-1.5.0/core/rfb.js",
+      "symbols": [
+        "RFB"
+      ]
+    },
+    {
+      "from": "m0/vm/vnc_key.py",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "token"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/eslint.config.mjs",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/eslint.config.mjs",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "off"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/karma.conf.js",
+      "to": "m0/vm/noVNC-1.5.0/app/webutil.js",
+      "symbols": [
+        "webutil"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/karma.conf.js",
+      "to": "tools/compare_ime.py",
+      "symbols": [
+        "runs"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/app/error-handler.js",
+      "to": "m0/vm/noVNC-1.5.0/core/rfb.js",
+      "symbols": [
+        "blur",
+        "focus"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/app/error-handler.js",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/app/localization.js",
+      "to": "tools/mkdat/fetch_data.py",
+      "symbols": [
+        "download"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/base64.js",
+      "to": "tests/check_mkdat.py",
+      "symbols": [
+        "decode"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/display.js",
+      "to": "m0/vm/noVNC-1.5.0/core/rfb.js",
+      "symbols": [
+        "blur",
+        "clipViewport",
+        "getImageData",
+        "toBlob",
+        "toDataURL"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/display.js",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/display.js",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "change",
+        "clear"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/display.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "flush"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/inflator.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "flush"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/ra2.js",
+      "to": "m0/vm/noVNC-1.5.0/core/rfb.js",
+      "symbols": [
+        "approveServer",
+        "disconnect"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/ra2.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "flush",
+        "rQpeekBytes",
+        "rQshift16",
+        "rQshift32",
+        "rQshiftBytes",
+        "rQwait",
+        "sQpushBytes"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/ra2.js",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "short"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/crypto/rsa.js",
+      "to": "tests/check_mkdat.py",
+      "symbols": [
+        "decode"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/decoders/copyrect.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "rQshift16",
+        "rQwait"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/decoders/hextile.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "off",
+        "rQpeek8",
+        "rQpeekBytes",
+        "rQshift8",
+        "rQshiftBytes",
+        "rQwait"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/decoders/jpeg.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "rQpeekBytes",
+        "rQshift16",
+        "rQshift8",
+        "rQshiftBytes",
+        "rQwait"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/decoders/raw.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "rQshiftBytes",
+        "rQwait"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/decoders/rre.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "rQshift16",
+        "rQshift32",
+        "rQshiftBytes",
+        "rQwait"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/decoders/tight.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "rQpeek8",
+        "rQshift8",
+        "rQshiftBytes",
+        "rQshiftTo",
+        "rQskipBytes",
+        "rQwait"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/decoders/zrle.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "rQshift32",
+        "rQshiftBytes",
+        "rQwait"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/decoders/zrle.js",
+      "to": "m0/vm/noVNC-1.5.0/core/rfb.js",
+      "symbols": [
+        "background"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/input/gesturehandler.js",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "detach"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/input/gesturehandler.js",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/input/gesturehandler.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "attach"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/input/gesturehandler.js",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/input/gesturehandler.js",
+      "to": "tools/ime_chain_diff.py",
+      "symbols": [
+        "events"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/input/keyboard.js",
+      "to": "m0/vm/noVNC-1.5.0/core/rfb.js",
+      "symbols": [
+        "blur",
+        "focus"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/input/keyboard.js",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "short",
+        "when"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/input/keyboard.js",
+      "to": "tests/check_mkdat.py",
+      "symbols": [
+        "fail"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/input/keyboard.js",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "change"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/input/keyboard.js",
+      "to": "tools/ime_chain_diff.py",
+      "symbols": [
+        "events"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/input/keysym.js",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "Cursor"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/input/keysymdef.js",
+      "to": "m0/vm/noVNC-1.5.0/core/rfb.js",
+      "symbols": [
+        "RFB"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/input/util.js",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/input/vkeys.js",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/util/browser.js",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "scheme"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/util/browser.js",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "cursor"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/util/events.js",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "cursor"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/util/events.js",
+      "to": "tools/ime_chain_diff.py",
+      "symbols": [
+        "events"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/util/events.js",
+      "to": "m0/vm/noVNC-1.5.0/core/rfb.js",
+      "symbols": [
+        "disconnect"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/util/events.js",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/util/eventtarget.js",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/core/util/logging.js",
+      "to": "m0/vm/noVNC-1.5.0/app/webutil.js",
+      "symbols": [
+        "initLogging"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/assertions.js",
+      "to": "m0/vm/noVNC-1.5.0/core/rfb.js",
+      "symbols": [
+        "getImageData"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/assertions.js",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/fake.websocket.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "readyState"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/fake.websocket.js",
+      "to": "tests/host_smoke_test.cpp",
+      "symbols": [
+        "Event"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/fake.websocket.js",
+      "to": "tests/check_mkdat.py",
+      "symbols": [
+        "decode"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/playback-ui.js",
+      "to": "m0/vm/noVNC-1.5.0/app/webutil.js",
+      "symbols": [
+        "getQueryVar",
+        "webutil"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/playback-ui.js",
+      "to": "tests/check_mkdat.py",
+      "symbols": [
+        "decode"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/playback.js",
+      "to": "m0/vm/noVNC-1.5.0/core/rfb.js",
+      "symbols": [
+        "RFB",
+        "disconnect",
+        "sendCredentials",
+        "viewOnly"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/playback.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "flush",
+        "readyState"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.base64.js",
+      "to": "tests/check_mkdat.py",
+      "symbols": [
+        "decode"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.copyrect.js",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.copyrect.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "Websock",
+        "websock"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.display.js",
+      "to": "m0/vm/noVNC-1.5.0/core/rfb.js",
+      "symbols": [
+        "clipViewport",
+        "toDataURL"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.display.js",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "change",
+        "move"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.display.js",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.display.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "flush"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.display.js",
+      "to": "tests/check_mkdat.py",
+      "symbols": [
+        "decode"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.gesturehandler.js",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "detach"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.gesturehandler.js",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.gesturehandler.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "attach"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.hextile.js",
+      "to": "tests/check_mkdat.py",
+      "symbols": [
+        "fail"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.hextile.js",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.hextile.js",
+      "to": "m0/vm/noVNC-1.5.0/tests/test.rfb.js",
+      "symbols": [
+        "push32"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.hextile.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "Websock",
+        "websock"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.jpeg.js",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.jpeg.js",
+      "to": "tools/ime_chain_diff.py",
+      "symbols": [
+        "diff"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.jpeg.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "Websock",
+        "flush",
+        "websock"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.raw.js",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.raw.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "Websock",
+        "websock"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.rre.js",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.rre.js",
+      "to": "m0/vm/noVNC-1.5.0/tests/test.rfb.js",
+      "symbols": [
+        "push16",
+        "push32"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.rre.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "Websock",
+        "websock"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.tight.js",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.tight.js",
+      "to": "tools/ime_chain_diff.py",
+      "symbols": [
+        "diff"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.tight.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "Websock",
+        "flush",
+        "websock"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.tightpng.js",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.tightpng.js",
+      "to": "tools/ime_chain_diff.py",
+      "symbols": [
+        "diff"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.tightpng.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "Websock",
+        "flush",
+        "websock"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.util.js",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.util.js",
+      "to": "m0/vm/noVNC-1.5.0/app/webutil.js",
+      "symbols": [
+        "initLogging"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.util.js",
+      "to": "tests/check_mkdat.py",
+      "symbols": [
+        "decode"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.zrle.js",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.zrle.js",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "Websock",
+        "websock"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/tests/test.zrle.js",
+      "to": "tests/check_mkdat.py",
+      "symbols": [
+        "fail"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/utils/b64-to-binary.pl",
+      "to": "xingma/tools/mkdat-shape/make_pack.py",
+      "symbols": [
+        "die"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/utils/b64-to-binary.pl",
+      "to": "tests/check_mkdat.py",
+      "symbols": [
+        "decode"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/utils/convert.js",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "clear",
+        "move"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/utils/convert.js",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/utils/convert.js",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "m0/vm/noVNC-1.5.0/utils/genkeysymdef.js",
+      "to": "m0/vm/noVNC-1.5.0/core/rfb.js",
+      "symbols": [
+        "RFB"
+      ]
+    },
+    {
+      "from": "ime/resource.h",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "ime/resource.h",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "ime/resource.h",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "ime/scheme_reg.cpp",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "Scheme",
+        "scheme"
+      ]
+    },
+    {
+      "from": "ime/scheme_reg.cpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "ime/scheme_reg.cpp",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "ime/scheme_reg.cpp",
+      "to": "framework/include/imfw/scheme_registry.hpp",
+      "symbols": [
+        "scheme_registry"
+      ]
+    },
+    {
+      "from": "ime/version.h",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "ime/version.h",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "ime/version.h",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "ime/version.h",
+      "to": "tools/check_release_version.py",
+      "symbols": [
+        "check_release_version"
+      ]
+    },
+    {
+      "from": "ime/scheme_reg_toy.cpp",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "Scheme",
+        "scheme"
+      ]
+    },
+    {
+      "from": "ime/scheme_reg_toy.cpp",
+      "to": "samples/toy-scheme/toy_scheme.hpp",
+      "symbols": [
+        "ToyScheme",
+        "toy_scheme"
+      ]
+    },
+    {
+      "from": "ime/scheme_reg_toy.cpp",
+      "to": "framework/include/imfw/scheme_registry.hpp",
+      "symbols": [
+        "scheme_registry"
+      ]
+    },
+    {
+      "from": "tools/coverage_report.py",
+      "to": "tools/mkdat/build_dat.sh",
+      "symbols": [
+        "build_dat"
+      ]
+    },
+    {
+      "from": "tools/coverage_report.py",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "wanted",
+        "when"
+      ]
+    },
+    {
+      "from": "tools/coverage_report.py",
+      "to": "tools/compare_ime.py",
+      "symbols": [
+        "say"
+      ]
+    },
+    {
+      "from": "tools/coverage_report.py",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "tools/coverage_report.py",
+      "to": "tests/check_mkdat.py",
+      "symbols": [
+        "decode",
+        "fail"
+      ]
+    },
+    {
+      "from": "tools/coverage_report.py",
+      "to": "tools/check_release_version.py",
+      "symbols": [
+        "first_entry"
+      ]
+    },
+    {
+      "from": "tools/coverage_report.py",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "tools/coverage_report.py",
+      "to": "tools/seams.py",
+      "symbols": [
+        "count"
+      ]
+    },
+    {
+      "from": "tools/coverage_report.py",
+      "to": "framework/include/imfw/dat_format.hpp",
+      "symbols": [
+        "CharEntry"
+      ]
+    },
+    {
+      "from": "tools/vm_clock.py",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "tools/vm_clock.py",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "host"
+      ]
+    },
+    {
+      "from": "tools/vm_clock.py",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "artifact_hashes"
+      ]
+    },
+    {
+      "from": "tools/mkdat/mkdat.cpp",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "clear",
+        "move"
+      ]
+    },
+    {
+      "from": "tools/mkdat/mkdat.cpp",
+      "to": "tools/mkdat/build_dat.sh",
+      "symbols": [
+        "build_dat"
+      ]
+    },
+    {
+      "from": "tools/mkdat/mkdat.cpp",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "wanted"
+      ]
+    },
+    {
+      "from": "tools/mkdat/mkdat.cpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "tools/mkdat/mkdat.cpp",
+      "to": "framework/include/imfw/dat_format.hpp",
+      "symbols": [
+        "CharEntry",
+        "Header",
+        "SylEntry",
+        "dat_format"
+      ]
+    },
+    {
+      "from": "tools/mkdat/mkdat.cpp",
+      "to": "tests/check_mkdat.py",
+      "symbols": [
+        "fail"
+      ]
+    },
+    {
+      "from": "tools/mkdat/mkdat.cpp",
+      "to": "tools/check_release_version.py",
+      "symbols": [
+        "first_entry"
+      ]
+    },
+    {
+      "from": "tools/mkdat/mkdat.cpp",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "token"
+      ]
+    },
+    {
+      "from": "tools/mkdat/mkdat.cpp",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "tools/mkdat/mkdat.cpp",
+      "to": "tools/mkdat/export_cmap.py",
+      "symbols": [
+        "export_cmap"
+      ]
+    },
+    {
+      "from": "tools/mkdat/mkdat.cpp",
+      "to": "tools/mkdat/fetch_data.py",
+      "symbols": [
+        "fetch_data"
+      ]
+    },
+    {
+      "from": "tools/mkdat/mkdat.cpp",
+      "to": "tools/ime_chain_diff.py",
+      "symbols": [
+        "pick"
+      ]
+    },
+    {
+      "from": "tools/mkdat/mkdat.cpp",
+      "to": "tools/seams.py",
+      "symbols": [
+        "count"
+      ]
+    },
+    {
+      "from": "tools/workarea_probe/workarea_probe.c",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "RECT",
+        "SIZE",
+        "windows"
+      ]
+    },
+    {
+      "from": "tools/workarea_probe/workarea_probe.c",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "tools/workarea_probe/hit_probe.c",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "POINT",
+        "RECT",
+        "windows"
+      ]
+    },
+    {
+      "from": "tools/workarea_probe/toggle_probe.c",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "windows"
+      ]
+    },
+    {
+      "from": "tools/fonts/make_probe_fonts.py",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "tools/fonts/make_probe_fonts.py",
+      "to": "tools/seams.py",
+      "symbols": [
+        "count"
+      ]
+    },
+    {
+      "from": "tests/smoke_test.cpp",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "tests/smoke_test.cpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "tests/session_test.cpp",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "tests/session_test.cpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "tests/session_test.cpp",
+      "to": "tests/check_mkdat.py",
+      "symbols": [
+        "fail"
+      ]
+    },
+    {
+      "from": "tests/session_test.cpp",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "Host"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/engine.hpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/engine.hpp",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "host"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/candidate_pager.hpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/candidate_pager.hpp",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "host"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/candidate_pager.hpp",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/session.hpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/session.hpp",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "host"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/version.hpp",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/emit_text.hpp",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/emit_text.hpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/emit_text.hpp",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/emit_text.hpp",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "host"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/emit_text.hpp",
+      "to": "tools/compare_ime.py",
+      "symbols": [
+        "runs"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/utf8.hpp",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "host"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/session_state.hpp",
+      "to": "m0/vm/noVNC-1.5.0/core/rfb.js",
+      "symbols": [
+        "focus"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/session_state.hpp",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/session_state.hpp",
+      "to": "framework/platform/win32/imm32/session_store.cpp",
+      "symbols": [
+        "session_store"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/session_state.hpp",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "host"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/session_state.hpp",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "change"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/intent.hpp",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "Scheme",
+        "scheme"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/intent.hpp",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "KeyEvent",
+        "host"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/intent.hpp",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/intent.hpp",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/intent.hpp",
+      "to": "tools/compare_ime.py",
+      "symbols": [
+        "runs"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/intent.hpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "Reading"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/intent.hpp",
+      "to": "tests/key_route_test.cpp",
+      "symbols": [
+        "key_route_test"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/intent.hpp",
+      "to": "tools/ime_chain_diff.py",
+      "symbols": [
+        "pick"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/intent.hpp",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "change"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/toolbar_text.hpp",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "Scheme",
+        "scheme"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/toolbar_text.hpp",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/toolbar_text.hpp",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "host"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/toolbar_text.hpp",
+      "to": "tests/toolbar_text_test.cpp",
+      "symbols": [
+        "toolbar_text_test"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/toolbar_text.hpp",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "windows"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/punctuation.hpp",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/punctuation.hpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/punctuation.hpp",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "host"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/punctuation.hpp",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "scheme"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/punctuation.hpp",
+      "to": "tests/punctuation_test.cpp",
+      "symbols": [
+        "punctuation_test"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/key_char.hpp",
+      "to": "framework/platform/win32/imm32/key_translate.cpp",
+      "symbols": [
+        "key_translate"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/key_char.hpp",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "windows"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/key_char.hpp",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "framework/include/imfw/key_char.hpp",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "host"
+      ]
+    },
+    {
+      "from": "framework/src/candidate_pager.cpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "framework/src/candidate_pager.cpp",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "move"
+      ]
+    },
+    {
+      "from": "framework/src/candidate_pager.cpp",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "framework/src/engine.cpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "framework/src/utf8.cpp",
+      "to": "tools/seams.py",
+      "symbols": [
+        "count"
+      ]
+    },
+    {
+      "from": "framework/src/host_key.cpp",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "Scheme",
+        "scheme"
+      ]
+    },
+    {
+      "from": "framework/src/host_key.cpp",
+      "to": "tests/host_key_test.cpp",
+      "symbols": [
+        "host_key_test"
+      ]
+    },
+    {
+      "from": "framework/src/host_key.cpp",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "change",
+        "clear",
+        "move"
+      ]
+    },
+    {
+      "from": "framework/src/host_key.cpp",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "Host",
+        "KeyEvent",
+        "KeyResult",
+        "host"
+      ]
+    },
+    {
+      "from": "framework/src/host_key.cpp",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "framework/src/host_key.cpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "framework/src/host_key.cpp",
+      "to": "tests/check_mkdat.py",
+      "symbols": [
+        "fail"
+      ]
+    },
+    {
+      "from": "framework/src/host_key.cpp",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "framework/src/host_key.cpp",
+      "to": "tools/compare_ime.py",
+      "symbols": [
+        "runs"
+      ]
+    },
+    {
+      "from": "framework/src/host_key.cpp",
+      "to": "tools/ime_chain_diff.py",
+      "symbols": [
+        "events",
+        "pick"
+      ]
+    },
+    {
+      "from": "framework/src/host_key.cpp",
+      "to": "tools/seams.py",
+      "symbols": [
+        "count"
+      ]
+    },
+    {
+      "from": "framework/src/key_route.cpp",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "Scheme",
+        "scheme"
+      ]
+    },
+    {
+      "from": "framework/src/key_route.cpp",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "KeyEvent"
+      ]
+    },
+    {
+      "from": "framework/src/key_route.cpp",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "framework/src/key_route.cpp",
+      "to": "tools/compare_ime.py",
+      "symbols": [
+        "runs"
+      ]
+    },
+    {
+      "from": "framework/src/key_route.cpp",
+      "to": "tests/key_route_test.cpp",
+      "symbols": [
+        "key_route_test"
+      ]
+    },
+    {
+      "from": "framework/src/toolbar_text.cpp",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "Scheme",
+        "scheme"
+      ]
+    },
+    {
+      "from": "framework/src/toolbar_text.cpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/ime_host.h",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "Scheme",
+        "scheme"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/ime_host.h",
+      "to": "framework/platform/win32/imm32/dllmain.cpp",
+      "symbols": [
+        "dllmain"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/ime_host.h",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "host"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/ime_host.h",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/ime_host.h",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "windows"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/imm32_abi.h",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/imm32_abi.h",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "windows"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/imm32_abi.h",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/imm32_abi.h",
+      "to": "tools/seams.py",
+      "symbols": [
+        "count"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/session_store.hpp",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "Scheme",
+        "scheme"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/session_store.hpp",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "host"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/ui_server.cpp",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "Scheme",
+        "scheme"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/ui_server.cpp",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "WNDCLASSEXW",
+        "windows"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/trace_line.h",
+      "to": "framework/platform/win32/imm32/dllmain.cpp",
+      "symbols": [
+        "dllmain"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/trace_line.h",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/trace_line.h",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/trace_line.h",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/trace_line.h",
+      "to": "tools/compare_ime.py",
+      "symbols": [
+        "runs"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/trace_line.cpp",
+      "to": "framework/include/imfw/trace_stamp.hpp",
+      "symbols": [
+        "trace_stamp"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/trace_line.cpp",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "detach"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/trace_line.cpp",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "attach",
+        "off"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/trace_line.cpp",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "windows"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/trace_line.cpp",
+      "to": "tools/seams.py",
+      "symbols": [
+        "count"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/key_translate.h",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "KeyEvent",
+        "host"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/win32_host.cpp",
+      "to": "framework/platform/win32/imm32/win32_host.h",
+      "symbols": [
+        "Win32Host",
+        "win32_host"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/win32_host.cpp",
+      "to": "tools/compare_ime.py",
+      "symbols": [
+        "say"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/win32_host.cpp",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/win32_host.cpp",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/win32_host.cpp",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "host"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/win32_host.cpp",
+      "to": "framework/platform/win32/ui/ime_ui.cpp",
+      "symbols": [
+        "ime_ui"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/win32_host.cpp",
+      "to": "framework/platform/win32/imm32/session_store.cpp",
+      "symbols": [
+        "session_store"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/ime_ui.h",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "Scheme",
+        "scheme"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/ime_ui.h",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/ime_ui.h",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/ime_ui.h",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "host"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/ime_ui.h",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "windows"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/imm_entry.cpp",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "Scheme",
+        "scheme"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/imm_entry.cpp",
+      "to": "m0/vm/noVNC-1.5.0/core/rfb.js",
+      "symbols": [
+        "focus"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/imm_entry.cpp",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "KeyEvent",
+        "KeyResult",
+        "host"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/imm_entry.cpp",
+      "to": "framework/platform/win32/imm32/win32_host.h",
+      "symbols": [
+        "Win32Host",
+        "win32_host"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/imm_entry.cpp",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/imm_entry.cpp",
+      "to": "tests/check_mkdat.py",
+      "symbols": [
+        "fail"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/imm_entry.cpp",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/imm_entry.cpp",
+      "to": "framework/platform/win32/ui/ime_ui.cpp",
+      "symbols": [
+        "ime_ui"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/imm_entry.cpp",
+      "to": "framework/platform/win32/imm32/key_translate.cpp",
+      "symbols": [
+        "key_translate"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/imm_entry.cpp",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "windows"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/imm_entry.cpp",
+      "to": "tools/compare_ime.py",
+      "symbols": [
+        "runs"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/imm_entry.cpp",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "change"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/imm32/imm_entry.cpp",
+      "to": "framework/platform/win32/imm32/session_store.cpp",
+      "symbols": [
+        "session_store"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/candidate_window.cpp",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "clear",
+        "move"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/candidate_window.cpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/candidate_window.cpp",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "RECT",
+        "SIZE",
+        "windows"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/candidate_window.cpp",
+      "to": "tools/seams.py",
+      "symbols": [
+        "count"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/candidate_window.h",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "Scheme"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/candidate_window.h",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/candidate_window.h",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "RECT"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/composition_window.cpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/composition_window.cpp",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "RECT",
+        "SIZE",
+        "windows"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/composition_window.cpp",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/composition_window.cpp",
+      "to": "framework/platform/win32/ui/ime_ui.cpp",
+      "symbols": [
+        "ime_ui"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/composition_window.cpp",
+      "to": "tools/seams.py",
+      "symbols": [
+        "count"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/composition_window.cpp",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "clear"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/composition_window.h",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "Scheme"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/composition_window.h",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/composition_window.h",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "RECT"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/ui_window.cpp",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "Scheme"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/ui_window.cpp",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "CRITICAL_SECTION",
+        "PAINTSTRUCT",
+        "RECT",
+        "WNDCLASSEXW",
+        "windows"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/ui_window.cpp",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "move"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/ui_window.cpp",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/ui_window.cpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/ui_window.cpp",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/ui_window.cpp",
+      "to": "tools/ime_chain_diff.py",
+      "symbols": [
+        "pick"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/ui_window.cpp",
+      "to": "framework/platform/win32/imm32/session_store.cpp",
+      "symbols": [
+        "session_store"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/ui_window.h",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "Scheme"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/ui_window.h",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/ui_window.h",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/ui_window.h",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/ui_window.h",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "RECT",
+        "windows"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/toolbar.cpp",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "move"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/toolbar.cpp",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/toolbar.cpp",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "RECT",
+        "SIZE",
+        "windows"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/toolbar.cpp",
+      "to": "tools/push_via_api.py",
+      "symbols": [
+        "call"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/toolbar.h",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "Scheme",
+        "scheme"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/toolbar.h",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/toolbar.h",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "off"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/toolbar.h",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "RECT"
+      ]
+    },
+    {
+      "from": "framework/platform/win32/ui/toolbar.h",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "change"
+      ]
+    },
+    {
+      "from": "pinyin/include/rospinyin/pinyin_session.hpp",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "Host",
+        "host"
+      ]
+    },
+    {
+      "from": "pinyin/include/rospinyin/pinyin_session.hpp",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "move"
+      ]
+    },
+    {
+      "from": "pinyin/include/rospinyin/pinyin_session.hpp",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "pinyin/include/rospinyin/pinyin_session.hpp",
+      "to": "framework/include/imfw/code_table.hpp",
+      "symbols": [
+        "CodeTable",
+        "code_table"
+      ]
+    },
+    {
+      "from": "pinyin/include/rospinyin/pinyin_session.hpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "pinyin/include/rospinyin/pinyin_session.hpp",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "pinyin/include/rospinyin/version.hpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "pinyin/include/rospinyin/scheme.hpp",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "Scheme",
+        "scheme"
+      ]
+    },
+    {
+      "from": "pinyin/include/rospinyin/scheme.hpp",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "move"
+      ]
+    },
+    {
+      "from": "pinyin/include/rospinyin/scheme.hpp",
+      "to": "pinyin/include/rospinyin/dat_source.hpp",
+      "symbols": [
+        "dat_source"
+      ]
+    },
+    {
+      "from": "pinyin/include/rospinyin/scheme.hpp",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "pinyin/include/rospinyin/scheme.hpp",
+      "to": "framework/include/imfw/code_table.hpp",
+      "symbols": [
+        "CodeTable",
+        "code_table"
+      ]
+    },
+    {
+      "from": "pinyin/include/rospinyin/scheme.hpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "pinyin/include/rospinyin/scheme.hpp",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "pinyin/src/pinyin.cpp",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "pinyin/src/pinyin.cpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "Reading",
+        "pinyin"
+      ]
+    },
+    {
+      "from": "pinyin/src/pinyin_session.cpp",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "clear",
+        "move"
+      ]
+    },
+    {
+      "from": "pinyin/src/pinyin_session.cpp",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "pinyin/src/pinyin_session.cpp",
+      "to": "framework/include/imfw/code_table.hpp",
+      "symbols": [
+        "CodeTable"
+      ]
+    },
+    {
+      "from": "pinyin/src/pinyin_session.cpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "pinyin/src/pinyin_session.cpp",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "host"
+      ]
+    },
+    {
+      "from": "pinyin/src/pinyin_session.cpp",
+      "to": "m0/vm/noVNC-1.5.0/core/websock.js",
+      "symbols": [
+        "off"
+      ]
+    },
+    {
+      "from": "pinyin/src/pinyin_session.cpp",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "pinyin/src/pinyin_session.cpp",
+      "to": "tools/ime_chain_diff.py",
+      "symbols": [
+        "pick"
+      ]
+    },
+    {
+      "from": "samples/toy-scheme/toy_scheme.cpp",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "samples/toy-scheme/toy_scheme.cpp",
+      "to": "samples/toy-scheme/toy_scheme.hpp",
+      "symbols": [
+        "ToyEngine",
+        "ToyScheme",
+        "toy_scheme"
+      ]
+    },
+    {
+      "from": "samples/toy-scheme/toy_scheme.cpp",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "scheme"
+      ]
+    },
+    {
+      "from": "samples/toy-scheme/toy_scheme.cpp",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "clear"
+      ]
+    },
+    {
+      "from": "build-standalone/CMakeFiles/4.5.0/CompilerIdC/CMakeCCompilerId.c",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "windows"
+      ]
+    },
+    {
+      "from": "build-standalone/CMakeFiles/4.5.0/CompilerIdC/CMakeCCompilerId.c",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "change"
+      ]
+    },
+    {
+      "from": "build-standalone/CMakeFiles/4.5.0/CompilerIdC/CMakeCCompilerId.c",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "build-standalone/CMakeFiles/4.5.0/CompilerIdC/CMakeCCompilerId.c",
+      "to": "framework/platform/win32/imm32/session_store.cpp",
+      "symbols": [
+        "Store"
+      ]
+    },
+    {
+      "from": "build-standalone/CMakeFiles/4.5.0/CompilerIdCXX/CMakeCXXCompilerId.cpp",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "windows"
+      ]
+    },
+    {
+      "from": "build-standalone/CMakeFiles/4.5.0/CompilerIdCXX/CMakeCXXCompilerId.cpp",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "change"
+      ]
+    },
+    {
+      "from": "build-standalone/CMakeFiles/4.5.0/CompilerIdCXX/CMakeCXXCompilerId.cpp",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "build-standalone/CMakeFiles/4.5.0/CompilerIdCXX/CMakeCXXCompilerId.cpp",
+      "to": "framework/platform/win32/imm32/session_store.cpp",
+      "symbols": [
+        "Store"
+      ]
+    },
+    {
+      "from": "build-tdd/CMakeFiles/4.5.0/CompilerIdC/CMakeCCompilerId.c",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "windows"
+      ]
+    },
+    {
+      "from": "build-tdd/CMakeFiles/4.5.0/CompilerIdC/CMakeCCompilerId.c",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "change"
+      ]
+    },
+    {
+      "from": "build-tdd/CMakeFiles/4.5.0/CompilerIdC/CMakeCCompilerId.c",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "build-tdd/CMakeFiles/4.5.0/CompilerIdC/CMakeCCompilerId.c",
+      "to": "framework/platform/win32/imm32/session_store.cpp",
+      "symbols": [
+        "Store"
+      ]
+    },
+    {
+      "from": "build-tdd/CMakeFiles/4.5.0/CompilerIdCXX/CMakeCXXCompilerId.cpp",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "windows"
+      ]
+    },
+    {
+      "from": "build-tdd/CMakeFiles/4.5.0/CompilerIdCXX/CMakeCXXCompilerId.cpp",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "change"
+      ]
+    },
+    {
+      "from": "build-tdd/CMakeFiles/4.5.0/CompilerIdCXX/CMakeCXXCompilerId.cpp",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "build-tdd/CMakeFiles/4.5.0/CompilerIdCXX/CMakeCXXCompilerId.cpp",
+      "to": "framework/platform/win32/imm32/session_store.cpp",
+      "symbols": [
+        "Store"
+      ]
+    },
+    {
+      "from": "build-tdd/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "windows"
+      ]
+    },
+    {
+      "from": "build-tdd/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "change"
+      ]
+    },
+    {
+      "from": "build-tdd/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "build-tdd/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c",
+      "to": "framework/platform/win32/imm32/session_store.cpp",
+      "symbols": [
+        "Store"
+      ]
+    },
+    {
+      "from": "build-tdd/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "windows"
+      ]
+    },
+    {
+      "from": "build-tdd/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "change"
+      ]
+    },
+    {
+      "from": "build-tdd/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "build-tdd/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp",
+      "to": "framework/platform/win32/imm32/session_store.cpp",
+      "symbols": [
+        "Store"
+      ]
+    },
+    {
+      "from": "build-host-off/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "windows"
+      ]
+    },
+    {
+      "from": "build-host-off/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "change"
+      ]
+    },
+    {
+      "from": "build-host-off/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "build-host-off/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c",
+      "to": "framework/platform/win32/imm32/session_store.cpp",
+      "symbols": [
+        "Store"
+      ]
+    },
+    {
+      "from": "build-host-off/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "windows"
+      ]
+    },
+    {
+      "from": "build-host-off/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "change"
+      ]
+    },
+    {
+      "from": "build-host-off/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "build-host-off/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp",
+      "to": "framework/platform/win32/imm32/session_store.cpp",
+      "symbols": [
+        "Store"
+      ]
+    },
+    {
+      "from": "build-host-off/pinyin/CMakeFiles/rospinyin-engine.dir/compiler_depend.ts",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-smoke.dir/compiler_depend.ts",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-session.dir/compiler_depend.ts",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-pinyin.dir/compiler_depend.ts",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-pinyin.dir/compiler_depend.ts",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-pinyin-session.dir/compiler_depend.ts",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-pinyin-session.dir/compiler_depend.ts",
+      "to": "pinyin/include/rospinyin/pinyin.hpp",
+      "symbols": [
+        "pinyin"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-candidate-pager.dir/compiler_depend.ts",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-builtin-gate.dir/compiler_depend.ts",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-scheme.dir/compiler_depend.ts",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-scheme.dir/compiler_depend.ts",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "scheme"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-scheme-registry.dir/compiler_depend.ts",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-scheme-registry.dir/compiler_depend.ts",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "scheme"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-toy-scheme.dir/compiler_depend.ts",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-toy-scheme.dir/compiler_depend.ts",
+      "to": "framework/include/imfw/scheme.hpp",
+      "symbols": [
+        "scheme"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-host-key.dir/compiler_depend.ts",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-host-key.dir/compiler_depend.ts",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "host"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-key-route.dir/compiler_depend.ts",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-host-smoke.dir/compiler_depend.ts",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-host-smoke.dir/compiler_depend.ts",
+      "to": "framework/include/imfw/host.hpp",
+      "symbols": [
+        "host"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-toolbar-text.dir/compiler_depend.ts",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-emit-text.dir/compiler_depend.ts",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-utf8.dir/compiler_depend.ts",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-code-table.dir/compiler_depend.ts",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-punctuation.dir/compiler_depend.ts",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "build-host-off/tests/CMakeFiles/rospinyin-key-char.dir/compiler_depend.ts",
+      "to": "ime/rospinyin.h",
+      "symbols": [
+        "rospinyin"
+      ]
+    },
+    {
+      "from": "build-cross/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "windows"
+      ]
+    },
+    {
+      "from": "build-cross/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "change"
+      ]
+    },
+    {
+      "from": "build-cross/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "build-cross/CMakeFiles/4.5.1/CompilerIdC/CMakeCCompilerId.c",
+      "to": "framework/platform/win32/imm32/session_store.cpp",
+      "symbols": [
+        "Store"
+      ]
+    },
+    {
+      "from": "build-cross/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp",
+      "to": "tools/syntax_stub/windows.h",
+      "symbols": [
+        "windows"
+      ]
+    },
+    {
+      "from": "build-cross/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp",
+      "to": "m0/vm/noVNC-1.5.0/core/util/cursor.js",
+      "symbols": [
+        "change"
+      ]
+    },
+    {
+      "from": "build-cross/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp",
+      "to": "tools/artifact_hashes.py",
+      "symbols": [
+        "when"
+      ]
+    },
+    {
+      "from": "build-cross/CMakeFiles/4.5.1/CompilerIdCXX/CMakeCXXCompilerId.cpp",
+      "to": "framework/platform/win32/imm32/session_store.cpp",
+      "symbols": [
+        "Store"
+      ]
+    }
+  ],
+  "truncated": 168
+}
