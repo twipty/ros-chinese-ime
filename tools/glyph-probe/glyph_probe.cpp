@@ -135,9 +135,8 @@ Cell probe_cell(HDC dc, const Face& face, std::uint32_t cp, const GdiApi& api) {
         out.verdict = unicode_range_claims(dc, cp) ? Verdict::HasGlyph : Verdict::NoGlyph;
         out.using_fallback = true;
     }
-
-    // Draw the glyph into the window (screenshot evidence). Wide-char path.
-    TextOutW(dc, 0, 0, text, 1);
+    // Note: glyph drawing happens in WM_PAINT with per-face fonts, not here.
+    // This measurement DC must not paint (0,0) -- that was a redundant draw.
 
     SelectObject(dc, old);
     DeleteObject(font);
@@ -170,15 +169,16 @@ void write_result(const std::vector<std::vector<Cell>>& grid, const GdiApi& api)
     std::fwprintf(f, L"# api.GetGlyphIndicesW=%s fallback=%s\n",
                   api.get_glyph_indices ? L"yes" : L"no",
                   api.get_glyph_indices ? L"no" : L"UnicodeRanges");
-    std::fwprintf(f, L"codepoint\tface\tverdict\tglyph_index\n");
+    std::fwprintf(f, L"codepoint\tface\tverdict\tglyph_index\tvia\n");
     for (std::size_t r = 0; r < kTestPointsCount(); ++r) {
         for (std::size_t c = 0; c < sizeof(kFaces) / sizeof(kFaces[0]); ++c) {
             const Cell& cell = grid[r][c];
-            std::fwprintf(f, L"U+%04X\t%s\t%s\t%u\n",
+            std::fwprintf(f, L"U+%04X\t%s\t%s\t%u\t%s\n",
                           kTestPoints[r].cp,
                           kFaces[c].label,
                           cell_text(cell.verdict).c_str(),
-                          static_cast<unsigned>(cell.glyph));
+                          static_cast<unsigned>(cell.glyph),
+                          cell.using_fallback ? L"UnicodeRanges" : L"GlyphIndices");
         }
     }
     std::fclose(f);
