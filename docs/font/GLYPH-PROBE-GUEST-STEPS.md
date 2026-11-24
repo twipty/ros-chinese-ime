@@ -30,8 +30,13 @@ wget http://10.0.2.2:8000/glyph-probe.exe
 rhash --sha256 C:\glyph-probe.exe
 ```
 
-核对 SHA256（当前构建，2026-11-24 静态运行时修复版）：
-`298551ecffdde81a671ad44adc9e2dac3a56cbbd3cd1eea494d43c414a2b2418`
+核对 SHA256（当前构建，2026-11-24 静态运行时 + UTF-16 代理对修复版）：
+`733554b1edf2310e10378c7e81f5f441a6bb06c43e3124fc2c51623d70dff991`
+
+> **重要：扩展区码点必须用 UTF-16 代理对传给 GDI。** 上一版用
+> `static_cast<wchar_t>(cp)` 把 U+20000 截断成 U+0000，导致所有扩展 B/C 格
+> 显示假 `NONE`（不是字体没装好）。当前版已修，并在宿主测试里钉死编码。
+> 若你之前跑出的矩阵里 WJ-P2/WJ-P3 扩展区全是 NONE，那是旧版的假阴性，请用新版重跑。
 
 > **如果双击报「缺少 DLL / 无法启动」**：那一定拿到旧版了。旧版动态链接了
 > `libgcc_s_dw2-1.dll` + `libstdc++-6.dll`（MinGW 的 C++ 运行时），ReactOS 系统里
@@ -80,12 +85,27 @@ rhash -c SHA256SUMS.txt
 
 工具同时在 exe 同目录生成 `glyph-probe-result.txt`（制表符分隔，可核对）。
 
-### 第 4 步：回传证据
+### 第 4 步：回传证据（三选一，从简到繁）
 
-1. **截图**：把探测窗口整张截下来（要能看清每列的字符和 HAS/NONE）。
-2. **结果文件**：把 `C:\glyph-probe-result.txt` 传回宿主（可放到
-   `http://10.0.2.2:8000/` 下载目录，或用你习惯的方式交回）。
-3. **哈希**：在 guest 里对结果文件算 SHA256 并一起回传：
+结果文件是纯文本（约 1 KB），三种方式任选：
+
+**方式 A（最简单，推荐）· 直接贴文本**：在记事本里打开 `C:\glyph-probe-result.txt`，
+`Ctrl+A` 全选 → `Ctrl+C` 复制，然后直接粘贴到 WorkBuddy 对话框发给我。
+窗口截图也一并发来（要能看清每列字符和 HAS/NONE，用于判断字形是否真是方框）。
+
+**方式 B · 串口重定向（无需网络）**：VM 已把 guest 的 COM1 映射到宿主文件
+`m0/vm/logs/rosdbg.log`。在 guest 命令行执行：
+
+```bat
+type C:\glyph-probe-result.txt > COM1
+```
+
+然后告诉我一声，我直接读宿主那份日志。注意这是**追加**写，重跑前我会先清空。
+
+**方式 C · HTTP 上传**：当前 HTTP 服务只支持下载（guest 的 wget 不支持 POST），
+需要我在宿主另起接收端点，用前先跟我说，我给你一条上传命令。
+
+无论哪种方式，都请同时回传结果文件的 SHA256，便于核对是否传完整：
 
 ```bat
 rhash --sha256 C:\glyph-probe-result.txt

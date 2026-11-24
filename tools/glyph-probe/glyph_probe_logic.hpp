@@ -60,6 +60,33 @@ inline const wchar_t* plane_face_name(WenJinPlane plane) {
     }
 }
 
+// Win32 wchar_t is 16-bit: any codepoint above the BMP must be passed to GDI
+// as a UTF-16 surrogate pair. Truncating with static_cast<wchar_t>(cp) turns
+// U+20000 into U+0000 and silently makes every Ext B/C probe a false NONE.
+// Returns the number of units written (1 for BMP, 2 for supplementary).
+inline int encode_utf16(std::uint32_t cp, std::uint16_t* out) {
+    if (cp <= 0xFFFF) {
+        out[0] = static_cast<std::uint16_t>(cp);
+        out[1] = 0;
+        return 1;
+    }
+    const std::uint32_t v = cp - 0x10000;
+    out[0] = static_cast<std::uint16_t>(0xD800 + (v >> 10));
+    out[1] = static_cast<std::uint16_t>(0xDC00 + (v & 0x3FF));
+    return 2;
+}
+
+// Inverse of encode_utf16, for the round-trip test in the host suite.
+inline std::uint32_t decode_utf16(const std::uint16_t* units, int len) {
+    if (len == 1) return units[0];
+    if (len == 2 && units[0] >= 0xD800 && units[0] <= 0xDBFF &&
+        units[1] >= 0xDC00 && units[1] <= 0xDFFF) {
+        return 0x10000 + ((static_cast<std::uint32_t>(units[0]) - 0xD800) << 10) +
+               (static_cast<std::uint32_t>(units[1]) - 0xDC00);
+    }
+    return 0xFFFFFFFFu;  // invalid sequence
+}
+
 }  // namespace glyph_probe
 
 #endif  // ROSPINYIN_GLYPH_PROBE_LOGIC_HPP

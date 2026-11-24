@@ -78,6 +78,40 @@ int main() {
         ++failures;
     }
 
+    // UTF-16 encoding: Win32 wchar_t is 16-bit, so non-BMP codepoints MUST be
+    // surrogate pairs. A plain static_cast<wchar_t>(cp) truncates U+20000 to
+    // U+0000 (NUL) and makes every Ext B/C probe a false NONE. This is the
+    // exact bug that produced the first guest result matrix -- pin the fix.
+    using glyph_probe::encode_utf16;
+    struct Utf16Case { std::uint32_t cp; int len; std::uint16_t u0; std::uint16_t u1; };
+    const Utf16Case utf16_cases[] = {
+        {0x4E2D,   1, 0x4E2D, 0x0000},  // BMP: one unit
+        {0x3400,   1, 0x3400, 0x0000},  // Ext A is still BMP
+        {0x20000,  2, 0xD840, 0xDC00},  // Ext B start -> surrogate pair
+        {0x2A6E0,  2, 0xD869, 0xDEE0},  // Ext B
+        {0x2B81E,  2, 0xD86E, 0xDC1E},  // Ext D
+        {0x30000,  2, 0xD880, 0xDC00},  // Ext G start
+        {0x31350,  2, 0xD884, 0xDF50},  // Ext H start
+    };
+    for (const auto& t : utf16_cases) {
+        std::uint16_t units[2] = {0, 0};
+        const int len = encode_utf16(t.cp, units);
+        if (len != t.len || units[0] != t.u0 || units[1] != t.u1) {
+            std::fprintf(stderr,
+                         "glyph_probe_logic test failed: UTF-16 U+%04X "
+                         "got len=%d units={%04X,%04X}, expected len=%d {%04X,%04X}\n",
+                         static_cast<unsigned>(t.cp), len, units[0], units[1],
+                         t.len, t.u0, t.u1);
+            ++failures;
+        }
+        // Round-trip: decoding the pair must return the original codepoint.
+        if (glyph_probe::decode_utf16(units, len) != t.cp) {
+            std::fprintf(stderr, "glyph_probe_logic test failed: UTF-16 round-trip U+%04X\n",
+                         static_cast<unsigned>(t.cp));
+            ++failures;
+        }
+    }
+
     if (failures) {
         std::fprintf(stderr, "%d glyph_probe_logic check(s) failed\n", failures);
         return 1;

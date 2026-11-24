@@ -101,6 +101,10 @@ bool unicode_range_claims(HDC dc, std::uint32_t cp) {
         if (off + 4 > buf.size()) break;
         const WORD low = *reinterpret_cast<const WORD*>(buf.data() + off);
         const WORD len = *reinterpret_cast<const WORD*>(buf.data() + off + 2);
+        // WCRANGE.wcLow is 16-bit: GetFontUnicodeRanges only describes BMP
+        // ranges, so supplementary-plane cps are never claimed here. This is
+        // an API limit; the primary path (GetGlyphIndicesW) handles those and
+        // is available on both guest OSes in this round.
         if (cp >= low && cp < static_cast<std::uint32_t>(low) + len) {
             return true;
         }
@@ -118,14 +122,20 @@ Cell probe_cell(HDC dc, const Face& face, std::uint32_t cp, const GdiApi& api) {
                              face.name ? face.name : L"MS Shell Dlg");
     HGDIOBJ old = SelectObject(dc, font);
 
-    wchar_t text[2] = {static_cast<wchar_t>(cp), 0};
+    // UTF-16 encode: non-BMP codepoints (Ext B/C/... U+20000+) need a
+    // surrogate pair. Passing a truncated static_cast<wchar_t>(cp) here was
+    // the false-NONE bug in the first guest result matrix.
+    std::uint16_t units[2] = {0, 0};
+    const int n = glyph_probe::encode_utf16(cp, units);
+    wchar_t text[3] = {static_cast<wchar_t>(units[0]),
+                       static_cast<wchar_t>(units[1]), 0};
     if (api.get_glyph_indices) {
         WORD index = 0;
-        UINT got = api.get_glyph_indices(dc, text, 1, &index, 0);
-        if (got == 1 && index != 0 && index != 0xFFFF) {
+        UINT got = api.get_glyph_indices(dc, text, n, &index, 0);
+        if (got == n && index != 0 && index != 0xFFFF) {
             out.verdict = Verdict::HasGlyph;
             out.glyph = index;
-        } else if (got == 1) {
+        } else if (got == n) {
             out.verdict = Verdict::NoGlyph;
             out.glyph = index;
         } else {
@@ -255,8 +265,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
                                              DEFAULT_PITCH | FF_DONTCARE,
                                              face.name ? face.name : L"MS Shell Dlg");
                     HGDIOBJ old = SelectObject(dc, font);
-                    wchar_t ch = static_cast<wchar_t>(kTestPoints[r].cp);
-                    TextOutW(dc, x, y, &ch, 1);
+                    // Same UTF-16 surrogate-pair fix as probe_cell: draw the
+                    // real Ext B/C character, not its truncated low 16 bits.
+                    std::uint16_t units[2] = {0, 0};
+                    const int n = glyph_probe::encode_utf16(kTestPoints[r].cp, units);
+                    wchar_t text[3] = {static_cast<wchar_t>(units[0]),
+                                       static_cast<wchar_t>(units[1]), 0};
+                    TextOutW(dc, x, y, text, n);
                     TextOutW(dc, x + 24, y, cell_text(grid[r][c].verdict).c_str(), 4);
                     SelectObject(dc, old);
                     DeleteObject(font);
