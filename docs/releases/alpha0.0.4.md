@@ -33,32 +33,39 @@ certutil -hashfile install-rospinyin-gui.exe SHA256
 
 把输出与 `SHA256SUMS.txt` 逐位比对；一致仍被拦截时，可基于该 hash 与仓库源码/CI 记录添加白名单。发布资产由 GitHub Actions 从本 tag 构建，`INFO.txt` 记录 source commit 与 workflow run。
 
-## `[全]` 模式字体（可选，HTTP 分发）
+## `[全]` 模式字体（可选，官方公网下载）
 
 `[快]` 模式只显示 ReactOS 自带 Droid Sans Fallback 可绘制的候选，无需额外字体。
 按 `Ctrl+Shift+G` 切到 `[全]` 后会放入扩展 A/B/C… 的生僻字。GUI 安装器在主界面常驻字体提示，
-安装成功后也会再次提示下载位置。
+安装成功后也会再次提示。
 
 **重要：当前 `[全]` 模式仍会有很多豆腐块，装了字体也不能完全消除。** 虽然安装器提示该模式需要
 额外中文字体，但**输入法本身目前还不支持按字体渲染这些扩展区字形**——候选窗仍走系统默认 UI 字体，
 装了文津宋体也不会让生僻字自动显示出来。字体提示只是告知「这是需要字体的模式」，不代表装上就能看见。
 需要扩展区汉字可见的用户请把它当作**已知限制**而非解决方案；后续版本才会做候选窗的字体切换支持。
 
-字体包**不随安装器附带、不进 GitHub Release**（约 57 MB），只放在本地 HTTP 分发目录：
+字体包**不随安装器附带、不进 GitHub Release**，请从**文津官方发布页**下载（公网可访问）：
 
-```bat
-wget http://10.0.2.2:8000/fonts/wenjin-v2.100/SHA256SUMS.txt
-wget http://10.0.2.2:8000/fonts/wenjin-v2.100/WenJinMinchoP0-Regular.ttf
-wget http://10.0.2.2:8000/fonts/wenjin-v2.100/WenJinMinchoP2-Regular.ttf
-wget http://10.0.2.2:8000/fonts/wenjin-v2.100/WenJinMinchoP3-Regular.ttf
-```
+- 官方发布页（含许可说明与各格式版本）：<https://github.com/takushun-wu/WenJinMincho/releases/tag/v2.100>
+- TTF 版直链：<https://github.com/takushun-wu/WenJinMincho/releases/download/v2.100/WenJinMincho-TTF.7z>
+  （23,646,320 字节，SHA256 `22ab30a4d175f9aa0da3cc4303fedb666081c9f6bdbce267b8d9572f94231f49`）
+
+官方提供的是 7z 压缩包，**解压后**得到以下三个 TTF，需全部安装：
+
+| 文件 | SHA256 | 覆盖范围 |
+|---|---|---|
+| `WenJinMinchoP0-Regular.ttf` | `2128e910bb0b335011470f38309678ca83a5f8116a09629d3b37c21b71de7f76` | 基本区 + 扩展 A |
+| `WenJinMinchoP2-Regular.ttf` | `62d6cde53928e610c1d836646885b5a20937847c2f0df35de4a8de234fe700bf` | 扩展 B–F/I |
+| `WenJinMinchoP3-Regular.ttf` | `1a782d99ba924eb5b80a0dabd57d6f49dd04abcbcf61459e23bac28aef39a270` | 扩展 G/H |
 
 - 三个 TTF 是**同一字体族按 Unicode 平面拆分**：P0 覆盖基本区+扩展 A，P2 覆盖扩展 B–F/I，
   P3 覆盖扩展 G/H；**三者缺一不可**，只装一个仍会在其他平面看到方框。
-- 先用同目录 `SHA256SUMS.txt` 核对三个文件的 hash，再逐个安装字体，最后**重启系统**。
+- 先用官方 SHA256 核对压缩包，解压后按上表核对三个 TTF 的 hash，再逐个安装字体，最后**重启系统**。
 - 这是**补充字体，不替换 Droid Sans Fallback**；`[快]` 模式的保底绘制不受影响。
-- 离线/公网取源见 `m0/share/fonts/wenjin-v2.100/SOURCE.txt` 记录的上游发布页
-  （WenJinMincho v2.100，SIL OFL 1.1，许可全文在同目录 `LICENSE.txt`）。
+- 字体许可 SIL OFL 1.1，许可全文见官方发布页；本地镜像与校验记录见
+  `m0/share/fonts/wenjin-v2.100/SOURCE.txt`（仅开发/离线测试用）。
+- 注意：已发布的 GUI 安装器弹窗内仍写死测试期本地路径 `http://10.0.2.2:8000/fonts/wenjin-v2.100/`，
+  该地址只对 QEMU guest 有效；公网用户请一律以本节的官方地址为准。
 
 ## 实机验证（stable + nightly 双平台）
 
