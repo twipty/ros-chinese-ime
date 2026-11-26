@@ -99,7 +99,7 @@
 | [alpha0.0.2.md](releases/alpha0.0.2.md) | alpha0.0.2 的发布说明（CI 用它作为 release notes） |
 | [alpha0.0.3.md](releases/alpha0.0.3.md) | alpha0.0.3 的发布说明（M3 中文标点逐键验收；CI 用它作为 release notes） |
 | [alpha0.0.4.md](releases/alpha0.0.4.md) | alpha0.0.4 的发布说明（自包含 GUI 安装器候选，已发布 prerelease） |
-| [v0.1.0.md](releases/v0.1.0.md) | v0.1 正式发布说明（tag 已推送；正式 release 待 CI 重新触发） |
+| [v0.1.0.md](releases/v0.1.0.md) | v0.1 正式发布说明（已发布正式 release；仅含安装、使用与字体依赖） |
 
 ### icos/ — 输入法图标
 

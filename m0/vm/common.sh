@@ -13,6 +13,14 @@ HDD="${ROSPINYIN_HDD:-$VM_DIR/reactos.qcow2}"
 LOG_DIR="$VM_DIR/logs"
 mkdir -p "$LOG_DIR"
 
+# ---- 多实例参数（由 start-vm.sh 按 profile 注入；默认值保持 6080 兼容）----
+# VNC display N 对应 TCP 5900+N。6080/6081/6082 分别用 display 1/2/3。
+VNC_DISPLAY="${ROSPINYIN_VNC_DISPLAY:-1}"
+VNC_PORT=$((5900 + VNC_DISPLAY))
+MONITOR="${ROSPINYIN_MONITOR:-$VM_DIR/monitor.sock}"
+VM_NAME="${ROSPINYIN_VM_NAME:-reactos-pinyin}"
+SERIAL_LOG="${ROSPINYIN_SERIAL_LOG:-$LOG_DIR/rosdbg.log}"
+
 # ---- 关键参数（与 PLAN.md 1.1 一致）----
 # -accel kvm:tcg  有 /dev/kvm 用 KVM，否则自动回落 TCG
 # -serial file    ReactOS 内核调试输出 (KDBG) 落地串口日志
@@ -27,16 +35,16 @@ COMMON_ARGS=(
     -netdev user,id=n0
     -device usb-tablet
     -usb
-    -serial file:"$LOG_DIR/rosdbg.log"
-    -monitor unix:"$VM_DIR/monitor.sock",server,nowait
-    -vnc 127.0.0.1:1
-    -name reactos-pinyin
+    -serial file:"$SERIAL_LOG"
+    -monitor unix:"$MONITOR",server,nowait
+    -vnc 127.0.0.1:"$VNC_DISPLAY"
+    -name "$VM_NAME"
 )
 
 # ---- 便捷函数 ----
 # 用法: hmp <monitor命令>   例: hmp "info status" / hmp "screendump shot.ppm"
 hmp() {
-    local sock="$VM_DIR/monitor.sock"
+    local sock="$MONITOR"
     [ -S "$sock" ] || { echo "monitor.sock 不存在，VM 未启动？"; return 1; }
     printf '%s\n' "$1" | timeout 10 socat - unix-connect:"$sock" 2>/dev/null \
         || printf '%s\n' "$1" | timeout 10 nc -U "$sock"

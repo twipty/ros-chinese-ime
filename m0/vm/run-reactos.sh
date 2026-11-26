@@ -10,7 +10,7 @@ set -euo pipefail
 source "$(dirname "$0")/common.sh"
 
 echo "[run] 磁盘: $HDD（无 ISO，从硬盘引导）"
-echo "[run] VNC: 127.0.0.1:5901   HMP monitor: $VM_DIR/monitor.sock"
+echo "[run] VNC: 127.0.0.1:$VNC_PORT   HMP monitor: $MONITOR"
 echo
 
 # tools.iso is mounted as a data CD-ROM (D:) so a fresh guest without wget/curl
