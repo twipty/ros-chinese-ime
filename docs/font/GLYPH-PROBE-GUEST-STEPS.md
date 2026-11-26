@@ -30,8 +30,9 @@ wget http://10.0.2.2:8000/glyph-probe.exe
 rhash --sha256 C:\glyph-probe.exe
 ```
 
-核对 SHA256（当前构建，2026-11-24 补测修正版：测试点改到已分配码点 U+2A700/U+2B740）：
-`99994406b4c58f5141aa6c4afbc0842003a960f3642e54dd8c6fcd1e403a62c9`
+核对 SHA256（当前构建，2026-11-26 P1 实现版：平面映射改为转发 framework 单一真相源，
+测试点仍为已分配码点 U+2A700/U+2B740；**探测行为与上一版完全一致**，仅链接的头文件来源变了）：
+`ce5f70a96bc8756512df9c460d6d8b516d126d7f5215d0db53bba1b1ac772466`
 
 > 上一版 `2bf04d6682af0a0e9a8ee5e68becbfb0f7a0ce2b5fb67d7d7cd519204f1fa215`
 > 的测试点 U+2A6E0/U+2B81E 落在 Unicode 未分配区，那两行 NONE 无意义、无法回答 ExtC 覆盖。

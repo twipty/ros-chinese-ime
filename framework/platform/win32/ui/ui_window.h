@@ -6,8 +6,11 @@
 
 #pragma once
 
+#include <imfw/glyph_plane.hpp>
+
 #include <windows.h>
 
+#include <cstddef>  // std::size_t
 #include <cstdint>  // std::intptr_t/uintptr_t: MinGW's windows.h does not pull it in
 
 namespace imfw {
@@ -80,8 +83,24 @@ protected:
 
     static UiWindow* from_handle(HWND hwnd);
 
+    // P1 [全] mode: draw one UTF-16 line by splitting it into WenJin plane
+    // runs and selecting the matching cached font per run. When `full_glyph`
+    // is false this is byte-for-byte the old single-font TextOutW path.
+    // Returns the advance width actually drawn (used to advance x between
+    // composition segments). Only call with a live HDC (WM_PAINT or measure).
+    int draw_text_runs(HDC dc, int x, int y, const wchar_t* text,
+                       std::size_t len, bool full_glyph);
+    // Width of the same text with the same plane split, without drawing.
+    int measure_text_runs(HDC dc, const wchar_t* text, std::size_t len,
+                          bool full_glyph);
+
+private:
+    HFONT font_for_plane(imfw::WenJinPlane plane) const;
+
+protected:
     HWND hwnd_ = nullptr;
-    HFONT font_ = nullptr;
+    HFONT font_ = nullptr;              // baseline / None-plane / numbering
+    HFONT plane_fonts_[4] = {};         // indexed by WenJinPlane value (0 unused)
     int width_ = 0;
     int height_ = 0;
 

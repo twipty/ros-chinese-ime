@@ -17,48 +17,19 @@
 #ifndef ROSPINYIN_GLYPH_PROBE_LOGIC_HPP
 #define ROSPINYIN_GLYPH_PROBE_LOGIC_HPP
 
+// P1 implementation stage: the plane mapping / family names moved to the
+// framework's Windows-free layer so the product UI and this probe tool share
+// ONE source of truth. Re-export them under the historical glyph_probe:: names
+// so the guest tool and its pinned tests need no edits at all.
+#include <imfw/glyph_plane.hpp>
+
 #include <cstdint>
 
 namespace glyph_probe {
 
-enum class WenJinPlane : std::uint8_t {
-    None = 0,
-    Plane0 = 1,  // BMP basic CJK + Ext A
-    Plane2 = 2,  // Ext B/C/D/E/F/I
-    Plane3 = 3,  // Ext G/H
-};
-
-// Which WenJin plane carries the given codepoint, or None if the codepoint is
-// outside WenJin's CJK coverage (ASCII, punctuation, unassigned gaps).
-inline WenJinPlane pick_plane_for_codepoint(std::uint32_t cp) {
-    // Basic multilingual plane: CJK unified ideographs + Ext A.
-    if ((cp >= 0x4E00 && cp <= 0x9FFF) || (cp >= 0x3400 && cp <= 0x4DBF)) {
-        return WenJinPlane::Plane0;
-    }
-    // Supplementary plane 2: Ext B (0x20000-0x2A6DF), C (0x2A700-0x2B73F),
-    // D (0x2B740-0x2B81F), E (0x2B820-0x2CEAF), F (0x2CEB0-0x2EBEF),
-    // I (0x2EBF0-0x2EE5D). Contiguous in WenJin's cmap, so one range covers it.
-    if (cp >= 0x20000 && cp <= 0x2EE5D) {
-        return WenJinPlane::Plane2;
-    }
-    // Supplementary plane 3: Ext G (0x30000-0x3134A), H (0x31350-0x323AF).
-    if (cp >= 0x30000 && cp <= 0x323AF) {
-        return WenJinPlane::Plane3;
-    }
-    return WenJinPlane::None;
-}
-
-// Exact GDI family name for a plane; nullptr for None. These strings are
-// language facts pinned by the host test -- do not "simplify" to one family.
-inline const wchar_t* plane_face_name(WenJinPlane plane) {
-    switch (plane) {
-        case WenJinPlane::Plane0: return L"WenJin Mincho Plane 0";
-        case WenJinPlane::Plane2: return L"WenJin Mincho Plane 2";
-        case WenJinPlane::Plane3: return L"WenJin Mincho Plane 3";
-        case WenJinPlane::None:
-        default: return nullptr;
-    }
-}
+using imfw::WenJinPlane;
+using imfw::pick_plane_for_codepoint;
+using imfw::plane_face_name;
 
 // Win32 wchar_t is 16-bit: any codepoint above the BMP must be passed to GDI
 // as a UTF-16 surrogate pair. Truncating with static_cast<wchar_t>(cp) turns

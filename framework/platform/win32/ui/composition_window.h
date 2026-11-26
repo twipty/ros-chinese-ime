@@ -23,7 +23,7 @@ public:
     // cumulative lengths mark the underline boundaries). Empty text hides
     // the window.
     void update(HINSTANCE inst, const wchar_t* class_name, const wchar_t* text,
-                const std::vector<std::string>& segments);
+                const std::vector<std::string>& segments, bool full_glyph);
 
 protected:
     void on_paint(HDC dc, const RECT& client) override;
@@ -31,6 +31,7 @@ protected:
 private:
     std::wstring text_;
     std::vector<std::size_t> syllable_ends_;  // cumulative character offsets
+    bool full_glyph_ = false;
 };
 
 }  // namespace ui

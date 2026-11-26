@@ -47,7 +47,7 @@ std::wstring small_number(std::size_t value) {
 }  // namespace
 
 void CandidateWindow::update(HINSTANCE inst, const wchar_t* class_name,
-                             const CandidatePager& pager) {
+                             const CandidatePager& pager, bool full_glyph) {
     if (pager.empty()) {
         lines_.clear();
         hide();
@@ -74,9 +74,12 @@ void CandidateWindow::update(HINSTANCE inst, const wchar_t* class_name,
     next.push_back(std::move(footer));
 
     // Same dedupe as the composition window: an engine update that produces
-    // the identical page (key repeat, IMM32 re-entry) must not repaint.
-    const bool content_changed = next != lines_;
+    // the identical page (key repeat, IMM32 re-entry) must not repaint. A
+    // [快]/[全] flip changes rendering without changing text, so it counts as
+    // a change too (otherwise Ctrl+Shift+G would not refresh the visible page).
+    const bool content_changed = next != lines_ || full_glyph != full_glyph_;
     lines_.swap(next);
+    full_glyph_ = full_glyph;
 
     if (!ensure_created(inst, class_name, L"", 160,
                         static_cast<int>(lines_.size() * line_height_) + 8)) {
@@ -86,17 +89,19 @@ void CandidateWindow::update(HINSTANCE inst, const wchar_t* class_name,
     if (content_changed) {
         HDC dc = GetDC(hwnd_);
         if (dc != nullptr) {
-            const HGDIOBJ old = font_ != nullptr ? SelectObject(dc, font_) : nullptr;
             int max_width = 0;
             for (const auto& line : lines_) {
+                const int width = measure_text_runs(dc, line.c_str(),
+                                                    line.size(), full_glyph_);
+                if (width > max_width) max_width = width;
+                const HGDIOBJ old = font_ != nullptr ? SelectObject(dc, font_) : nullptr;
                 SIZE size{};
                 if (GetTextExtentPoint32W(dc, line.c_str(),
                                           static_cast<int>(line.size()), &size)) {
-                    if (size.cx > max_width) max_width = size.cx;
                     if (size.cy > 0) line_height_ = static_cast<std::size_t>(size.cy + 4);
                 }
+                if (old != nullptr) SelectObject(dc, old);
             }
-            if (old != nullptr) SelectObject(dc, old);
             ReleaseDC(hwnd_, dc);
 
             const int width = max_width + 20;
@@ -119,17 +124,16 @@ void CandidateWindow::on_paint(HDC dc, const RECT& client) {
              reinterpret_cast<HBRUSH>(GetStockObject(LTGRAY_BRUSH)));
     if (lines_.empty()) return;
 
-    const HGDIOBJ old_font = font_ != nullptr ? SelectObject(dc, font_) : nullptr;
     SetBkMode(dc, TRANSPARENT);
     SetTextColor(dc, RGB(0, 0, 0));
 
     int y = 4;
     for (const auto& line : lines_) {
-        TextOutW(dc, 8, y, line.c_str(), static_cast<int>(line.size()));
+        // draw_text_runs selects the baseline font for [快] / None runs and
+        // the cached WenJin plane fonts for [全] CJK, restoring each after.
+        draw_text_runs(dc, 8, y, line.c_str(), line.size(), full_glyph_);
         y += static_cast<int>(line_height_);
     }
-
-    if (old_font != nullptr) SelectObject(dc, old_font);
 }
 
 }  // namespace ui

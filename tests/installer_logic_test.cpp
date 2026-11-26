@@ -164,6 +164,15 @@ void test_font_hint() {
           "hint points at the checksum file");
     check(contains(hint, L"[快]"),
           "hint reassures [fast] mode needs no extra font");
+
+    // P1 AC6: the warning must state that all three plane-split TTFs are
+    // required and that a partial install has unpredictable consequences.
+    // This pairs with the runtime decision NOT to probe for missing faces --
+    // the user is told in words what the code deliberately does not detect.
+    check(contains(hint, L"三字体齐备") || contains(hint, L"三者齐备"),
+          "hint states all three fonts must be present");
+    check(contains(hint, L"不可预知") || contains(hint, L"后果无法预料"),
+          "hint warns the consequence of a missing font is unpredictable");
 }
 
 struct IdentityInflate {

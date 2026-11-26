@@ -14,7 +14,8 @@ namespace ui {
 
 void CompositionWindow::update(HINSTANCE inst, const wchar_t* class_name,
                                const wchar_t* text,
-                               const std::vector<std::string>& segments) {
+                               const std::vector<std::string>& segments,
+                               bool full_glyph) {
     if (text == nullptr || *text == L'\0') {
         text_.clear();
         syllable_ends_.clear();
@@ -38,9 +39,11 @@ void CompositionWindow::update(HINSTANCE inst, const wchar_t* class_name,
     }
 
     const bool content_changed =
-        next_text != text_ || next_ends != syllable_ends_;
+        next_text != text_ || next_ends != syllable_ends_ ||
+        full_glyph != full_glyph_;
     text_.swap(next_text);
     syllable_ends_.swap(next_ends);
+    full_glyph_ = full_glyph;
 
     // Rough width: 8 px per latin char is enough for a 16 px font; refine in
     // WM_PAINT where the real font metrics are available.
@@ -50,11 +53,13 @@ void CompositionWindow::update(HINSTANCE inst, const wchar_t* class_name,
     if (content_changed) {
         HDC dc = GetDC(hwnd_);
         if (dc != nullptr) {
-            HGDIOBJ old = font_ != nullptr ? SelectObject(dc, font_) : nullptr;
+            const int cx = measure_text_runs(dc, text_.c_str(),
+                                             text_.size(), full_glyph_);
+            const HGDIOBJ old = font_ != nullptr ? SelectObject(dc, font_) : nullptr;
             SIZE size{};
             if (GetTextExtentPoint32W(dc, text_.c_str(),
                                       static_cast<int>(text_.size()), &size)) {
-                const int w = size.cx + 16;
+                const int w = cx + 16;
                 const int h = size.cy + 8;
                 if (w > 8 && h > 8) {
                     width_ = w;
@@ -78,7 +83,6 @@ void CompositionWindow::on_paint(HDC dc, const RECT& client) {
              reinterpret_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
     if (text_.empty()) return;
 
-    const HGDIOBJ old_font = font_ != nullptr ? SelectObject(dc, font_) : nullptr;
     SetBkMode(dc, TRANSPARENT);
 
     // The engine converts left to right: the first syllable is the one the
@@ -101,20 +105,22 @@ void CompositionWindow::on_paint(HDC dc, const RECT& client) {
         const std::size_t end = last ? text_.size() : syllable_ends_[i];
         if (end <= begin || end > text_.size()) continue;
 
-        SIZE from{};
-        SIZE to{};
-        GetTextExtentPoint32W(dc, text_.c_str(), static_cast<int>(begin), &from);
-        GetTextExtentPoint32W(dc, text_.c_str(), static_cast<int>(end), &to);
+        // Prefix measurements are run-aware in [全] so a wide-plane glyph
+        // before this segment cannot shift the underline off by a code point.
+        const int from_cx = measure_text_runs(dc, text_.c_str(), begin,
+                                              full_glyph_);
+        const int to_cx = measure_text_runs(dc, text_.c_str(), end,
+                                            full_glyph_);
 
         const bool active = begin < active_end;
         SetTextColor(dc, active ? RGB(0, 0, 0) : RGB(130, 130, 130));
-        TextOutW(dc, 4 + from.cx, 3, text_.c_str() + begin,
-                 static_cast<int>(end - begin));
+        draw_text_runs(dc, 4 + from_cx, 3, text_.c_str() + begin,
+                       end - begin, full_glyph_);
 
-        if (has_segments && to.cx > from.cx) {
+        if (has_segments && to_cx > from_cx) {
             RECT line{};
-            line.left = 4 + from.cx;
-            line.right = 4 + to.cx;
+            line.left = 4 + from_cx;
+            line.right = 4 + to_cx;
             line.top = underline_y;
             line.bottom = underline_y + 1;
             FillRect(dc, &line,
@@ -123,8 +129,6 @@ void CompositionWindow::on_paint(HDC dc, const RECT& client) {
         }
         begin = end;
     }
-
-    if (old_font != nullptr) SelectObject(dc, old_font);
 }
 
 }  // namespace ui

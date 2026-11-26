@@ -170,14 +170,15 @@ void place_windows(UiContext& ctx, const POINT& anchor) {
 
 void UiShow(rpimm::InputContext hIMC, const wchar_t* composition_text,
             const std::vector<std::string>& segments,
-            const CandidatePager& pager) {
+            const CandidatePager& pager, bool full_glyph) {
     UiContext* ctx = store().get(hIMC);
     if (ctx == nullptr) return;
 
     const Scheme& scheme = scheme_instance();
     ctx->composition.update(g_hInst, scheme.composition_class(),
-                            composition_text, segments);
-    ctx->candidates.update(g_hInst, scheme.candidate_class(), pager);
+                            composition_text, segments, full_glyph);
+    ctx->candidates.update(g_hInst, scheme.candidate_class(), pager,
+                           full_glyph);
 
     if (!ctx->composition.visible() && !ctx->candidates.visible()) return;
     // Anchor once per composition. Re-reading the caret on every key was the

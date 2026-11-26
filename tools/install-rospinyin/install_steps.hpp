@@ -110,7 +110,8 @@ inline constexpr std::wstring_view kFontHintUrl =
 
 // Permanent one-line note under the two buttons on the main window.
 inline constexpr std::wstring_view kFontHintBanner =
-    L"[全] 模式需另装文津宋体（HTTP 分发）；\n"
+    L"[全] 模式需另装文津宋体三片（HTTP 分发）；\n"
+    L"必须三字体齐备才能正常显示，缺少任意一个的后果不可预知；\n"
     L"[快] 模式用系统 Droid 字体，无需安装。";
 
 // Appended to the post-install message box. The three TTFs are plane-split
@@ -122,6 +123,7 @@ inline std::wstring font_hint_message() {
          + L"  " + std::wstring(kFontHintUrl) + L"\n"
          + L"下载 WenJinMinchoP0-Regular.ttf、WenJinMinchoP2-Regular.ttf、\n"
          + L"WenJinMinchoP3-Regular.ttf（同一字体族，三者缺一不可），\n"
+         + L"必须三字体齐备才能正常显示，缺少任意一个的后果不可预知。\n"
          + L"用同目录 SHA256SUMS.txt 校验后安装，并重启系统。\n"
          + L"[快] 模式使用系统 Droid 字体，无需安装额外字体。";
 }

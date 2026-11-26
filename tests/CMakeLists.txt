@@ -128,8 +128,15 @@ add_test(NAME installer-logic COMMAND rospinyin-installer-logic)
 # guest GDI probe tool. No <windows.h>; host-testable.
 add_executable(rospinyin-glyph-probe-logic glyph_probe_logic_test.cpp)
 target_include_directories(rospinyin-glyph-probe-logic PRIVATE
-    "${PROJECT_SOURCE_DIR}/tools/glyph-probe")
+    "${PROJECT_SOURCE_DIR}/tools/glyph-probe"
+    "${PROJECT_SOURCE_DIR}/framework/include")
 add_test(NAME glyph-probe-logic COMMAND rospinyin-glyph-probe-logic)
+
+# P1 implementation stage: UTF-16 text -> per-plane runs. Windows-free; the
+# Win32 UI consumes the same head but cannot be host-tested.
+add_executable(rospinyin-glyph-plane glyph_plane_test.cpp)
+target_link_libraries(rospinyin-glyph-plane PRIVATE imfw-engine)
+add_test(NAME glyph-plane COMMAND rospinyin-glyph-plane)
 
 # Static M1 contract checks (exports, version resource, M0 red lines).
 find_program(ROSPINYIN_PYTHON NAMES python3 python QUIET)

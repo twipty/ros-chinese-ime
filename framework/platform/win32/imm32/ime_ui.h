@@ -20,9 +20,11 @@ namespace imfw {
 // composition_text is the raw input string; segments is the engine's
 // segmentation (used to underline boundaries); pager holds the current
 // candidate page. Windows are created here, never in DllMain.
+// full_glyph is ImeSessionState::full_glyph; when true the two popups split
+// their text into WenJin plane fonts. The UI layer never queries state itself.
 void UiShow(rpimm::InputContext hIMC, const wchar_t* composition_text,
            const std::vector<std::string>& segments,
-           const CandidatePager& pager);
+           const CandidatePager& pager, bool full_glyph);
 
 // Hide both windows without destroying them (composition committed/cancelled,
 // input context deactivated). Safe to call repeatedly.

@@ -19,8 +19,10 @@ class CandidateWindow final : public UiWindow {
 public:
     // class_name comes from the Scheme. Rebuilds the page view; an empty
     // pager hides the window.
+    // full_glyph is ImeSessionState::full_glyph -- only [全] mode splits the
+    // candidate text into WenJin plane fonts; [快] keeps the single-font path.
     void update(HINSTANCE inst, const wchar_t* class_name,
-                const CandidatePager& pager);
+                const CandidatePager& pager, bool full_glyph);
 
 protected:
     void on_paint(HDC dc, const RECT& client) override;
@@ -28,6 +30,7 @@ protected:
 private:
     std::vector<std::wstring> lines_;
     std::size_t line_height_ = 18;
+    bool full_glyph_ = false;
 };
 
 }  // namespace ui

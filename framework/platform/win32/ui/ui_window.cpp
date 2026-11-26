@@ -6,11 +6,14 @@
 
 #include "ui_window.h"
 
+#include <imfw/glyph_plane.hpp>
+
 #include <windows.h>
 
 #include <cwchar>
 #include <set>
-#include <string>
+#include <string>     // std::u16string lives here (MinGW has no <u16string> header)
+#include <vector>
 
 namespace imfw {
 namespace ui {
@@ -38,6 +41,18 @@ bool ascii_iequal(const wchar_t* a, const wchar_t* b) {
         ++b;
     }
     return *a == L'\0' && *b == L'\0';
+}
+
+// On Win32 wchar_t is 16-bit, so a wstring is already a UTF-16 unit sequence.
+// Copy to char16_t for the Windows-free split_into_runs() (char16_t is 16-bit
+// on every platform, which is what lets the host test pin the exact runs).
+std::u16string as_utf16(const wchar_t* text, std::size_t len) {
+    std::u16string out;
+    out.reserve(len);
+    for (std::size_t i = 0; i < len; ++i) {
+        out.push_back(static_cast<char16_t>(text[i]));
+    }
+    return out;
 }
 
 // Per-process window-class registry. CRITICAL_SECTION instead of std::mutex
@@ -126,6 +141,12 @@ UiWindow::~UiWindow() {
         DeleteObject(font_);
         font_ = nullptr;
     }
+    for (HFONT& plane_font : plane_fonts_) {
+        if (plane_font != nullptr) {
+            DeleteObject(plane_font);
+            plane_font = nullptr;
+        }
+    }
 }
 
 bool UiWindow::ensure_created(HINSTANCE inst, const wchar_t* class_name,
@@ -144,7 +165,99 @@ bool UiWindow::ensure_created(HINSTANCE inst, const wchar_t* class_name,
     SetWindowLongPtrW(hwnd_, GWLP_USERDATA,
                       reinterpret_cast<LONG_PTR>(this));
     font_ = CreateUiFont(16);
+
+    // P1 [全] mode: cache one HFONT per WenJin plane at creation time, never
+    // in WM_PAINT. Per the owner's decision we do NOT probe with GetTextFaceW:
+    // CreateFontW on a missing face returns a usable handle that GDI silently
+    // substitutes. Worst case is still tofu, no worse than the status quo, and
+    // the installer/release text warns the user all three TTFs are required.
+    for (imfw::WenJinPlane plane : {imfw::WenJinPlane::Plane0,
+                                    imfw::WenJinPlane::Plane2,
+                                    imfw::WenJinPlane::Plane3}) {
+        const wchar_t* face = imfw::plane_face_name(plane);
+        if (face == nullptr) continue;
+        plane_fonts_[static_cast<int>(plane)] = CreateFontW(
+            16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
+            DEFAULT_PITCH | FF_DONTCARE, face);
+    }
     return true;
+}
+
+// Returns the cached font for a plane run. None -> baseline font_ (the
+// numbering / Latin / punctuation path), which keeps [快] and the pure-ASCII
+// parts of [全] byte-for-byte identical to the old single-font rendering.
+HFONT UiWindow::font_for_plane(imfw::WenJinPlane plane) const {
+    if (plane == imfw::WenJinPlane::None) return font_;
+    const int idx = static_cast<int>(plane);
+    if (idx > 0 && idx < 4 && plane_fonts_[idx] != nullptr) {
+        return plane_fonts_[idx];
+    }
+    return font_;  // defensive: never hand a null HFONT to SelectObject
+}
+
+int UiWindow::draw_text_runs(HDC dc, int x, int y, const wchar_t* text,
+                             std::size_t len, bool full_glyph) {
+    if (!full_glyph || text == nullptr || len == 0) {
+        // Old path, unchanged: one font, one TextOutW, one measurement.
+        const HGDIOBJ old = font_ != nullptr ? SelectObject(dc, font_) : nullptr;
+        if (text != nullptr && len != 0) {
+            TextOutW(dc, x, y, text, static_cast<int>(len));
+        }
+        SIZE size{};
+        int width = 0;
+        if (text != nullptr && len != 0 &&
+            GetTextExtentPoint32W(dc, text, static_cast<int>(len), &size)) {
+            width = size.cx;
+        }
+        if (old != nullptr) SelectObject(dc, old);
+        return width;
+    }
+
+    const std::u16string utf16 = as_utf16(text, len);
+    const std::vector<imfw::GlyphRun> runs = imfw::split_into_runs(utf16);
+    int advance = 0;
+    for (const auto& run : runs) {
+        HFONT font = font_for_plane(run.plane);
+        const HGDIOBJ old = font != nullptr ? SelectObject(dc, font) : nullptr;
+        const wchar_t* piece = text + run.offset;
+        const int n = static_cast<int>(run.length);
+        TextOutW(dc, x + advance, y, piece, n);
+        SIZE size{};
+        if (GetTextExtentPoint32W(dc, piece, n, &size)) advance += size.cx;
+        if (old != nullptr) SelectObject(dc, old);
+    }
+    return advance;
+}
+
+int UiWindow::measure_text_runs(HDC dc, const wchar_t* text, std::size_t len,
+                                bool full_glyph) {
+    if (!full_glyph || text == nullptr || len == 0) {
+        const HGDIOBJ old = font_ != nullptr ? SelectObject(dc, font_) : nullptr;
+        SIZE size{};
+        int width = 0;
+        if (text != nullptr && len != 0 &&
+            GetTextExtentPoint32W(dc, text, static_cast<int>(len), &size)) {
+            width = size.cx;
+        }
+        if (old != nullptr) SelectObject(dc, old);
+        return width;
+    }
+
+    const std::u16string utf16 = as_utf16(text, len);
+    const std::vector<imfw::GlyphRun> runs = imfw::split_into_runs(utf16);
+    int advance = 0;
+    for (const auto& run : runs) {
+        HFONT font = font_for_plane(run.plane);
+        const HGDIOBJ old = font != nullptr ? SelectObject(dc, font) : nullptr;
+        SIZE size{};
+        if (GetTextExtentPoint32W(dc, text + run.offset,
+                                  static_cast<int>(run.length), &size)) {
+            advance += size.cx;
+        }
+        if (old != nullptr) SelectObject(dc, old);
+    }
+    return advance;
 }
 
 void UiWindow::show() {

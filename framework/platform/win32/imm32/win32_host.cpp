@@ -34,7 +34,7 @@ void Win32Host::show(const std::string& composition,
                      const std::vector<std::string>& segments,
                      const imfw::CandidatePager& pager) {
     const std::wstring text = imfw::utf8_to_wide(composition);
-    imfw::UiShow(hIMC_, text.c_str(), segments, pager);
+    imfw::UiShow(hIMC_, text.c_str(), segments, pager, show_all_glyphs());
 #if IMFW_TRACE_ON
     // Where the two popups ended up, and what the anchor was. The key counters
     // cannot answer "the box moved while I was paging": they only say that a

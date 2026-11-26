@@ -22,7 +22,8 @@ echo "== compiling glyph-probe.exe (static runtime: guest has no MinGW DLLs) =="
 # ReactOS ships no libgcc_s_dw2-1.dll / libstdc++-6.dll. A dynamic C++ runtime
 # link makes the exe fail to load in the guest with a misleading "missing DLL"
 # popup. The installer GUI uses the same -static policy (cmake/StaticRuntime.cmake).
-"$GXX" -mwindows -municode -std=c++17 -O2 -I"$SCRIPT_DIR" \
+"$GXX" -mwindows -municode -std=c++17 -O2 \
+    -I"$SCRIPT_DIR" -I"$SCRIPT_DIR/../../framework/include" \
     -static-libgcc -static-libstdc++ -static \
     "$SCRIPT_DIR/glyph_probe.cpp" -o "$OUT"
 
