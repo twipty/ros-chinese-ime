@@ -325,15 +325,34 @@ void test_embedded_payloads() {
         ROSPINYIN_DAT_PAYLOAD_BYTES};
     const std::vector<std::uint8_t> cli = {
         ROSPINYIN_CLI_PAYLOAD_BYTES};
+    const std::vector<std::uint8_t> lex = {
+        ROSPINYIN_LEX_PAYLOAD_BYTES};
     check(ime.size() == installer::kImeCompressedSize, "IME blob size pinned");
     check(dat.size() == installer::kDatCompressedSize, "DAT blob size pinned");
     check(cli.size() == installer::kCliCompressedSize, "CLI blob size pinned");
+    check(lex.size() == installer::kLexCompressedSize, "LEX blob size pinned");
     verify(ime, installer::kImeUncompressedSize, installer::kImeCrc32,
            "embedded IME inflates");
     verify(dat, installer::kDatUncompressedSize, installer::kDatCrc32,
            "embedded DAT inflates");
     verify(cli, installer::kCliUncompressedSize, installer::kCliCrc32,
            "embedded CLI inflates");
+    // AC1: the 4th payload is the word list; inflate it and pin its SHA-256
+    // to the fixed value shared with the runtime guard and CI release assets.
+    std::vector<std::uint8_t> lex_out(installer::kLexUncompressedSize, 0);
+    mz_ulong lex_dest = static_cast<mz_ulong>(lex_out.size());
+    mz_ulong lex_src = static_cast<mz_ulong>(lex.size());
+    check(mz_uncompress2(lex_out.data(), &lex_dest, lex.data(), &lex_src) ==
+              MZ_OK,
+          "embedded LEX inflates");
+    check(lex_dest == installer::kLexUncompressedSize,
+          "embedded LEX length matches the fixed 6,530,601 bytes");
+    check(installer::crc32(lex_out.data(), lex_out.size()) ==
+              installer::kLexCrc32,
+          "embedded LEX CRC matches source");
+    check(installer::sha256_hex(lex_out.data(), lex_out.size()) ==
+              "a89ec5e500c47c121687e9789fade9b8187c1ec2b69d25d5e82f1a680cfc1c6a",
+          "embedded LEX SHA-256 matches the pinned word list");
 }
 
 }  // namespace

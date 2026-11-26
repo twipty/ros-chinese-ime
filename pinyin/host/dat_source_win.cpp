@@ -9,6 +9,7 @@
 
 #include <rospinyin/dat_source.hpp>
 
+#include <rospinyin/lexicon_guard.hpp>
 #include <rospinyin/pinyin.hpp>
 
 #include <windows.h>
@@ -23,8 +24,9 @@ namespace rospinyin {
 namespace {
 
 constexpr wchar_t kDatFilename[] = L"rospinyin.dat";
-// M4: the word list is a separate, optional dat. A missing or invalid file
-// leaves the character table untouched (M2 behaviour); no bundle dependency.
+// M4 (owner 2026-11-26): the word list is mandatory. A missing, truncated,
+// corrupt or hash-mismatched file is a hard failure — load_system_table()
+// returns nullptr rather than silently offering single-character input.
 constexpr wchar_t kLexiconFilename[] = L"rospinyin-lexicon.dat";
 
 #ifdef ROSPINYIN_TRACE
@@ -78,33 +80,55 @@ bool HasCodepoint(const imfw::CodeTable& table, std::string_view key,
     }
     return false;
 }
+
+const char* LexiconStatusName(rospinyin::lexicon::LexiconStatus status) {
+    using rospinyin::lexicon::LexiconStatus;
+    switch (status) {
+        case LexiconStatus::Ok: return "OK";
+        case LexiconStatus::Missing: return "MISSING";
+        case LexiconStatus::Truncated: return "TRUNCATED";
+        case LexiconStatus::Corrupt: return "CORRUPT";
+        case LexiconStatus::HashMismatch: return "HASH_MISMATCH";
+    }
+    return "?";
+}
 #endif
 
-void try_load_lexicon(const std::wstring& system_dir,
-                      imfw::CodeTable& table) {
-    const std::wstring path =
-        system_dir + L"\\" + kLexiconFilename;
+// M4: read the mandatory word list and classify it. Returns Ok only when the
+// bytes match the pinned size/magic/version/SHA-256 AND CodeTable accepts the
+// structure. Every other path is a hard failure reported by the caller.
+rospinyin::lexicon::LexiconStatus try_load_lexicon(
+    const std::wstring& system_dir, imfw::CodeTable& table) {
+    using rospinyin::lexicon::LexiconStatus;
+    const std::wstring path = system_dir + L"\\" + kLexiconFilename;
     HANDLE file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ,
                               nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,
                               nullptr);
-    if (file == INVALID_HANDLE_VALUE) return;  // optional data pack
+    if (file == INVALID_HANDLE_VALUE) {
+        return LexiconStatus::Missing;
+    }
     const DWORD size = GetFileSize(file, nullptr);
     if (size == 0 || size == INVALID_FILE_SIZE) {
         CloseHandle(file);
-        return;
+        return LexiconStatus::Truncated;
     }
     std::vector<char> bytes(size);
     DWORD read = 0;
     const BOOL ok = ReadFile(file, bytes.data(), size, &read, nullptr);
     CloseHandle(file);
-    if (!ok || read != size) return;
-    table.load_lexicon_dat(std::string_view(bytes.data(), bytes.size()),
-                           &rospinyin::pinyin::syllable_of);
-#ifdef ROSPINYIN_TRACE
-    std::string body = "lexicon path=" + NarrowPath(path) + " words=";
-    AppendUint(body, static_cast<unsigned long>(table.word_count()));
-    TraceDat(body);
-#endif
+    if (!ok || read != size) return LexiconStatus::Truncated;
+
+    const LexiconStatus status = rospinyin::lexicon::classify(
+        reinterpret_cast<const std::uint8_t*>(bytes.data()), bytes.size());
+    if (status != LexiconStatus::Ok) return status;
+
+    // Structure check still lives in CodeTable; a hash-valid file with a bad
+    // table layout is reported as Corrupt rather than loaded half-way.
+    if (table.load_lexicon_dat(std::string_view(bytes.data(), bytes.size()),
+                               &rospinyin::pinyin::syllable_of) == 0) {
+        return LexiconStatus::Corrupt;
+    }
+    return LexiconStatus::Ok;
 }
 
 }  // namespace
@@ -184,7 +208,28 @@ TablePtr load_system_table() {
         TraceDat(body);
     }
 #endif
-    try_load_lexicon(std::wstring(system_dir), *table);
+    // M4: the word list is mandatory. Any rejection state means the IME must
+    // not load a single-character-only table — return nullptr so
+    // load_pinyin_table() (Windows build) produces an empty, non-crashing
+    // table with an explicit trace instead of the old silent degradation.
+    const rospinyin::lexicon::LexiconStatus lex_status =
+        try_load_lexicon(std::wstring(system_dir), *table);
+#ifdef ROSPINYIN_TRACE
+    {
+        std::string body = "lexicon ";
+        body += LexiconStatusName(lex_status);
+        body += " path=" + NarrowPath(std::wstring(system_dir) + L"\\" +
+                                      kLexiconFilename);
+        if (lex_status == rospinyin::lexicon::LexiconStatus::Ok) {
+            body += " words=";
+            AppendUint(body, static_cast<unsigned long>(table->word_count()));
+        } else {
+            body += " -> 强制拒绝加载（缺少词组库/校验失败，IME 不产候选）";
+        }
+        TraceDat(body);
+    }
+#endif
+    if (lex_status != rospinyin::lexicon::LexiconStatus::Ok) return nullptr;
     return table;
 }
 

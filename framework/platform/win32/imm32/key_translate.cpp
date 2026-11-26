@@ -20,7 +20,7 @@ constexpr BYTE kCtrlBit = 0x80;
 constexpr BYTE kAltBit = 0x80;
 constexpr BYTE kShiftBit = 0x80;
 constexpr UINT kModeToggleVk = 'G';  // Ctrl+Shift+G -> [快]/[全]
-constexpr UINT kLanguageToggleVk = VK_SPACE;  // Ctrl+Shift+Space -> 中/英 backup
+constexpr UINT kLanguageToggleVk = VK_SPACE;  // Ctrl+Shift+Space: reserved for fullwidth/halfwidth (no-op)
 
 // lParam bit 31 of WM_KEYDOWN/WM_KEYUP: 1 = the key is being released. The
 // same lParam is handed to ImeProcessKey, and it is the only transition

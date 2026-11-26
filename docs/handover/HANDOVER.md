@@ -1,8 +1,9 @@
 # RosPinyin 接手文档（Handover）
 
 > 面向对象：接手的维护者 / 新协作者
-> 版本基线：`main` = `3accb57`（2026-11-17）
+> 版本基线：`main` = `d6a03d4`（2026-11-26）；发布线 `v0.1.0` 正式版已发布（tag `93e75f9`）
 > 阅读顺序建议：第 1–3 章了解"是什么、到哪了"→ 第 6 章跑起来 → 第 5/8 章读代码 → 第 10 章避开坑
+> **2026-11-26 状态快照见 §3**：M0–M3 完成、v0.1 发布；M4 **宿主代码与部署链路已完成**（词库内嵌必装、硬失败，宿主门禁全绿），6080 开发机实机验收已闭环（owner 截图裁定：`zhongwen` 代 `jisuanji`、安装截图覆盖 `/status`）；6081/6082 milestone 对照截图仍待补；M5 可开工。
 
 ---
 
@@ -41,15 +42,16 @@ TSF/Cicero 支持、云候选/账号/皮肤、繁体与其他方言、真实 Win
 |---|---|---|
 | M0 | 蓝本移植验证（QEMU/ReactOS 环境、IMM32 可行性） | ✅ 2026-11-13，见 `M0-REPORT.md` |
 | M1 | 骨架替换：16 个 IMM32 导出、分步注册、托盘图标 | ✅ 2026-11-16，见 `M1-REPORT.md` |
-| **M2** | **单字拼音引擎（核心里程碑）** | 🚧 进行中，宿主侧完成 + 数据链路就绪；**VM 按键拦截待解**（见 §11.1） |
-| M3 | 中文体验补齐（标点、全角、Shift 临时英文） | 进行中：第一批 + 标点 shift 修复已落地并 guest 六键实机 PASS（2026-11-23）；全角/半角独立开关与 100 字段落实机验收待后续。详见 CHANGELOG |
-| M4 | 词组与词频 | 未开始 |
-| M5 | 整句与自学习 | 未开始 |
+| **M2** | **单字拼音引擎（核心里程碑）** | ✅ 2026-11-18 完成（15/15 实机验收）；首页覆盖率 96.8%，首选率 46.2%，见 `docs/milestones/m2/` |
+| M3 | 中文体验补齐（标点、全角、Shift 临时英文） | ✅ 2026-11-23 主体完成：中文标点 + shift + 多码点 guest 实机 PASS；`[快]/[全]` 字形开关 P1 完成（2026-11-26）；全角/半角独立开关与 100 字段落实机验收**待确认** |
+| M4 | 词组与词频 | ✅ **宿主实现 + 部署链路完成**（2026-11-26）：词库内嵌 GUI/CLI 安装器（第 4 RCDATA）、system32 固定 SHA-256 校验、四类失败拒绝加载；宿主 ctest 两配置 24/24、`check_m1` 120/120。**6080 开发机实机验收已闭环（owner 裁定），6081/6082 对照待补** |
+| M5 | 整句与自学习 | 未开工；前置依赖 M4 落地。文档口径已更正（整句开关为配置持久，非会话级；自写 Viterbi） |
 | M6 | 设置 UI | 未开始 |
 | M7 | 遗留场景修复（含上游往返） | 未开始 |
-| M8 | 收尾与发布 | 未开始 |
+| M8 | 收尾与发布 | 未开始（v0.1 已作为独立软件包发布，不等于 M8） |
+| 横切与并行项（非 xingma） | 已统一排期：`docs/plan/CROSSCUTTING-SCHEDULE.md`，总计划入口 `PLAN.md` §13；dev-loop「M4 落地」S0 轮次不变 |
 
-> 详细 WBS 见 `PLAN.md`，阶段目标见 `ROADMAP.md`。
+> 详细 WBS 见 `docs/plan/PLAN.md`，阶段目标见 `docs/plan/ROADMAP.md`。M4/M5 状态更正见 PLAN §5/§6（2026-11-26）；横切与并行项排期见 PLAN §13 / `CROSSCUTTING-SCHEDULE.md`。
 
 ### 1.7 第二条产品线：RosXingMa（形码）
 
@@ -158,16 +160,63 @@ Commit：emit_text() 逐 UTF-16 码单元生成 TRANSMSG，写入 list->TransMsg
 
 ## 3. 当前状态（接手时必读）
 
+> 快照时间 2026-11-26 12:20；基线 `main` = `d6a03d4`。下表取代旧版细目，历史过程见 §11 与 CHANGELOG。
+
+### 3.1 已完成
+
 | 项 | 状态 |
 |---|---|
-| 框架宿主层（16 导出、键路由、UI 窗口、会话存储） | ✅ 完成并实测（M1） |
+| 框架宿主层（16 导出、键路由、UI 窗口、会话存储） | ✅ M1 完成并实测 |
 | 框架 G1–G4 缺口 | ✅ 全部在框架侧解决（多码点上屏、零码表+热重载、配置入口、键策略/UTF-8 组合串） |
-| 审计 P0（TRANSMSGLIST ABI）+ P2（reload 顺序） | ✅ 2026-11-17 修复，`check_m1.py` 新增 3 条断言防回归 |
-| 拼音引擎（切分、候选、`v` 键、声调转换） | ✅ 宿主单测全覆盖 |
-| `rospinyin.dat` 数据链路（Unihan 18.0 + hanziDB 字频 → mkdat） | ✅ 44,355 字 / 418 音节，可复现构建 |
-| Win32 产物 CI（MinGW i686 → `m1-artifacts` 分支） | ✅ 三 job 全绿 |
-| **VM 内 M2 端到端验收** | ✅ 2026-11-16 全部通过（15/15，见 `docs/milestones/m2/M2-ACCEPTANCE.md`）；`alpha0.0.2` 已发布 |
-| **M0 红线 #2（不写 Preload / 不设默认 IME）** | ⚠️ **2026-11-18 降级为部署偏好**——前提被两组对照推翻，见 §11.18 |
+| 拼音引擎 + `rospinyin.dat` | ✅ 44,355 字 / 418 音节 / 首屏 96.8%，v2 格式可复现构建（指纹见 `tools/mkdat/build_dat.sh`） |
+| M2 端到端实机验收 | ✅ 15/15（`docs/milestones/m2/M2-ACCEPTANCE.md`） |
+| M3 中文标点 / Shift / 多码点 | ✅ guest 六键实机 PASS（2026-11-23） |
+| P0 GUI 安装器 | ✅ 自包含 payload，平台白名单仅 `ProductName == "ReactOS"`；Windows 真机只走 CLI `/step1..4` |
+| P1 `[全]` 字形模式 | ✅ 候选/编码窗按码点平面切文津 P0/P2/P3；6080 扩展区实机确认非豆腐块（2026-11-26）；`Ctrl+Shift+G` 会话级切换 |
+| P2 nightly Droid 字体包 | ✅ `tools/droid-font-pack/` 可复现打包 + 安装/卸载；原版字体 SHA-256 固定 |
+| P3 Windows GUI 兼容评估 | ✅ 结论：不登记 Windows GUI，CLI 例外保留，`docs/reviews/WINDOWS-GUI-COMPATIBILITY-ASSESSMENT.md` |
+| 发布线 | ✅ `alpha0.0.1–0.0.4` prerelease + **`v0.1.0` 正式 release**（tag `93e75f9`，7 资产，prerelease=false） |
+| VM 辅助脚本 | ✅ `m0/vm/start-vm.sh [6080\|6081\|6082] [start\|status\|stop]`（本地辅助，`.git/info/exclude`，不入库）；6081 nightly GUI 安装验收通过 |
+| 门禁 | ✅ `ctest` 24/24（默认与无内置表两配置）、`check_m1.py` 120/120、`check_docs.py` 7/7、版本门禁 PASS；CI 交叉编译与 PE 导入表断言全绿 |
+
+### 3.2 关键变更与决策（2026-11-26）
+
+- **M4 状态纠错 → 已闭环（宿主侧）**：此前代码与宿主测试完成 ≠ 用户可用（安装器不拷词库、release 不含、guest 步骤无指引，`try_load_lexicon()` 找不到文件直接返回）。2026-11-26 打通部署链路：词库作为第 4 RCDATA 内嵌、安装期 SHA 双校验、加载链四类失败拒绝加载、CI release 含词库与 SHA256SUMS。宿主侧闭环；6080 开发机实机已由 owner 截图验收闭环（安装截图含词库 SHA 校验，词组截图 `zhongwen` 首选「中文」按裁定替代 `jisuanji`），6081/6082 milestone 对照仍待补。
+- **M5 整句开关语义更正**：配置项、配置后持久生效（注册表或文件，重启保留），**不是会话级热键**；与 `[快]/[全]` 字形开关（会话级、零持久化）是两套独立开关。技术路线为**自写轻量 Viterbi**，微软拼音/搜狗/libpinyin 仅作效果标杆，不引入外部引擎。
+- **M4 落地裁决**：词库内嵌 GUI 安装器；装 `system32\` 与 ime/dat 同目录并按固定 SHA-256 校验；词库缺失/损坏时 IME 拒绝加载（**明确接受 v0.1 存量用户的破坏性升级**）；宿主 + guest 实机双验收。
+- **发布口径**：产品定位为独立第三方 IMM32 软件包，已从全部文档剔除「进入 ReactOS 主线/官方树/ISO 预装」目标表述；v0.2 发布本轮不做。
+
+### 3.3 未完成 / 当前阻塞
+
+| 项 | 状态 | 说明 |
+|---|---|---|
+| **M4 部署链路** | ✅ 宿主完成 + 6080 实机闭环 / ⏳ 6081/6082 对照待补 | 词库内嵌（第 4 RCDATA）、安装期 size+SHA 双校验、四类失败拒绝加载、`/status` 词库行、CI release 资产；宿主 ctest 24/24、`check_m1` 120/120。6080 证据：`check-install-20261126-2015.png`（词库 verified + 三文件 rhash）、`m4-phrase-6080-20261126-2026.png`（`zhongwen`→「中文」首选，owner 裁定替代 `jisuanji`） |
+| M5 整句与自学习 | ✅ 前置满足，可开工（代码未动） | 词库底座已就绪；文档口径已更正（配置持久开关、自写 Viterbi），代码未开工；6081/6082 对照属并行验收，不阻塞 M5 |
+| M3 全角/半角独立开关、100 字段落实机 | ⏳ 待确认 | — |
+| M6/M7/M8 | 未开始 | 见 `docs/plan/ROADMAP.md` |
+| `xingma/` 形码产品线 | W1 编码未开始 | 框架缺口已全关，可直接复用宿主层 |
+
+### 3.4 当前风险
+
+- **v0.1 存量用户升级破坏性**：新 IME 若词库缺失将拒绝加载；必须随安装器重装/升级带词库，发布说明需写明（owner 已确认接受）。
+- **字体强依赖**：`[全]` 模式必须文津 P0/P2/P3 三片齐备，缺任一片显示结果不可预知；nightly 另需 Droid 字体包，均不随 release 分发。
+- **guest 手工验收是盲区**：脚本无法注入键鼠，M4 实机、字体显示等必须由接手人手工操作并截图存 `m0/vm/evidence/`。
+- **git push 通道**:全局 gitconfig 把 `https://github.com/` 重写到 gh-proxy 且丢认证头，直连 push 静默失败；一律用 `tools/push_via_api.py`，推送后 tree 对账 + `reset --soft` 对齐（详见 §12）。
+
+### 3.5 后续计划
+
+1. M4 落地 S0→S7 宿主侧已完成（方案、TDD 实现、审计、门禁全绿）；**6080 开发机实机验收已闭环**（owner 截图裁定：`zhongwen` 代替 `jisuanji`、安装截图覆盖 `/status`），证据在 `m0/vm/evidence/`。6081 nightly / 6082 stable 对照截图仍待补，属并行验收。
+2. **M5 前置已满足，可开 M5**：Viterbi 整句解码 + 用户词典（配置持久开关），仍按研发闭环逐阶段过目；建议把 `zhongwenshurufa → 中文输入法` 列为验收用例。
+3. 视需要另立发版轮次（v0.2 不在本轮范围）。
+4. 按 `docs/plan/CROSSCUTTING-SCHEDULE.md` 的 P1–P14 并行车道推进非 xingma 横切项：P1–P8 与 K0 同窗口，P9–P12 在 M4 闭环后、M6/M5 前，P13–P14 并入 M8；G1–G7 只登记门控，不擅自启动。
+
+### 3.6 接手人必须知道的上下文
+
+- **不要相信「代码写了 = 功能可用」**：判断任何里程碑完成必须走完整链路（安装器 → release 资产 → guest 步骤 → 实机输入），M4 就是反例。
+- 基线来自代码与 CI，不来自摘要或旧文档；PLAN/ROADMAP 的状态更正以 2026-11-26 为准。
+- 送文件进 guest：`http://10.0.2.2:8000/`（HTTP 8000，`m0/share/` 为根）；回传：`ftp://10.0.2.2:2121`。三机共享通道，`start-vm.sh` 的 `stop` 不关闭 HTTP/FTP。
+- 当前仓库有未提交改动（M4 落地轮次 + 前两轮计划/文档更正）：`docs/plan/PLAN.md`、`docs/plan/ROADMAP.md`、`docs/plan/PLAN-MODULARIZATION.md`、`docs/README.md`、`README.md`、`docs/handover/HANDOVER.md`、`tools/mklex/README.md`、`framework/platform/win32/imm32/key_translate.cpp`、`framework/platform/win32/ui/README.md`，新增 `docs/plan/CROSSCUTTING-SCHEDULE.md`、`pinyin/include/rospinyin/lexicon_guard.hpp`、`tests/lexicon_guard_test.cpp`、`tools/mklex/extract_payload.py`；安装器/加载链/CI 共 15 个文件改动、`.devloop/` 产物亦有大量改动。**接手前先确认是否已入库**，不要直接覆盖。
+- 待确认项：M3 全角/半角独立开关状态、100 字段落实验收结果、**M4 guest 实机截图**（我出步骤/owner 操作）。CLI 词库写入 / 卸载清理词库已由 S0 拍板「CLI 同步 + 卸载清理」并落地。
 
 ---
 
@@ -392,11 +441,16 @@ REM 输出：<64 hex>  <bytes>  <path>   —— 与 artifact_hashes.py 打印的
 
 ```bash
 cd m0/vm
-./run-reactos.sh          # 从硬盘引导，日常入口
-# 或 ./run-reactos-install.sh  （带安装 ISO，首次装系统用）
+./start-vm.sh 6080        # 一键起开发机（QEMU + noVNC 桥 + HTTP/FTP，幂等）
+./start-vm.sh 6081        # nightly 验收机（reactos-nightly.qcow2，VNC 5902）
+./start-vm.sh 6082        # stable 验收机（reactos-stable.qcow2，VNC 5903）
+./start-vm.sh 6081 status # 只看状态；stop 只停该机 QEMU，不动共享 HTTP/FTP
+# 旧入口 ./start-6080.sh 等价于 ./start-vm.sh 6080（兼容包装）
 ```
 
-- 关键参数在 `m0/vm/common.sh`：`-m 512 -machine pc,accel=kvm:tcg`、`rtl8139` + SLIRP 用户网络、`usb-tablet`、`-serial file:logs/rosdbg.log`、`-monitor unix:monitor.sock`、`-vnc 127.0.0.1:1`。
+- **三档 profile**（`start-vm.sh`，本地辅助脚本，`.git/info/exclude` 不入库）：6080=`reactos.qcow2`/VNC 5901；6081=`reactos-nightly.qcow2`/VNC 5902；6082=`reactos-stable.qcow2`/VNC 5903。每档独立 monitor socket、pidfile、日志与 `-name`，按磁盘名区分进程。
+- 关键参数在 `m0/vm/common.sh`：`-m 512 -machine pc,accel=kvm:tcg`、`rtl8139` + SLIRP 用户网络、`usb-tablet`、`-serial file:logs/rosdbg*.log`、`-monitor unix:monitor*.sock`、`-vnc 127.0.0.1:<display>`；可由 `ROSPINYIN_HDD`/`_VNC_DISPLAY`/`_MONITOR`/`_VM_NAME`/`_SERIAL_LOG` 覆盖（默认保持 6080 兼容）。
+- **沙箱坑**：Bash 工具里 `nohup` 起的 QEMU 会在工具调用结束时收到 SIGHUP 退出；需用受管后台任务启动脚本。用户真机终端直接跑脚本无此问题。
 - 三条观察通道：
   1. **VNC** `127.0.0.1:5901`（display `:1`）；
   2. **noVNC**（浏览器）：`python -m websockify --web noVNC-1.5.0 6080 127.0.0.1:5901`，访问 `http://<host>:6080/vnc.html`；或直接跑 `m0/vm/noVNC-1.5.0/utils/novnc_proxy`；
@@ -463,8 +517,11 @@ make -C build-win-trace rospinyin-ime -j4
 
 ### 7.4 字体
 
-UI 窗口有一条 CJK 字体兜底链（见 `framework/platform/win32/ui/ui_window.cpp`）：`Microsoft YaHei → SimSun → Noto Sans SC → 系统默认`。
-VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
+- **UI 兜底链**（见 `framework/platform/win32/ui/ui_window.cpp`）：`Microsoft YaHei → SimSun → Noto Sans SC → 系统默认`；VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
+- **`[快]/[全]` 字形模式**：`[快]` 只显示 tier 0（Droid 保底可绘）；`[全]` 显示全量并按码点平面切换文津明朝 P0/P2/P3 渲染。`Ctrl+Shift+G` 切换，**会话级、零持久化**。**必须三字体齐备才能正常显示，缺少任意一个的后果不可预知**。
+- **文津字体不随包分发**：从[官方发布页](https://github.com/takushun-wu/WenJinMincho/releases/tag/v2.100)下载 `WenJinMincho-TTF.7z`（SHA-256 `22ab30a4…`），解压得 `WenJinMinchoP0/P2/P3-Regular.ttf`（哈希见 `docs/releases/alpha0.0.4.md`），逐个安装并重启。
+- **nightly Droid 包**：0.4.17-dev 缺 `DroidSansFallback.ttf` 致中文显示 `?`；`tools/droid-font-pack/build_pack.py` 用固定原版字体（SHA-256 `82a74d0e…`）生成包，`install-rospinyin.exe /fontinstall DROID.TTF` 安装，`/u` 仅清理本包副本。0.4.16 stable 不需要。
+- 注意区分：字形开关 `[快]/[全]` 是会话级；M5 整句开关是**配置持久**（见 §3.2）。
 
 ---
 
@@ -501,15 +558,17 @@ VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
 
 ### 8.5 CI 与产物发布
 
-`.github/workflows/ci.yml` 三个 job：
+`.github/workflows/ci.yml` 四个 job：
 
 | job | 内容 |
 |---|---|
-| `Engine tests + M1 contract (Linux)` | ① 宿主侧 Win32 语法检查（`g++ -fsyntax-only` + `tools/syntax_stub`）② cmake 构建 ③ ctest ④ 构建 `rospinyin.dat` ⑤ 上传 `rospinyin-m2-data` |
-| `MinGW i686 / ReactOS targets` | msys2 MINGW32 下两套配置构建 + PE 导入表断言 + 暂存 `stage/` + 上传 `rospinyin-m1-win32` |
-| `Publish VM test binaries` | 仅 `main` push 触发：把二进制与数据提交到 **`m1-artifacts` 分支**（force push，最新一次覆盖），供 VM 通过 GitHub contents API 拉取 |
+| `engine-smoke` | 宿主侧 Win32 语法检查（`g++ -fsyntax-only` + `tools/syntax_stub`）+ cmake 构建 + ctest + 构建 `rospinyin.dat` + 上传数据 |
+| `windows-build` | msys2 MINGW32 下两套配置构建（含 `ROSPINYIN_BUILTIN_TABLE=OFF`）+ PE 导入表断言 + 暂存 `stage/` + 上传产物 |
+| `publish-artifacts-branch` | 仅 `main` push 触发：把二进制与数据提交到 **`m1-artifacts` 分支**（force push，最新一次覆盖），供 VM 拉取 |
+| `release` | **tag push 即发版**：tags 匹配 `alpha*`/`beta*`/`v*`，用本次运行的产物建 release 并回验哈希；`alpha*`/`beta*` 为 prerelease，`v*` 为正式版 |
 
 `m1-artifacts` 分支里的 `INFO.txt` 记录 `source commit` 与构建时间 —— **VM 验收前先核对它等于你期望的提交**。
+发版纪律：先写 `docs/releases/<tag>.md` 再打 tag（`check_release_version.py` 强制），tag 推送后 CI 自动建 release；不存在手工上传路径。
 
 ### 8.6 VM 验收（M2）
 
@@ -521,8 +580,10 @@ VM 证据用 `m0/share/NotoSansSC-subset.ttf`。
 
 | 门禁 | 命令 | 通过标准 |
 |---|---|---|
-| 宿单单测 | `ctest --preset linux-ci`（或 `ctest --test-dir build`） | 17/17（smoke、session、pinyin、pinyin-session、candidate-pager、pinyin-scheme、scheme-registry、toy-scheme、host-key、key-route、host-smoke、toolbar-text、emit-text、utf8、code-table、m1-contract、mkdat-e2e） |
-| 契约静态检查 | `python3 tools/check_m1.py` | 109/109（SPDX、16 导出、加载期调用白名单、ImeInquire 可拒绝、open 状态双入口对齐、工具条贴合工作区、TRANSMSGLIST ABI、data-first reload、框架不含拼音知识…） |
+| 宿主单测 | `ctest --preset linux-ci`（或 `ctest --test-dir build` / `build-host-off`） | **24/24**（两配置各 24；新增 lexicon-guard 四态测试。旧记录 20/20 是未重配的陈旧 build 目录读数） |
+| 契约静态检查 | `python3 tools/check_m1.py --root .` | **120/120**（SPDX、16 导出、加载期调用白名单、TRANSMSGLIST ABI、data-first reload；M4 新增 4-RCDATA、lexicon_guard 固定值、加载链硬失败、安装器三文件对称断言） |
+| 文档门禁 | `python3 tools/check_docs.py .` | **7/7**（根目录仅 README、索引完整、相对链接可达、release 命名匹配） |
+| 版本门禁 | `python3 tools/check_release_version.py <tag>` | 全绿（version.h 与 tag 一致、发布说明存在） |
 | Win32 语法检查 | CI 的第一步，见 §6.3 | 0 error（用 `tools/syntax_stub` 提供的 Windows 头） |
 | PE 导入表 | CI `objdump -p` | 不得出现 Vista+ 导出或非系统 DLL |
 | 真机验收 | `docs/milestones/m2/M2-ACCEPTANCE.md` | 15 项全绿 |
@@ -2370,9 +2431,9 @@ w2（连续输入 `nihao` 候选窗不闪）、w3（翻到第 2 页后继续打�
 ### 11.2 其他待办
 
 - ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。
-- M3：中文标点、全角/半角；~~Shift 临时英文~~（已做，见 §11.14：lone Shift 切中英，
-  暂未实现"按住 Shift 临时英文、松开恢复"的瞬时模式）；
-- M4：词组与词频（数据结构需扩展 `rospinyin.dat`，注意版本号与向后兼容）；
+- ~~M3：中文标点、全角/半角~~：中文标点与 Shift 已做（§11.14）；**全角/半角独立开关待确认**，100 字段落实机验收待做；
+- ~~**M4 部署链路**~~ **宿主侧已闭环（2026-11-26）**：词库内嵌 GUI/CLI 安装器（第 4 RCDATA）、system32 固定 SHA-256 校验、四类失败拒绝加载、CI release 含词库与 SHA256SUMS；宿主 ctest 24/24、check_m1 120/120。**6080 实机已由 owner 截图验收闭环，6081/6082 对照待补**，见 §3.3 与 `.devloop/`；
+- **M5 前置已满足（6080 实机闭环），可开工**：自写 Viterbi 整句解码 + 用户词典；整句开关为配置持久（非会话级），见 §3.2；
 - 语言栏菜单项（属性/关于）留待 M6；
 - `xingma/` W1 编码（`ShapeScheme`/`ShapeStore`/`ShapeDatLoader`）尚未开始，框架侧缺口已全部关闭，可直接复用宿主层；
 - 历史遗留空目录 `engine/include/` 已于 2026-11-17 清理（实体已并入 `framework/`）。
@@ -2383,10 +2444,11 @@ w2（连续输入 `nihao` 候选窗不闪）、w3（翻到第 2 页后继续打�
 
 **改代码**
 
-1. `cmake --build build --parallel && ctest --test-dir build` → 17/17；
-2. `python3 tools/check_m1.py` → 109/109（名字沿用 M1，实际是**长期契约闸门**，含 M2 不变量）；
-3. 动了 `framework/platform/win32/imm32` 或 `framework/platform/win32/ui`：跑 CI 那步宿主语法检查（§6.3），确认 `-Wchanges-meaning` / ABI 断言不炸；
-4. 动了 ABI：本地用 zig 真实 MinGW 头编译一次 `framework/platform/win32/imm32/imm_entry.cpp`（`-target x86-windows-gnu -c`）。
+1. `cmake --build build --parallel && ctest --test-dir build` → **24/24**（`build-host-off` 同为 24/24）；
+2. `python3 tools/check_m1.py --root .` → **120/120**（名字沿用 M1，实际是**长期契约闸门**，含 M2/M4 不变量）；
+3. `python3 tools/check_docs.py .` → **7/7**（改文档必跑）；
+4. 动了 `framework/platform/win32/imm32` 或 `framework/platform/win32/ui`：跑 CI 那步宿主语法检查（§6.3），确认 `-Wchanges-meaning` / ABI 断言不炸；
+5. 动了 ABI：本地用 zig 真实 MinGW 头编译一次 `framework/platform/win32/imm32/imm_entry.cpp`（`-target x86-windows-gnu -c`）。
 
 **加一个输入法（如形码）**
 
@@ -2401,11 +2463,12 @@ w2（连续输入 `nihao` 候选窗不闪）、w3（翻到第 2 页后继续打�
    `ROSPINYIN_VERSION_STRING` 一起 bump。`python3 tools/check_release_version.py <tag>`
    必须全绿——它同时校验发布说明是否存在，所以"先写说明再打 tag"是被强制的，不是靠记性。
 2. **打 tag 并 push 那个 tag**：CI 的 `release` job 用**本次运行的产物**建 release
-   （`.ime` / `.dat` / `install-rospinyin.exe` / `INFO.txt` / `SHA256SUMS.txt`），
+   （`.ime` / `.dat` / `install-rospinyin.exe` / `install-rospinyin-gui.exe` / `rhash.exe` / `INFO.txt` / `SHA256SUMS.txt`），
    再把资产下载回来逐个 `sha256sum -c`。手工上传已不是路径；
    `tools/make_release.py` 只在 CI 不可用时兜底（它同时负责打 tag）。
+   `alpha*`/`beta*` 为 prerelease，`v*` 为正式版；tag 已存在时需删除旧 tag ref 再重建才能重跑 CI。
 3. VM 拉取产物 → 重启 → 跑 `docs/milestones/m2/M2-ACCEPTANCE.md`；
-4. 更新 `M2-REPORT.md`（若新建）与 `PLAN.md`/`ROADMAP.md` 状态。
+4. 更新 `M2-REPORT.md`（若新建）与 `docs/plan/PLAN.md`/`docs/plan/ROADMAP.md` 状态。
 
 #### 推送通道（2026-11-17 实测，务必按此执行）
 
@@ -2477,9 +2540,13 @@ python3 tools/push_via_api.py <repo> main <expected_remote_sha> <sha1> <sha2> ..
 
 | 文档 | 内容 |
 |---|---|
-| `README.md` | 项目章程：使命、立项依据、路线 A/B 决策、产品形态 |
-| `PLAN.md` | WBS 全量任务与工期 |
-| `ROADMAP.md` | 里程碑目标 |
+| `README.md` | 项目章程：使命、立项依据、路线 A/B 决策、产品形态、安装与字体依赖 |
+| `docs/plan/PLAN.md` | WBS 全量任务与工期；§5 M4 状态更正、§6 M5 开关语义更正（2026-11-26） |
+| `docs/plan/ROADMAP.md` | 里程碑目标；M5 段含前置依赖与开关语义更正 |
+| `docs/releases/v0.1.0.md` | v0.1.0 正式发布说明（安装、使用、字体依赖；已同步线上 release 正文） |
+| `docs/reviews/WINDOWS-GUI-COMPATIBILITY-ASSESSMENT.md` | P3 Windows GUI 兼容评估：不登记白名单、CLI 例外保留 |
+| `tools/droid-font-pack/README.md` | nightly Droid 字体包：制作、安装、清理与验证范围 |
+| `tools/mklex/README.md` | M4 词组库 `rospinyin-lexicon.dat`：构建、许可、运行时行为与内嵌必装部署链（宿主已落地，6080 实机已验，6081/6082 对照待补） |
 | `M0-REPORT.md` | ReactOS/QEMU 环境、IMM32 可行性、BSOD 根因、许可证时间线 |
 | `M1-REPORT.md` | 16 导出骨架、分步注册、动态 HKL、托盘图标修复、MinGW 切换 |
 | `framework/README.md` | 框架模块地图、Scheme 复用缝、G1–G4 处置、生命周期红线 |

@@ -7,6 +7,12 @@
 
 add_executable(install-rospinyin install.cpp)
 
+# M4: lexicon_guard.hpp (the pinned word-list size/hash) is the single source
+# shared with the IME loader; payload_blob.hpp supplies the SHA-256 algorithm.
+target_include_directories(install-rospinyin PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${PROJECT_SOURCE_DIR}/pinyin/include")
+
 target_link_libraries(install-rospinyin PRIVATE imm32 advapi32)
 
 # Static CRT + reproducible header (cmake/StaticRuntime.cmake, X2-e3).

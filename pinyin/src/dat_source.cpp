@@ -33,9 +33,24 @@ RPY_WEAK TablePtr load_system_table() { return nullptr; }
 
 TablePtr load_pinyin_table() {
     if (auto table = load_system_table()) return table;
+
+#if defined(ROSPINYIN_REQUIRE_SYSTEM_TABLE)
+    // M4 (owner 2026-11-26): in the release/Windows build the system table is
+    // mandatory. A nullptr here means either the .dat or the now-required
+    // word list failed validation — that is an explicit rejection, not a
+    // reason to fall back to the built-in table (which has no phrases and
+    // would silently recreate the "installed but no 你好" symptom).
+    // Return an EMPTY table instead: the IME still loads and stays alive, but
+    // produces no candidates. This is the intersection of the M1 no-table
+    // contract (never crash) and the S0 "refuse to load" decision.
+    return std::make_shared<imfw::CodeTable>();
+#else
+    // Host / diagnostic builds keep the built-in fallback unchanged so both
+    // ctest configurations and the no-table abnormal-state test stay green.
     auto table = std::make_shared<imfw::CodeTable>();
     load_builtin_table(*table);
     return table;
+#endif
 }
 
 }  // namespace rospinyin

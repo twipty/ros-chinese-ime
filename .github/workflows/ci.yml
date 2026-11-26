@@ -298,13 +298,17 @@ jobs:
           cp stage/rospinyin.ime stage/install-rospinyin.exe \
              stage/install-rospinyin-gui.exe stage/rhash.exe \
              m2-stage/rospinyin.dat out/
+          # M4: the word list is mandatory and is not stored in git as a
+          # binary. Restore it byte-for-byte from the checked-in generated
+          # payload header; the script pins size + SHA-256 before writing.
+          python3 tools/mklex/extract_payload.py --output out/rospinyin-lexicon.dat
           printf 'tag: %s\nsource commit: %s\nworkflow run: %s\n' \
             "$TAG" "$GITHUB_SHA" \
             "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             > out/INFO.txt
           cd out
-          sha256sum rospinyin.ime rospinyin.dat install-rospinyin.exe \
-            install-rospinyin-gui.exe rhash.exe INFO.txt \
+          sha256sum rospinyin.ime rospinyin.dat rospinyin-lexicon.dat \
+            install-rospinyin.exe install-rospinyin-gui.exe rhash.exe INFO.txt \
             > SHA256SUMS.txt
           cat SHA256SUMS.txt
       - name: Publish

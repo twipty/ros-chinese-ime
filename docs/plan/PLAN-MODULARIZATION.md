@@ -663,7 +663,7 @@ Ctrl+Space 与备用热键——**全部改在 `process_key` 里**。先有冒�
 
 **X3 — 可插拔验收**
 
-- [ ] X3-a `samples/toy-scheme/` + `samples/README.md` + 从零接入演练
+- [x] X3-a `samples/toy-scheme/` + `samples/README.md` + 从零接入演练（样例、说明与 `toy-scheme` ctest 目标已存在；`framework/` 零 diff 的机械证据见 HANDOVER）
 - [ ] X3-b per-instance 隔离：`g_hInst` / `g_stats` / `g_last_geometry` / `GlyphProbe` / `WindowRegistry`（审计 A-P1-8）
 
 **X4 — 等门**

@@ -2,17 +2,18 @@
 # RosPinyin - Simplified Chinese pinyin IME for ReactOS
 # SPDX-License-Identifier: MIT
 # See LICENSE and NOTICE.txt at the repository root.
-"""Pack the three release payloads into a text-only C/RC header.
+"""Pack the four release payloads into a text-only C/RC header.
 
-Route C embeds zlib/deflate-compressed rospinyin.ime, rospinyin.dat and the
-CLI installer itself in the GUI installer. This script is the build-time half:
-it reads the exact bytes that ship in m0/share/, compresses them
-deterministically (level 9, no timestamps), and emits `payload_base64.hpp` as
-source text. No binary is ever added to the repository.
+Route C embeds zlib/deflate-compressed rospinyin.ime, rospinyin.dat, the CLI
+installer itself and (since M4) the word list rospinyin-lexicon.dat in the GUI
+installer. This script is the build-time half: it reads the exact bytes that
+ship in m0/share/, compresses them deterministically (level 9, no timestamps),
+and emits `payload_base64.hpp` as source text. No binary is ever added to the
+repository.
 
 The generated header serves two consumers:
   * `gui_res.rc` includes it with ROSPINYIN_RC_PAYLOAD_ONLY defined and uses
-    the escaped-string macros as three RCDATA blobs;
+    the escaped-string macros as four RCDATA blobs;
   * `gui.cpp` includes it normally for sizes, CRCs and source SHA-256 notes.
 
 Why escaped strings for RCDATA: windres stores a bare `0xAB` byte-list item as
@@ -50,12 +51,25 @@ def rc_byte_macro(lines: list[str], macro: str, data: bytes) -> None:
     lines.append("")
 
 
-def pack(ime: Path, dat: Path, cli: Path, output: Path) -> None:
+# M4 windres workaround: a single RCDATA holding 116,814 adjacent string
+# literals makes windres's O(n^2) concatenation hang (>11 min, killed).
+# Splitting the word list into SEGMENTS smaller RCDATA blobs (each ~14,600
+# literals) compiles in ~14 s. The GUI loads each segment and concatenates in
+# resource-ID order before inflating. Ids are 104..104+SEGMENTS-1.
+LEX_RCDATA_SEGMENTS = 8
+
+
+def pack(ime: Path, dat: Path, cli: Path, output: Path,
+         lex: Path | None = None) -> None:
     specs = [
         ("IME", "Ime", 101, ime),
         ("DAT", "Dat", 102, dat),
         ("CLI", "Cli", 103, cli),
     ]
+    if lex is not None:
+        # M4: the word list is the fourth payload. Resource id 104 keeps the
+        # existing IME hash frozen (the first three IDs never change).
+        specs.append(("LEX", "Lex", 104, lex))
     payloads = []
     for label, cpp_name, resource_id, path in specs:
         raw = path.read_bytes()
@@ -90,6 +104,8 @@ def pack(ime: Path, dat: Path, cli: Path, output: Path) -> None:
     ]
     for p in payloads:
         lines.append(f"#define ROSPINYIN_IDR_{p['label']}_PAYLOAD {p['id']}")
+    # M4: the word list occupies SEGMENTS consecutive resource ids.
+    lines.append(f"#define ROSPINYIN_LEX_RCDATA_SEGMENTS {LEX_RCDATA_SEGMENTS}")
     lines.append("")
 
     for p in payloads:
@@ -99,8 +115,21 @@ def pack(ime: Path, dat: Path, cli: Path, output: Path) -> None:
     lines.append("#ifdef ROSPINYIN_RC_PAYLOAD_ONLY")
     lines.append("")
     for p in payloads:
-        rc_byte_macro(lines, f"ROSPINYIN_{p['label']}_PAYLOAD_RC_BYTES",
-                      p["compressed"])
+        if p["label"] == "LEX":
+            # Split into SEGMENTS RCDATA blobs so windres does not concatenate
+            # 116,814 string literals into one giant token (O(n^2), hangs).
+            data = p["compressed"]
+            span = (len(data) + LEX_RCDATA_SEGMENTS - 1) // LEX_RCDATA_SEGMENTS
+            for seg in range(LEX_RCDATA_SEGMENTS):
+                piece = data[seg * span:(seg + 1) * span]
+                if piece:
+                    rc_byte_macro(
+                        lines,
+                        f"ROSPINYIN_LEX_PAYLOAD_RC_BYTES_{seg}",
+                        piece)
+        else:
+            rc_byte_macro(lines, f"ROSPINYIN_{p['label']}_PAYLOAD_RC_BYTES",
+                          p["compressed"])
     lines.append("#endif  // ROSPINYIN_RC_PAYLOAD_ONLY")
     lines.append("")
 
@@ -166,12 +195,24 @@ def main() -> None:
         default=root / "m0/share/install-rospinyin.exe",
     )
     parser.add_argument(
+        "--lex",
+        type=Path,
+        default=root / "m0/share/rospinyin-lexicon.dat",
+        help="M4 word list to embed as the 4th payload",
+    )
+    parser.add_argument(
+        "--no-lex",
+        action="store_true",
+        help="build the legacy 3-payload header (for compatibility checks)",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=root / "tools/install-rospinyin/payload_base64.hpp",
     )
     args = parser.parse_args()
-    pack(args.ime, args.dat, args.cli, args.output)
+    pack(args.ime, args.dat, args.cli, args.output,
+         None if args.no_lex else args.lex)
 
 
 if __name__ == "__main__":

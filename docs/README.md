@@ -41,8 +41,9 @@
 
 | 文件 | 内容 |
 | --- | --- |
-| [PLAN.md](plan/PLAN.md) | 总计划：M0–M8 里程碑分项、当前状态、F 字形里程碑（§12） |
-| [ROADMAP.md](plan/ROADMAP.md) | 路线图与每个里程碑的退出标准（含 M2 首次实测注记） |
+| [PLAN.md](plan/PLAN.md) | 总计划：M0–M8 里程碑分项、当前状态、F 字形里程碑（§12）、横切与并行工作统一排期（§13） |
+| [ROADMAP.md](plan/ROADMAP.md) | 路线图与每个里程碑的退出标准（含 M2 首次实测注记、横切并行泳道） |
+| [CROSSCUTTING-SCHEDULE.md](plan/CROSSCUTTING-SCHEDULE.md) | 非 xingma 横切与并行工作详表：K0 锚点、P1–P14 排期、G1–G7 门控、并行关系图与估时口径 |
 | [PLAN-MODULARIZATION.md](plan/PLAN-MODULARIZATION.md) | 框架抽取（引擎宿主 / UI / 工具条独立成可复用模块）的分步计划 |
 | [DAT-FORMAT-V2.md](plan/DAT-FORMAT-V2.md) | **码表 dat 统一格式 v2 冻结规范（拼音侧落地文本）**：64B 头 / 24B 条目 / `flags` bit1 = tier、v1 兼容读法、拼音三条校验红线；上位文本见 `xingma/docs/glyph-tier/UNIFIED-DAT-FORMAT.md` |
 

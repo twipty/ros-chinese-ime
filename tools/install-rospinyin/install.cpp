@@ -31,19 +31,32 @@
 // Both files are copied, size-verified, and — because a running IME (or the
 // shell's preload) keeps the image section mapped, which makes an in-place
 // overwrite fail with ERROR_SHARING_VIOLATION — renamed aside and replaced.
+//
+// M4 update (2026-11-26): the payload is THREE files. rospinyin-lexicon.dat
+// carries the word list; without it the IME loads but produces no phrases.
+// All three are copied, size- and SHA-256-verified, and removed on /u.
 
 #include <windows.h>
 #include <imm.h>
 #include "droid_font.hpp"
+// M4: SHA-256 for the install-time word-list check. payload_blob.hpp holds
+// only the algorithm (no embedded payload bytes) so including it cannot bloat
+// this CLI with the 27 MB generated macro. lexicon_guard.hpp is the single
+// source of the pinned size/hash shared with the IME loader and CI.
+#include "payload_blob.hpp"
+#include <rospinyin/lexicon_guard.hpp>
 #include <cstdint>
 #include <cstdio>
 #include <cwchar>
 #include <initializer_list>
+#include <string>
+#include <vector>
 
 namespace {
 
 constexpr wchar_t kImeFileName[]     = L"rospinyin.ime";
 constexpr wchar_t kDatFileName[]     = L"rospinyin.dat";
+constexpr wchar_t kLexiconFileName[] = L"rospinyin-lexicon.dat";
 constexpr wchar_t kLayoutText[]      = L"中文(简体) - RosPinyin";
 constexpr wchar_t kKeyboardLayouts[] =
     L"SYSTEM\\CurrentControlSet\\Control\\Keyboard Layouts";
@@ -175,15 +188,41 @@ int copy_one(const wchar_t* name) {
     return kOk;
 }
 
+// M4: read a file into memory and return its SHA-256 as lowercase hex.
+// Used for the install-time double check (source hash == installed hash ==
+// pinned constant). A short read is a hard error, never a partial digest.
+bool file_sha256(const wchar_t* path, std::string* out) {
+    HANDLE file = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, nullptr,
+                              OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file == INVALID_HANDLE_VALUE) return false;
+    const DWORD size = GetFileSize(file, nullptr);
+    if (size == 0 || size == INVALID_FILE_SIZE) {
+        CloseHandle(file);
+        return false;
+    }
+    std::vector<std::uint8_t> bytes(size);
+    DWORD read = 0;
+    const BOOL ok = ReadFile(file, bytes.data(), size, &read, nullptr);
+    CloseHandle(file);
+    if (!ok || read != size) return false;
+    *out = rospinyin::installer::sha256_hex(bytes.data(), bytes.size());
+    return true;
+}
+
 int step1_copy_payload() {
     const int ime = copy_one(kImeFileName);
     if (ime != kOk) return ime;
     const int dat = copy_one(kDatFileName);
     if (dat != kOk) return dat;
+    // M4: the word list is mandatory; a missing or unreadable source is a
+    // hard install failure, never a "single-character-only" half install.
+    const int lex = copy_one(kLexiconFileName);
+    if (lex != kOk) return lex;
 
     // Size check: a truncated copy (disk full, killed process) is worse than
     // a failed one because the IME then loads and misparses the table.
-    for (const wchar_t* name : {kImeFileName, kDatFileName}) {
+    for (const wchar_t* name :
+         {kImeFileName, kDatFileName, kLexiconFileName}) {
         wchar_t src[MAX_PATH]{}, dst[MAX_PATH]{};
         unsigned long long a = 0, b = 0;
         if (!source_path(name, src, MAX_PATH) ||
@@ -199,6 +238,38 @@ int step1_copy_payload() {
                           name, static_cast<unsigned long>(a),
                           static_cast<unsigned long>(b));
             return kVerifyFailed;
+        }
+        // M4: the word list must additionally match the pinned SHA-256 that
+        // lexicon_guard uses at runtime. ime/dat are versioned independently
+        // and are only checked source==installed.
+        std::string src_sha, dst_sha;
+        if (!file_sha256(src, &src_sha) || !file_sha256(dst, &dst_sha)) {
+            log_error(L"cannot hash the copied file", GetLastError());
+            return kVerifyFailed;
+        }
+        if (src_sha != dst_sha) {
+            std::fwprintf(stderr,
+                          L"[error] %ls: source/installed SHA-256 differ\n"
+                          L"        src=%hs\n        dst=%hs\n",
+                          name, src_sha.c_str(), dst_sha.c_str());
+            return kVerifyFailed;
+        }
+        if (name == kLexiconFileName) {
+            const char* pinned =
+                rospinyin::lexicon::kPolicy.expected_sha256;
+            if (a != rospinyin::lexicon::kPolicy.expected_size ||
+                src_sha != pinned) {
+                std::fwprintf(stderr,
+                              L"[error] word list hash mismatch: got %hs, "
+                              L"expected %hs (size %lu)\n",
+                              src_sha.c_str(), pinned,
+                              static_cast<unsigned long>(a));
+                return kVerifyFailed;
+            }
+            std::fwprintf(stdout,
+                          L"[step1] %ls verified (%lu bytes, SHA-256 OK)\n",
+                          name, static_cast<unsigned long>(a));
+            continue;
         }
         std::fwprintf(stdout, L"[step1] %ls verified (%lu bytes)\n", name,
                       static_cast<unsigned long>(a));
@@ -490,6 +561,25 @@ int font_install(const wchar_t* source) {
 int show_status() {
     report_payload(kImeFileName);
     report_payload(kDatFileName);
+    report_payload(kLexiconFileName);
+    // M4 / AC4: show an explicit hash-verdict line for the word list, not just
+    // its presence. "present" alone was the old silent-single-char symptom.
+    {
+        wchar_t dst[MAX_PATH]{};
+        if (system_path(kLexiconFileName, dst, MAX_PATH)) {
+            std::string sha;
+            if (file_sha256(dst, &sha)) {
+                const bool ok =
+                    sha == rospinyin::lexicon::kPolicy.expected_sha256;
+                std::fwprintf(stdout,
+                              L"lexicon sha   : %hs (%ls)\n",
+                              sha.c_str(), ok ? L"OK" : L"MISMATCH");
+            } else {
+                std::fwprintf(stdout,
+                              L"lexicon sha   : <unreadable>\n");
+            }
+        }
+    }
 
     HKL hkl = nullptr;
     if (load_hkl(&hkl) && hkl) {
@@ -536,8 +626,11 @@ int uninstall() {
     }
     RegDeleteKeyW(HKEY_CURRENT_USER, kRegInstall);
 
-    // Both payload files, plus any stale .old left by a live replacement.
-    for (const wchar_t* name : {kImeFileName, kDatFileName}) {
+    // All three payload files, plus any stale .old left by a live replacement.
+    // M4: the word list is removed symmetrically with ime/dat (owner decision
+    // 2026-11-26) so a v0.2 uninstall leaves no orphaned dictionary.
+    for (const wchar_t* name :
+         {kImeFileName, kDatFileName, kLexiconFileName}) {
         wchar_t dst[MAX_PATH]{};
         if (!system_path(name, dst, MAX_PATH)) continue;
         if (!DeleteFileW(dst)) {
@@ -596,13 +689,13 @@ int install_all() {
 
 void usage() {
     std::fwprintf(stdout,
-        L"RosPinyin installer (M2)\n"
-        L"  /step1   copy rospinyin.ime + rospinyin.dat into system32 only\n"
+        L"RosPinyin installer (M4)\n"
+        L"  /step1   copy ime + dat + lexicon into system32 (size + SHA-256)\n"
         L"  /step2   ImmInstallIMEW, record the dynamic HKL\n"
         L"  /step3   write Layout Text\n"
         L"  /step4   write Layout Display Name\n"
         L"  /i       all steps at once (Windows reference machine ONLY)\n"
-        L"  /status  show payload / HKL / layout / Droid font state\n"
+        L"  /status  show payload / lexicon hash / HKL / layout / font state\n"
         L"  /u       uninstall\n"
         L"  /fontinstall <DROID.TTF>  optional nightly font pack\n"
         L"On ReactOS run /step1../step4 separately and reboot after each.\n"

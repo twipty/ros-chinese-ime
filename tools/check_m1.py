@@ -516,22 +516,47 @@ def run(root: Path) -> int:
             ", ".join(s for s in steps if s not in code))
 
     # The GUI must stay a true single-exe installer. The CLI is the third
-    # RCDATA payload, and windres needs escaped string macros there: bare
-    # 0xHH byte lists are stored as 16-bit words and silently double the blob.
+    # RCDATA payload and (M4) the word list is the fourth. windres needs
+    # escaped string macros here: bare 0xHH byte lists are stored as 16-bit
+    # words and silently double the blob.
     gui_res = read(root, "tools/install-rospinyin/gui_res.rc")
     gui_code = strip_cpp_comments(
         read(root, "tools/install-rospinyin/gui.cpp"))
-    names = ("IME", "DAT", "CLI")
-    c.check("GUI embeds three byte-exact RCDATA payloads",
+    payload_header = read(root, "tools/install-rospinyin/payload_base64.hpp")
+    names = ("IME", "DAT", "CLI", "LEX")
+    c.check("GUI embeds four byte-exact RCDATA payloads",
             all(f"ROSPINYIN_IDR_{n}_PAYLOAD" in gui_res and
-                f"ROSPINYIN_{n}_PAYLOAD_RC_BYTES" in gui_res and
+                (f"ROSPINYIN_{n}_PAYLOAD_RC_BYTES" in gui_res or
+                 f"ROSPINYIN_{n}_PAYLOAD_RC_BYTES_0" in gui_res) and
                 f"ROSPINYIN_{n}_PAYLOAD_BYTES" not in gui_res
                 for n in names),
             "RCDATA must use escaped string macros, not 0xHH byte lists")
+    # M4 windres workaround: LEX is split into 8 RCDATA segments because one
+    # 116k-literal blob hangs windres (O(n^2)). Pin the geometry so a future
+    # "simplification" back to a single blob cannot silently break the build.
+    c.check("M4: word list is split into windres-safe RCDATA segments",
+            "ROSPINYIN_LEX_RCDATA_SEGMENTS 8" in payload_header and
+            all(f"ROSPINYIN_LEX_PAYLOAD_RC_BYTES_{i}" in gui_res
+                for i in range(8)) and
+            "load_lexicon_resource_bytes" in gui_code,
+            "8 segments keep windres fast; GUI must concatenate in ID order")
     c.check("GUI does not look for a loose CLI beside itself",
             "module_dir" not in gui_code and
             "ROSPINYIN_IDR_CLI_PAYLOAD" in gui_code,
             "single-exe contract")
+    # M4: the generated header must contain the LEX constants, and GUI/CLI
+    # must agree on the exact word-list file name.
+    c.check("M4: generated payload header carries the word list",
+            "ROSPINYIN_IDR_LEX_PAYLOAD 104" in payload_header and
+            "kLexUncompressedSize = 6530601" in payload_header and
+            "kLexCompressedSize" in payload_header and
+            "kLexCrc32" in payload_header,
+            "re-run pack_payload.py after changing the word list")
+    c.check("M4: GUI and CLI use the same word-list file name",
+            "kLexiconFileName" in gui_code and
+            "kLexiconFileName" in strip_cpp_comments(
+                read(root, "tools/install-rospinyin/install.cpp")),
+            "GUI extracts the word list under the name the CLI copies")
 
     # 8. One layout name across DLL, resources and installer.
     header = read(root, "ime/rospinyin.h")
@@ -797,6 +822,16 @@ def run(root: Path) -> int:
     c.check("installer ships and removes the data table too",
             installer_code.count("kDatFileName") >= 3 and
             "kDatFileName" in installer_code.split("int uninstall()")[1])
+    # M4: the word list is a third mandatory payload. It must appear in the
+    # step1 copy loop, in the SHA verification and in the uninstall loop —
+    # a half-install (ime+dat, no lexicon) is the bug this round fixes.
+    uninstall_body = installer_code.split("int uninstall()")[1]
+    c.check("M4: installer ships, verifies and removes the word list",
+            installer_code.count("kLexiconFileName") >= 4 and
+            "kLexiconFileName" in uninstall_body and
+            "file_sha256" in installer_code and
+            "kPolicy.expected_sha256" in installer_code,
+            "word list must be copied, hash-checked and cleaned up")
 
     # P0-2 / M2 Shift toggle: `open` is now a state the IME owns. It is aligned
     # at every activation (AlignOpenStatus), toggled by VK_SHIFT via exactly one
@@ -994,6 +1029,33 @@ def run(root: Path) -> int:
             stub_guard is not None and
             "load_system_table" in stub_guard.group(1) and
             "load_pinyin_table" not in stub_guard.group(1))
+
+    # M4: the word list is mandatory in the Windows/release build. The guard
+    # owns the pinned size/hash exactly once; the loader must reject every
+    # non-Ok state; and the REQUIRE_SYSTEM_TABLE branch must NOT fall back to
+    # the built-in table (that would silently recreate single-char input).
+    guard_hdr = read(root, "pinyin/include/rospinyin/lexicon_guard.hpp")
+    c.check("M4: lexicon_guard pins the word-list size and SHA-256 once",
+            "6530601u" in guard_hdr and
+            "a89ec5e500c47c121687e9789fade9b8187c1ec2b69d25d5e82f1a680cfc1c6a"
+            in guard_hdr and
+            "enum class LexiconStatus" in guard_hdr and
+            "classify(" in guard_hdr,
+            "the runtime guard and the installer must share one pinned value")
+    win_src = strip_cpp_comments(read(root, "pinyin/host/dat_source_win.cpp"))
+    c.check("M4: the Windows loader rejects a bad word list",
+            "lexicon::classify" in win_src and
+            "LexiconStatus::Ok" in win_src and
+            "return nullptr" in win_src,
+            "any non-Ok word-list state must make load_system_table fail")
+    fallback = re.search(
+        r"#if\s+defined\(ROSPINYIN_REQUIRE_SYSTEM_TABLE\)(.*?)#else",
+        src_dat, re.S)
+    c.check("M4: release build never falls back to the built-in table",
+            fallback is not None and
+            "load_builtin_table" not in fallback.group(1) and
+            "make_shared<imfw::CodeTable>" in fallback.group(1),
+            "an empty table is the no-crash rejection, not a built-in fallback")
 
     # Nothing compiled into the .ime reads the macro any more, so a define here
     # would be the kind of flag that looks applied and changes no byte. It is

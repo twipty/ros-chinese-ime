@@ -8,7 +8,7 @@
 | 窗口基类 / 字体 | `framework/platform/win32/ui/ui_window.*` | **M2 已实现** | 按类名惰性注册（两个 IME DLL 可同进程共存）、无激活置顶弹窗、`Droid Sans Fallback → Noto Sans SC → Microsoft YaHei → SimSun → Arial Unicode MS` 字体兜底链（`GetTextFaceW` 验证 GDI 实际解析结果） |
 | 组合串窗口 | `framework/platform/win32/ui/composition_window.*` | **M2 已实现** | 显示原始输入串，按 `Result.segments` 画切分下划线（拼音 `[zhong][guo]`，形码同理） |
 | 候选窗 | `framework/platform/win32/ui/candidate_window.*` | **M2 已实现** | 9 候选编号、`-`/`+` 翻页提示、按字体实际度量动态改宽、UTF-32 → UTF-16 转换 |
-| **输入法工具条** | `framework/platform/win32/ui/toolbar.*` | **2026-11-16 新增** | 右下角浮动、置顶不抢焦点、显示 Scheme 标签（RosPinyin 为 `拼`）；`ImeSelect(TRUE/FALSE)` 控制显示/隐藏；后续 M3 可扩展中/英与全/半角指示 |
+| **输入法工具条** | `framework/platform/win32/ui/toolbar.*` | **2026-11-16 新增** | 右下角浮动、置顶不抢焦点、显示 Scheme 标签（RosPinyin 为 `拼`）；`ImeSelect(TRUE/FALSE)` 控制显示/隐藏；中/英与 `[快]/[全]` 指示已随 M3 落地，全角/半角独立开关仍待实现 |
 | 状态窗与菜单 | 预留 | M3 | 工具条点击菜单、状态指示扩展（WBS 4.5） |
 
 ## 生命周期约束

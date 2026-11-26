@@ -26,3 +26,21 @@ ROSPINYIN_IDR_CLI_PAYLOAD RCDATA
 {
     ROSPINYIN_CLI_PAYLOAD_RC_BYTES
 }
+
+// M4: the word list travels inside the same single EXE. Resource id 104
+// keeps the first three blobs (and the frozen rospinyin.ime hash) untouched.
+// It is split into ROSPINYIN_LEX_RCDATA_SEGMENTS consecutive RCDATA blobs:
+// one giant RCDATA (116,814 adjacent string literals) makes windres's O(n^2)
+// concatenation hang for >11 min; 8 segments compile in ~14 s. The GUI loads
+// them in ID order (104..111) and concatenates before inflate.
+ROSPINYIN_IDR_LEX_PAYLOAD RCDATA
+{
+    ROSPINYIN_LEX_PAYLOAD_RC_BYTES_0
+}
+105 RCDATA { ROSPINYIN_LEX_PAYLOAD_RC_BYTES_1 }
+106 RCDATA { ROSPINYIN_LEX_PAYLOAD_RC_BYTES_2 }
+107 RCDATA { ROSPINYIN_LEX_PAYLOAD_RC_BYTES_3 }
+108 RCDATA { ROSPINYIN_LEX_PAYLOAD_RC_BYTES_4 }
+109 RCDATA { ROSPINYIN_LEX_PAYLOAD_RC_BYTES_5 }
+110 RCDATA { ROSPINYIN_LEX_PAYLOAD_RC_BYTES_6 }
+111 RCDATA { ROSPINYIN_LEX_PAYLOAD_RC_BYTES_7 }

@@ -124,6 +124,14 @@ target_include_directories(rospinyin-installer-logic PRIVATE
     "${PROJECT_SOURCE_DIR}/tools/install-rospinyin")
 add_test(NAME installer-logic COMMAND rospinyin-installer-logic)
 
+# M4 S2 / AC2: the word-list rejection guard is a Windows-free pure function.
+# It lives in the pinyin public include tree so the host can decide all four
+# failure states (missing / truncated / corrupt / hash mismatch) directly.
+add_executable(rospinyin-lexicon-guard lexicon_guard_test.cpp)
+target_include_directories(rospinyin-lexicon-guard PRIVATE
+    "${PROJECT_SOURCE_DIR}/pinyin/include")
+add_test(NAME lexicon-guard COMMAND rospinyin-lexicon-guard)
+
 # P1 verification stage: pure codepoint -> WenJin plane mapping, shared by the
 # guest GDI probe tool. No <windows.h>; host-testable.
 add_executable(rospinyin-glyph-probe-logic glyph_probe_logic_test.cpp)

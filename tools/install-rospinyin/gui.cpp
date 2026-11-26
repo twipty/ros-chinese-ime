@@ -41,6 +41,9 @@ constexpr int kIdFontHint = 1004;
 constexpr wchar_t kCliFileName[] = L"install-rospinyin.exe";
 constexpr wchar_t kImeFileName[] = L"rospinyin.ime";
 constexpr wchar_t kDatFileName[] = L"rospinyin.dat";
+// M4: the word list is the 4th payload. This name must match the CLI's
+// kLexiconFileName exactly — both read it from the same %TEMP% directory.
+constexpr wchar_t kLexiconFileName[] = L"rospinyin-lexicon.dat";
 
 HWND g_status = nullptr;
 
@@ -115,7 +118,8 @@ bool make_temp_dir(std::wstring& out) {
 
 void cleanup_temp_dir(const std::wstring& dir) {
     if (dir.empty()) return;
-    for (const wchar_t* name : {kImeFileName, kDatFileName, kCliFileName}) {
+    for (const wchar_t* name :
+         {kImeFileName, kDatFileName, kCliFileName, kLexiconFileName}) {
         std::wstring path;
         if (path_join(dir, name, path)) DeleteFileW(path.c_str());
     }
@@ -137,11 +141,28 @@ bool load_resource_bytes(WORD id, std::vector<std::uint8_t>& out) {
     return true;
 }
 
+// M4: the word list is split into ROSPINYIN_LEX_RCDATA_SEGMENTS consecutive
+// RCDATA blobs (104..111) because one giant RCDATA makes windres hang. Load
+// them in ID order and concatenate back into the original compressed stream.
+bool load_lexicon_resource_bytes(std::vector<std::uint8_t>& out) {
+    out.clear();
+    for (int seg = 0; seg < ROSPINYIN_LEX_RCDATA_SEGMENTS; ++seg) {
+        std::vector<std::uint8_t> piece;
+        if (!load_resource_bytes(
+                static_cast<WORD>(ROSPINYIN_IDR_LEX_PAYLOAD + seg), piece)) {
+            return false;
+        }
+        out.insert(out.end(), piece.begin(), piece.end());
+    }
+    return true;
+}
+
 bool extract_payload(WORD id, std::size_t compressed_size,
                      std::size_t uncompressed_size,
                      std::uint32_t expected_crc, const char* expected_sha,
                      const std::wstring& dir, const wchar_t* name,
-                     std::wstring* detail = nullptr) {
+                     std::wstring* detail = nullptr,
+                     bool segmented = false) {
     std::wstring hash_note;
     auto fail = [detail, &hash_note](const wchar_t* reason) {
         if (detail) {
@@ -152,7 +173,9 @@ bool extract_payload(WORD id, std::size_t compressed_size,
     };
 
     std::vector<std::uint8_t> compressed;
-    if (!load_resource_bytes(id, compressed)) {
+    const bool loaded = segmented ? load_lexicon_resource_bytes(compressed)
+                                  : load_resource_bytes(id, compressed);
+    if (!loaded) {
         return fail(L"资源读取失败");
     }
     if (compressed.size() != compressed_size) {
@@ -254,13 +277,18 @@ bool payload_installed() {
     wchar_t system[MAX_PATH]{};
     if (GetSystemDirectoryW(system, MAX_PATH) == 0) return false;
     std::wstring dir(system);
-    std::wstring ime, dat;
+    std::wstring ime, dat, lex;
     if (!path_join(dir, kImeFileName, ime) ||
-        !path_join(dir, kDatFileName, dat)) {
+        !path_join(dir, kDatFileName, dat) ||
+        !path_join(dir, kLexiconFileName, lex)) {
         return false;
     }
+    // M4: a v0.1 install has ime+dat but no word list. It must be treated as
+    // "not fully installed" so the overlay prompt offers the destructive
+    // upgrade that actually delivers phrases.
     return GetFileAttributesW(ime.c_str()) != INVALID_FILE_ATTRIBUTES &&
-           GetFileAttributesW(dat.c_str()) != INVALID_FILE_ATTRIBUTES;
+           GetFileAttributesW(dat.c_str()) != INVALID_FILE_ATTRIBUTES &&
+           GetFileAttributesW(lex.c_str()) != INVALID_FILE_ATTRIBUTES;
 }
 
 bool check_platform() {
@@ -316,7 +344,17 @@ void do_install() {
                              installer::kDatUncompressedSize,
                              installer::kDatCrc32,
                              installer::kDatCompressedSha256, temp,
-                             kDatFileName, &payload_detail)) {
+                             kDatFileName, &payload_detail) ||
+            // M4: extract the word list into the same %TEMP% dir before the
+            // CLI runs — /step1 now reads all three files from its own dir.
+            // segmented=true: the compressed bytes live in 8 RCDATA blobs
+            // (windres cannot handle one 116k-literal blob).
+            !extract_payload(ROSPINYIN_IDR_LEX_PAYLOAD,
+                             installer::kLexCompressedSize,
+                             installer::kLexUncompressedSize,
+                             installer::kLexCrc32,
+                             installer::kLexCompressedSha256, temp,
+                             kLexiconFileName, &payload_detail, true)) {
             result = installer::InstallErrorCode::PayloadCorrupt;
             break;
         }
