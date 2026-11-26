@@ -9,7 +9,7 @@ on:
     # Tag pushes build and then publish the release from the same artifacts.
     # Pushing the tag is the whole release act; there is no manual upload step
     # left that could attach a binary built from something other than the tag.
-    tags: ['alpha*', 'beta*']
+    tags: ['alpha*', 'beta*', 'v*']
   pull_request:
   workflow_dispatch:
 
@@ -314,6 +314,7 @@ jobs:
           set -eu
           NOTES="docs/releases/${TAG}.md"
           PRE=""
+          # alpha*/beta* are prereleases; v* is the formal release line.
           case "$TAG" in alpha* | beta*) PRE="--prerelease" ;; esac
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" --notes-file "$NOTES" $PRE

@@ -1,0 +1,11 @@
+Windows Registry Editor Version 5.00
+
+; Manual counterpart of DROID.REG. Not needed when uninstalling with
+; install-rospinyin.exe /u, which performs the same cleanup automatically
+; and only when DroidFontOwned marks this pack as the installer.
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts]
+"Droid Sans Fallback (TrueType)"=-
+
+[HKEY_CURRENT_USER\SOFTWARE\RosPinyin\Install]
+"DroidFontOwned"=-

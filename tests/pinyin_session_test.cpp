@@ -355,6 +355,51 @@ int main() {
               "an unranked-only syllable still yields its candidate");
     }
 
+    // M4: a whole-key word outranks single characters and consumes every
+    // syllable of its key on commit. Without word entries the same table keeps
+    // M2 behaviour (first character candidate only).
+    {
+        imfw::CodeTable table;
+        rospinyin::add_reading(table, U'你', 5, "ni3");
+        rospinyin::add_reading(table, U'好', 9, "hao3");
+        rospinyin::add_reading(table, U'计', 20, "ji4");
+        rospinyin::add_reading(table, U'算', 21, "suan4");
+        rospinyin::add_reading(table, U'机', 22, "ji1");
+        table.add_word(U"你好", 1, 2, "nihao");
+        table.add_word(U"计算机", 1, 3, "jisuanji");
+        table.build_index();
+        auto shared = std::make_shared<const imfw::CodeTable>(std::move(table));
+
+        rospinyin::PinyinSession session(shared);
+        session.on_select(true);
+        feed_string(session, "nihao");
+        check(!session.candidates().empty() &&
+                  session.candidates()[0].text == U"你好",
+              "nihao must offer 你好 first");
+        const Result word_commit = session.feed(U' ');
+        check(word_commit.action == Action::Commit &&
+                  word_commit.commit_text == U"你好",
+              "space commits the whole word");
+        check(session.composition().empty(),
+              "a two-syllable word consumes both syllables");
+
+        session.cancel();
+        feed_string(session, "jisuanji");
+        check(!session.candidates().empty() &&
+                  session.candidates()[0].text == U"计算机",
+              "jisuanji must offer 计算机 first");
+        const Result tri_commit = session.feed(U' ');
+        check(tri_commit.commit_text == U"计算机" &&
+                  session.composition().empty(),
+              "a three-syllable word consumes all three syllables");
+
+        session.cancel();
+        feed_string(session, "ni");
+        check(!session.candidates().empty() &&
+                  session.candidates()[0].text == U"你",
+              "single-syllable input keeps the M2 character path");
+    }
+
     if (failures != 0) {
         std::fprintf(stderr, "%d pinyin session test(s) failed\n", failures);
         return 1;

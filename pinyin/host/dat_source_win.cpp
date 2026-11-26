@@ -23,6 +23,9 @@ namespace rospinyin {
 namespace {
 
 constexpr wchar_t kDatFilename[] = L"rospinyin.dat";
+// M4: the word list is a separate, optional dat. A missing or invalid file
+// leaves the character table untouched (M2 behaviour); no bundle dependency.
+constexpr wchar_t kLexiconFilename[] = L"rospinyin-lexicon.dat";
 
 #ifdef ROSPINYIN_TRACE
 // 数据指纹：让读表的人自己说读了哪张表。
@@ -76,6 +79,33 @@ bool HasCodepoint(const imfw::CodeTable& table, std::string_view key,
     return false;
 }
 #endif
+
+void try_load_lexicon(const std::wstring& system_dir,
+                      imfw::CodeTable& table) {
+    const std::wstring path =
+        system_dir + L"\\" + kLexiconFilename;
+    HANDLE file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ,
+                              nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,
+                              nullptr);
+    if (file == INVALID_HANDLE_VALUE) return;  // optional data pack
+    const DWORD size = GetFileSize(file, nullptr);
+    if (size == 0 || size == INVALID_FILE_SIZE) {
+        CloseHandle(file);
+        return;
+    }
+    std::vector<char> bytes(size);
+    DWORD read = 0;
+    const BOOL ok = ReadFile(file, bytes.data(), size, &read, nullptr);
+    CloseHandle(file);
+    if (!ok || read != size) return;
+    table.load_lexicon_dat(std::string_view(bytes.data(), bytes.size()),
+                           &rospinyin::pinyin::syllable_of);
+#ifdef ROSPINYIN_TRACE
+    std::string body = "lexicon path=" + NarrowPath(path) + " words=";
+    AppendUint(body, static_cast<unsigned long>(table.word_count()));
+    TraceDat(body);
+#endif
+}
 
 }  // namespace
 
@@ -154,6 +184,7 @@ TablePtr load_system_table() {
         TraceDat(body);
     }
 #endif
+    try_load_lexicon(std::wstring(system_dir), *table);
     return table;
 }
 

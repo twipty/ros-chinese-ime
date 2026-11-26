@@ -72,7 +72,9 @@ using LPCSTR = const char*;
 #define DLL_THREAD_DETACH  3
 
 #define REG_SZ         1
+#define REG_DWORD      4
 #define REG_EXPAND_SZ  2
+#define REG_OPTION_NON_VOLATILE 0
 #define KEY_READ       0x20019
 #define KEY_WRITE      0x20006
 #define ERROR_SUCCESS  0
@@ -210,6 +212,7 @@ BOOL   WINAPI UnregisterClassW(LPCWSTR, HINSTANCE);
 LRESULT WINAPI DefWindowProcW(HWND, UINT, WPARAM, LPARAM);
 
 UINT   WINAPI GetSystemDirectoryW(LPWSTR, UINT);
+UINT   WINAPI GetWindowsDirectoryW(LPWSTR, UINT);
 DWORD  WINAPI GetModuleFileNameW(HINSTANCE, LPWSTR, DWORD);
 BOOL   WINAPI CopyFileW(LPCWSTR, LPCWSTR, BOOL);
 BOOL   WINAPI DeleteFileW(LPCWSTR);

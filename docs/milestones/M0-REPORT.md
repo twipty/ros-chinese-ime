@@ -151,12 +151,11 @@ M0 原目标是「mzimeja 在 ReactOS 上原样跑通，取得『什么能跑』
 | D2 字频来源 | Jun Da（核 License 后定） | 不变，M2 前 |
 | **D3 HKL** | 硬编码 `0xE0100804` | ⚠️ **修正**：改为 `ImmInstallIME` 动态分配 HKL 并记录返回值；硬编码值仅作冲突排查参考 |
 | D4 v0.1 是否含词组 | 不含 | 不变 |
-| D5 进官方树 | 仅评估 | 不变 |
 
 ### 6.3 M1 入口建议
 
 1. ~~先定 D1~~ **D1 已定**：蓝本 `v1.0.0.3`（PDS，只读参考）+ 本项目代码 MIT；蓝本源码已落地 `vendor/mzimeja-ref/`（本地，不入库），可用 `vendor/fetch-vendor.sh` 复现。
-2. 按 2.1 建立仓库骨架（`engine/` `ime/` `ui/` `tools/` `tests/`，CMake 双构建目标，GitHub Actions 骨架），蓝本源码作为 `vendor/mzimeja-ref/` **只读参考**入库并注明来源 tag 与许可证。
+2. 按 2.1 建立仓库骨架（`engine/` `ime/` `ui/` `tools/` `tests/`，CMake 独立构建目标，GitHub Actions 骨架），蓝本源码作为 `vendor/mzimeja-ref/` **只读参考**入库并注明来源 tag 与许可证。
 3. 严格按第 4.4 节四条红线实现 2.3 中文注册与 2.4 空输入法直通，在现有 `reactos.qcow2` 上验证（勿再用证据盘）。**（2026-11-18 注：第 2 条已降级为部署偏好，实际执行口径以 §4.4 的定判框为准。）**
 
 ---

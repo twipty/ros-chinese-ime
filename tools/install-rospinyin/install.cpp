@@ -18,8 +18,9 @@
 //   /step3  write "Layout Text"                      (one value)
 //   /step4  write "Layout Display Name"              (one value)
 //   /i      run step1..step4 in sequence (Windows reference machine ONLY)
-//   /status print the recorded HKL and payload state
+//   /status print the recorded HKL, payload state and optional Droid font state
 //   /u      uninstall (removes our own keys and files; leaves other layouts)
+//   /fontinstall <DROID.TTF>  optional: install the nightly fallback font pack
 //
 // WBS 2.3.1 / D3: the HKL is whatever ImmInstallIMEW returns; 0xE0100804 is
 // only a troubleshooting hint, never a hardcoded value.
@@ -33,6 +34,7 @@
 
 #include <windows.h>
 #include <imm.h>
+#include "droid_font.hpp"
 #include <cstdint>
 #include <cstdio>
 #include <cwchar>
@@ -351,6 +353,140 @@ void report_payload(const wchar_t* name) {
     }
 }
 
+// --- Optional Droid font pack (nightly 0.4.17-dev only) -----------------
+// The font lives in %SystemRoot%\Fonts, not system32. A stable 0.4.16 guest
+// already has it and must keep it: we only claim ownership after the user
+// installs the separate package through /fontinstall.
+
+bool droid_font_path(wchar_t* out, std::size_t cch) {
+    UINT n = GetWindowsDirectoryW(out, static_cast<UINT>(cch));
+    if (n == 0 || n >= cch) return false;
+    static constexpr wchar_t suffix[] = L"\\Fonts\\";
+    if (std::wcslen(out) + std::wcslen(suffix) +
+            std::wcslen(rospinyin::installer::kDroidFontFile) >= cch) {
+        return false;
+    }
+    std::wcscat(out, suffix);
+    std::wcscat(out, rospinyin::installer::kDroidFontFile);
+    return true;
+}
+
+bool droid_owned() {
+    HKEY key = nullptr;
+    if (RegOpenKeyExW(HKEY_CURRENT_USER, kRegInstall, 0, KEY_READ, &key) !=
+        ERROR_SUCCESS) {
+        return false;
+    }
+    DWORD value = 0, type = 0, size = sizeof(value);
+    const bool owned =
+        RegQueryValueExW(key, rospinyin::installer::kDroidOwnedValue, nullptr,
+                         &type, reinterpret_cast<BYTE*>(&value), &size) ==
+            ERROR_SUCCESS &&
+        type == REG_DWORD && value == 1;
+    RegCloseKey(key);
+    return owned;
+}
+
+bool droid_registered() {
+    HKEY key = nullptr;
+    if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, rospinyin::installer::kFontsKey, 0,
+                      KEY_READ, &key) != ERROR_SUCCESS) {
+        return false;
+    }
+    wchar_t value[MAX_PATH]{};
+    DWORD size = sizeof(value), type = 0;
+    const bool registered =
+        RegQueryValueExW(key, rospinyin::installer::kDroidFontValue, nullptr,
+                         &type, reinterpret_cast<BYTE*>(value), &size) ==
+        ERROR_SUCCESS;
+    RegCloseKey(key);
+    return registered;
+}
+
+rospinyin::installer::DroidFontState droid_state() {
+    wchar_t path[MAX_PATH]{};
+    if (!droid_font_path(path, MAX_PATH)) {
+        return rospinyin::installer::DroidFontState::Missing;
+    }
+    if (GetFileAttributesW(path) == INVALID_FILE_ATTRIBUTES) {
+        return rospinyin::installer::DroidFontState::Missing;
+    }
+    return droid_owned() ? rospinyin::installer::DroidFontState::Owned
+                         : rospinyin::installer::DroidFontState::System;
+}
+
+int font_install(const wchar_t* source) {
+    namespace font = rospinyin::installer;
+    unsigned long long size = 0;
+    if (!file_size(source, &size)) {
+        log_error(L"cannot read the font package file", GetLastError());
+        return kIoError;
+    }
+    if (size != font::kDroidFontExpectedSize) {
+        std::fwprintf(stderr,
+                      L"[error] DROID.TTF size mismatch: got %llu, "
+                      L"expected %llu; refusing to install\n",
+                      size, font::kDroidFontExpectedSize);
+        return kVerifyFailed;
+    }
+    wchar_t dst[MAX_PATH]{};
+    if (!droid_font_path(dst, MAX_PATH)) {
+        log_error(L"cannot resolve the Fonts directory", GetLastError());
+        return kIoError;
+    }
+    // Rule: never replace a font the OS already shipped. Only a previously
+    // owned file (from our own optional pack) may be refreshed.
+    if (GetFileAttributesW(dst) != INVALID_FILE_ATTRIBUTES && !droid_owned()) {
+        std::fwprintf(stdout,
+                      L"[fontinstall] system Droid font already present; "
+                      L"not replacing it\n");
+        return kVerifyFailed;
+    }
+    if (!CopyFileW(source, dst, FALSE)) {
+        log_error(L"cannot copy DROID.TTF into the Fonts directory",
+                  GetLastError());
+        return kIoError;
+    }
+    HKEY fonts = nullptr;
+    LSTATUS st = RegOpenKeyExW(HKEY_LOCAL_MACHINE, font::kFontsKey, 0,
+                               KEY_WRITE, &fonts);
+    if (st != ERROR_SUCCESS) {
+        st = RegCreateKeyExW(HKEY_LOCAL_MACHINE, font::kFontsKey, 0, nullptr,
+                             REG_OPTION_NON_VOLATILE, KEY_WRITE, nullptr,
+                             &fonts, nullptr);
+    }
+    if (st != ERROR_SUCCESS) {
+        log_error(L"cannot open the Fonts registry key", st);
+        return kRegError;
+    }
+    st = RegSetValueExW(fonts, font::kDroidFontValue, 0, REG_SZ,
+                        reinterpret_cast<const BYTE*>(font::kDroidFontFile),
+                        sizeof(font::kDroidFontFile));
+    RegCloseKey(fonts);
+    if (st != ERROR_SUCCESS) {
+        log_error(L"cannot register DROID.TTF", st);
+        return kRegError;
+    }
+    HKEY own = nullptr;
+    st = RegCreateKeyExW(HKEY_CURRENT_USER, kRegInstall, 0, nullptr,
+                         REG_OPTION_NON_VOLATILE, KEY_WRITE, nullptr, &own,
+                         nullptr);
+    if (st == ERROR_SUCCESS) {
+        const DWORD one = 1;
+        st = RegSetValueExW(own, font::kDroidOwnedValue, 0, REG_DWORD,
+                            reinterpret_cast<const BYTE*>(&one), sizeof(one));
+        RegCloseKey(own);
+    }
+    if (st != ERROR_SUCCESS) {
+        log_error(L"cannot record font-pack ownership", st);
+        return kRegError;
+    }
+    std::fwprintf(stdout,
+                  L"[fontinstall] installed optional Droid font pack; "
+                  L"reboot to render Chinese on nightly\n");
+    return kOk;
+}
+
 int show_status() {
     report_payload(kImeFileName);
     report_payload(kDatFileName);
@@ -367,10 +503,24 @@ int show_status() {
     if (key) {
         RegCloseKey(key);
     }
+    const auto state = droid_state();
+    const bool registered = droid_registered();
+    std::fwprintf(stdout, L"droid font    : %ls\n",
+                  rospinyin::installer::droid_font_state_label(state));
+    std::fwprintf(stdout, L"droid font reg: %ls\n",
+                  registered ? L"present" : L"missing");
+    const auto hint = rospinyin::installer::droid_font_status_hint(
+        state, registered);
+    if (!hint.empty()) {
+        std::fwprintf(stdout, L"%ls\n", hint.data());
+    }
     return kOk;
 }
 
 int uninstall() {
+    // Capture ownership before the HKCU install key is deleted below.
+    const bool remove_font =
+        rospinyin::installer::should_remove_droid_font(droid_state());
     HKL hkl = nullptr;
     if (load_hkl(&hkl) && hkl) {
         wchar_t sub[MAX_PATH]{};
@@ -403,6 +553,32 @@ int uninstall() {
         std::wcscat(dst, L".old");
         DeleteFileW(dst);
     }
+    // Optional nightly font pack: symmetric cleanup only when we installed it.
+    if (remove_font) {
+        HKEY fonts = nullptr;
+        if (RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+                          rospinyin::installer::kFontsKey, 0, KEY_WRITE,
+                          &fonts) == ERROR_SUCCESS) {
+            RegDeleteValueW(fonts, rospinyin::installer::kDroidFontValue);
+            RegCloseKey(fonts);
+        }
+        wchar_t font[MAX_PATH]{};
+        if (droid_font_path(font, MAX_PATH)) {
+            DeleteFileW(font);
+        }
+        HKEY own = nullptr;
+        if (RegOpenKeyExW(HKEY_CURRENT_USER, kRegInstall, 0, KEY_WRITE,
+                          &own) == ERROR_SUCCESS) {
+            RegDeleteValueW(own, rospinyin::installer::kDroidOwnedValue);
+            RegCloseKey(own);
+        }
+        std::fwprintf(stdout,
+                      L"[uninstall] optional Droid font pack removed\n");
+    } else {
+        std::fwprintf(stdout,
+                      L"[uninstall] Droid font left untouched (not installed "
+                      L"by this package)\n");
+    }
     // Deliberately no preload-list cleanup: we never wrote one.
     std::fwprintf(stdout, L"[uninstall] done\n");
     return kOk;
@@ -426,8 +602,9 @@ void usage() {
         L"  /step3   write Layout Text\n"
         L"  /step4   write Layout Display Name\n"
         L"  /i       all steps at once (Windows reference machine ONLY)\n"
-        L"  /status  show payload / HKL / layout key state\n"
+        L"  /status  show payload / HKL / layout / Droid font state\n"
         L"  /u       uninstall\n"
+        L"  /fontinstall <DROID.TTF>  optional nightly font pack\n"
         L"On ReactOS run /step1../step4 separately and reboot after each.\n"
         L"This tool never adds a default keyboard layout (M0 0xF4 red line).\n");
 }
@@ -438,7 +615,9 @@ void usage() {
 // CMakeLists.txt); MSVC supports it natively. On Linux this is a plain
 // function used only by the host-side syntax check.
 int wmain(int argc, wchar_t** argv) {
-    if (argc != 2) {
+    const bool font_install_cmd =
+        argc == 3 && std::wcscmp(argv[1], L"/fontinstall") == 0;
+    if (argc != 2 && !font_install_cmd) {
         usage();
         return kBadArgs;
     }
@@ -450,6 +629,7 @@ int wmain(int argc, wchar_t** argv) {
     if (std::wcscmp(cmd, L"/i") == 0) return install_all();
     if (std::wcscmp(cmd, L"/status") == 0) return show_status();
     if (std::wcscmp(cmd, L"/u") == 0) return uninstall();
+    if (font_install_cmd) return font_install(argv[2]);
     usage();
     return kBadArgs;
 }

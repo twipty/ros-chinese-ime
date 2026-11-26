@@ -60,6 +60,10 @@ private:
     std::shared_ptr<const imfw::CodeTable> table_;
     std::string composition_;
     std::vector<imfw::Candidate> candidates_;
+    // Parallel to candidates_: how many completed syllables each candidate
+    // consumes when committed. Characters consume one; words consume their
+    // whole key ("nihao" -> 你好 consumes ni + hao).
+    std::vector<std::size_t> candidate_syllable_counts_;
     std::vector<std::string> syllables_;
     bool active_ = false;
 };

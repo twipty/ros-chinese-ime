@@ -90,6 +90,7 @@
 | [PORTABILITY-UPSTREAM-64BIT-ARM64.md](reviews/PORTABILITY-UPSTREAM-64BIT-ARM64.md) | 上游 64 位与 ARM64 可移植性评估（与 libernt 自研分支区分，结论不可互换） |
 | [ARCH-AUDIT-VERIFICATION.md](reviews/ARCH-AUDIT-VERIFICATION.md) | 架构审计的逐条复核：13 条结论的判定、3 处需修正、3 条审计漏项、与 X1–X4 的映射 |
 | [GUI-INSTALLER-FP-AND-WINDOWS-GUARD.md](reviews/GUI-INSTALLER-FP-AND-WINDOWS-GUARD.md) | GUI 安装器杀毒误报与非白名单平台误装防护评估 |
+| [WINDOWS-GUI-COMPATIBILITY-ASSESSMENT.md](reviews/WINDOWS-GUI-COMPATIBILITY-ASSESSMENT.md) | P3 Windows GUI 兼容性评估（不登记白名单，Windows 仍走 CLI） |
 
 ### releases/ — 发版说明
 
@@ -97,7 +98,8 @@
 | --- | --- |
 | [alpha0.0.2.md](releases/alpha0.0.2.md) | alpha0.0.2 的发布说明（CI 用它作为 release notes） |
 | [alpha0.0.3.md](releases/alpha0.0.3.md) | alpha0.0.3 的发布说明（M3 中文标点逐键验收；CI 用它作为 release notes） |
-| [alpha0.0.4.md](releases/alpha0.0.4.md) | alpha0.0.4 的发布说明（自包含 GUI 安装器候选；待实机取证后发布） |
+| [alpha0.0.4.md](releases/alpha0.0.4.md) | alpha0.0.4 的发布说明（自包含 GUI 安装器候选，已发布 prerelease） |
+| [v0.1.0.md](releases/v0.1.0.md) | v0.1 正式发布说明（tag 已推送；正式 release 待 CI 重新触发） |
 
 ### icos/ — 输入法图标
 

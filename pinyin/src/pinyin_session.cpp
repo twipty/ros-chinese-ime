@@ -167,7 +167,28 @@ void PinyinSession::recompute() {
     // so the unfinished tail survives a selection.
     syllables_ = completed_syllables(composition_, *table_);
     candidates_.clear();
+    candidate_syllable_counts_.clear();
     if (syllables_.empty()) return;
+
+    // M4: a whole-key word match outranks the single-character path. "nihao"
+    // offers 你好 before 你; when the word is committed both syllables are
+    // consumed instead of just the first. The optional lexicon dat is the
+    // only source of these entries, so a bare installation keeps M2 behaviour.
+    if (syllables_.size() >= 2) {
+        std::string word_key;
+        for (const auto& syllable : syllables_) word_key += syllable;
+        for (const auto& word : table_->lookup_words(word_key)) {
+            Candidate candidate;
+            candidate.text = word.text;
+            // Word scores sit above the character band (rank 1 stays best).
+            candidate.score = word.rank == kUnknownRank
+                                  ? 1000000
+                                  : static_cast<int>(2000000u - word.rank);
+            candidate.glyph_visible = (word.tier == 0);
+            candidates_.push_back(std::move(candidate));
+            candidate_syllable_counts_.push_back(word.syl_count);
+        }
+    }
 
     // Left to right: the candidate window offers the *first* syllable that has
     // not been converted yet. Typing "zhongguo" therefore shows 中 first; after
@@ -175,7 +196,7 @@ void PinyinSession::recompute() {
     // alternative (converting the last syllable first) reads right to left and
     // silently throws away everything typed before it.
     const auto entries = table_->lookup(syllables_.front());
-    candidates_.reserve(entries.size());
+    candidates_.reserve(candidates_.size() + entries.size());
     // Every entry is offered. Rank only orders the list (unknown rank scores
     // 0); it is never an admission gate. Visibility is decided by the dat's
     // tier bit and applied by the host according to [快]/[全]. The two axes
@@ -193,6 +214,7 @@ void PinyinSession::recompute() {
         // its polarity (0 = bundled font covers it) into the host's predicate.
         candidate.glyph_visible = (entry.tier == 0);
         candidates_.push_back(std::move(candidate));
+        candidate_syllable_counts_.push_back(1);
     }
 }
 
@@ -213,21 +235,43 @@ Result PinyinSession::commit_text(const std::u32string& text) {
     if (syllables_.empty()) {
         composition_.clear();
     } else {
-        const std::size_t taken = syllables_.front().size();
-        if (taken >= composition_.size()) {
-            composition_.clear();
-        } else {
-            composition_.erase(0, taken);
-            // "xi'an" -> after committing 西 the buffer must not start with the
-            // separator, or segmentation rejects the leading quote.
-            if (!composition_.empty() && composition_[0] == '\'') {
-                composition_.erase(0, 1);
+        // Pick up how many syllables this candidate covers. Words from the
+        // optional lexicon consume their whole key; characters consume one.
+        std::size_t consumed = 1;
+        for (std::size_t i = 0; i < candidates_.size(); ++i) {
+            if (candidates_[i].text == text) {
+                consumed = candidate_syllable_counts_[i];
+                if (consumed == 0 || consumed > syllables_.size()) consumed = 1;
+                break;
             }
+        }
+        // Walk the raw composition over `consumed` syllables so apostrophes
+        // between them ("xi'an") are removed together with the letters.
+        std::size_t cursor = 0;
+        std::size_t letters = 0;
+        std::size_t done = 0;
+        while (cursor < composition_.size() && done < consumed) {
+            if (composition_[cursor] == '\'') {
+                ++cursor;
+                continue;
+            }
+            ++cursor;
+            ++letters;
+            if (letters == syllables_[done].size()) {
+                ++done;
+                letters = 0;
+            }
+        }
+        composition_.erase(0, cursor);
+        // A trailing separator would leave segmentation with a leading quote.
+        while (!composition_.empty() && composition_[0] == '\'') {
+            composition_.erase(0, 1);
         }
     }
 
     if (composition_.empty()) {
         candidates_.clear();
+        candidate_syllable_counts_.clear();
         syllables_.clear();
         return result;
     }

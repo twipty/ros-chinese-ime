@@ -45,6 +45,49 @@ bool is_dat_reading(std::string_view s) {
     return true;
 }
 
+// Strict UTF-8 decoder for LexEntry::text. Malformed words are rejected at
+// load time rather than being shown as replacement glyphs in the candidate
+// window. Surrogates and overlong forms follow the same rule as pinyin.cpp.
+bool decode_utf8(const std::string& s, std::u32string& out) {
+    out.clear();
+    std::size_t i = 0;
+    while (i < s.size()) {
+        const auto b0 = static_cast<unsigned char>(s[i]);
+        std::size_t length = 0;
+        std::uint32_t value = 0;
+        if (b0 < 0x80) {
+            length = 1;
+            value = b0;
+        } else if ((b0 & 0xE0) == 0xC0) {
+            length = 2;
+            value = b0 & 0x1Fu;
+        } else if ((b0 & 0xF0) == 0xE0) {
+            length = 3;
+            value = b0 & 0x0Fu;
+        } else if ((b0 & 0xF8) == 0xF0) {
+            length = 4;
+            value = b0 & 0x07u;
+        } else {
+            return false;
+        }
+        if (length > s.size() - i) return false;
+        for (std::size_t k = 1; k < length; ++k) {
+            const auto b = static_cast<unsigned char>(s[i + k]);
+            if ((b & 0xC0) != 0x80) return false;
+            value = (value << 6) | (b & 0x3Fu);
+        }
+        if ((length == 2 && value < 0x80) ||
+            (length == 3 && value < 0x800) ||
+            (length == 4 && value < 0x10000) ||
+            value > 0x10FFFF || (value >= 0xD800 && value <= 0xDFFF)) {
+            return false;
+        }
+        out.push_back(static_cast<char32_t>(value));
+        i += length;
+    }
+    return !out.empty();
+}
+
 // The word list is not indexed yet (that is M4), but a file that declares one
 // must still hold a coherent one: the key runs tile the word table exactly,
 // every key is a legal reading string, and every word has text, at least two
@@ -277,8 +320,102 @@ std::size_t CodeTable::load_dat(std::string_view bytes,
         entries_.push_back(std::move(entry));
     }
 
+    if (!parse_lexicon(bytes, header, key_of_reading)) {
+        clear();
+        return 0;
+    }
     build_index();
     return entries_.size();
+}
+
+bool CodeTable::parse_lexicon(std::string_view bytes,
+                              const dat::Header& header,
+                              KeyOfReading key_of_reading) {
+    words_.clear();
+    by_word_.clear();
+    if (header.lex_entry_count == 0) return true;
+    words_.reserve(header.lex_entry_count);
+    for (std::uint32_t i = 0; i < header.lex_code_count; ++i) {
+        dat::LexCode key{};
+        const std::size_t key_offset = header.lex_code_table_off +
+            static_cast<std::size_t>(i) * sizeof(dat::LexCode);
+        if (!read_record(bytes, key_offset, key)) return false;
+        std::string raw_key;
+        if (!pool_string(bytes, header.pool_off, header.pool_size,
+                         key.key_off, raw_key)) {
+            return false;
+        }
+        const std::string lookup_key =
+            key_of_reading != nullptr ? key_of_reading(raw_key) : raw_key;
+        if (lookup_key.empty()) return false;
+        for (std::uint32_t j = 0; j < key.entry_count; ++j) {
+            const std::uint32_t index = key.first_entry + j;
+            dat::LexEntry record{};
+            const std::size_t offset = header.lex_entry_table_off +
+                static_cast<std::size_t>(index) * sizeof(dat::LexEntry);
+            if (!read_record(bytes, offset, record)) return false;
+            std::string text;
+            if (!pool_string(bytes, header.pool_off, header.pool_size,
+                             record.text_off, text)) {
+                return false;
+            }
+            WordEntry word;
+            if (!decode_utf8(text, word.text)) return false;
+            word.rank = record.rank;
+            word.syl_count = record.syl_count;
+            word.tier = (record.flags & dat::kFlagTier) ? 1u : 0u;
+            word.key = lookup_key;
+            by_word_[word.key].push_back(words_.size());
+            words_.push_back(std::move(word));
+        }
+    }
+    for (auto& item : by_word_) {
+        auto& indices = item.second;
+        std::sort(indices.begin(), indices.end(),
+                  [this](std::size_t a, std::size_t b) {
+                      const auto& wa = words_[a];
+                      const auto& wb = words_[b];
+                      if (wa.rank != wb.rank) return wa.rank < wb.rank;
+                      return wa.text < wb.text;
+                  });
+    }
+    return true;
+}
+
+std::size_t CodeTable::load_lexicon_dat(std::string_view bytes,
+                                        KeyOfReading key_of_reading) {
+    dat::Header header{};
+    if (!read_record(bytes, 0, header)) return 0;
+    if (std::memcmp(header.magic, dat::kMagic, sizeof(dat::kMagic)) != 0) {
+        return 0;
+    }
+    if (header.version != dat::kVersion || header.flags != 0) return 0;
+    if (header.entry_size != sizeof(dat::CharEntry) ||
+        header.code_size != sizeof(dat::SylEntry)) {
+        return 0;
+    }
+    // The optional word-only dat must not try to replace the character table.
+    if (header.entry_count != 0 || header.code_count != 0 ||
+        header.lex_entry_count == 0 || header.lex_code_count == 0) {
+        return 0;
+    }
+    if (header.entry_table_off != sizeof(dat::Header) ||
+        header.code_table_off != header.entry_table_off ||
+        header.lex_entry_table_off != header.code_table_off ||
+        header.lex_code_table_off != header.lex_entry_table_off +
+            header.lex_entry_count * header.entry_size ||
+        header.pool_off != header.lex_code_table_off +
+            header.lex_code_count * header.code_size ||
+        header.pool_off + header.pool_size > bytes.size()) {
+        return 0;
+    }
+    if (!validate_lexicon(bytes, header)) return 0;
+    if (!parse_lexicon(bytes, header, key_of_reading)) {
+        words_.clear();
+        by_word_.clear();
+        return 0;
+    }
+    return words_.size();
 }
 
 void CodeTable::add(char32_t codepoint, std::uint32_t rank,
@@ -292,9 +429,24 @@ void CodeTable::add(char32_t codepoint, std::uint32_t rank,
     entries_.push_back(std::move(entry));
 }
 
+void CodeTable::add_word(std::u32string text, std::uint32_t rank,
+                         std::uint32_t syl_count, std::string key,
+                         std::uint8_t tier) {
+    WordEntry word;
+    word.text = std::move(text);
+    word.rank = rank;
+    word.syl_count = syl_count;
+    word.tier = tier ? 1u : 0u;
+    word.key = std::move(key);
+    by_word_[word.key].push_back(words_.size());
+    words_.push_back(std::move(word));
+}
+
 void CodeTable::clear() {
     entries_.clear();
+    words_.clear();
     by_code_.clear();
+    by_word_.clear();
     codes_.clear();
     prefixes_.clear();
 }
@@ -332,6 +484,16 @@ void CodeTable::build_index() {
                       return entries_[a].codepoint < entries_[b].codepoint;
                   });
     }
+    for (auto& item : by_word_) {
+        auto& indices = item.second;
+        std::sort(indices.begin(), indices.end(),
+                  [this](std::size_t a, std::size_t b) {
+                      const WordEntry& wa = words_[a];
+                      const WordEntry& wb = words_[b];
+                      if (wa.rank != wb.rank) return wa.rank < wb.rank;
+                      return wa.text < wb.text;
+                  });
+    }
 }
 
 std::vector<TableEntry> CodeTable::lookup(std::string_view key) const {
@@ -343,6 +505,19 @@ std::vector<TableEntry> CodeTable::lookup(std::string_view key) const {
         const Entry& entry = entries_[index];
         result.push_back(TableEntry{entry.codepoint, entry.rank, entry.reading,
                                     entry.tier});
+    }
+    return result;
+}
+
+std::vector<TableWord> CodeTable::lookup_words(std::string_view key) const {
+    std::vector<TableWord> result;
+    const auto it = by_word_.find(std::string(key));
+    if (it == by_word_.end()) return result;
+    result.reserve(it->second.size());
+    for (const std::size_t index : it->second) {
+        const WordEntry& word = words_[index];
+        result.push_back(TableWord{word.text, word.rank, word.syl_count,
+                                   word.tier});
     }
     return result;
 }

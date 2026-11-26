@@ -467,13 +467,20 @@ def run(root: Path) -> int:
     # our own HKCU bookkeeping key or the layout key it just created. A new
     # write -- whatever it is called -- needs a new subkey expression and
     # fails here, which is what a blocklist of words could not deliver.
-    allowed_subkeys = {"kRegInstall", "sub"}
+    # P2 optional font pack adds one narrowly-scoped HKLM Fonts value; the
+    # default-input-language red line is enforced separately below.
+    allowed_subkeys = {"kRegInstall", "sub", "kFontsKey"}
     allowed_hives = {"HKEY_CURRENT_USER", "HKEY_LOCAL_MACHINE"}
     writes = reg_key_writes(code)
+    # Namespace-qualified constants are the same key as the bare name.
+    def bare_subkey(expr: str) -> str:
+        return expr.rsplit("::", 1)[-1].strip()
+
     bad_writes = [(h, s) for h, s in writes
-                  if h not in allowed_hives or s not in allowed_subkeys]
-    c.check("installer registry writes stay in the two-key allowlist "
-            "(own HKCU key + the layout key)",
+                  if h not in allowed_hives or
+                  bare_subkey(s) not in allowed_subkeys]
+    c.check("installer registry writes stay in the three-key allowlist "
+            "(own HKCU key, the layout key and the optional Fonts key)",
             bool(writes) and not bad_writes,
             "no Reg*Key call found" if not writes else str(bad_writes))
     # Every place that formats a registry path must start from kKeyboardLayouts.
@@ -502,7 +509,8 @@ def run(root: Path) -> int:
             "instead of a hard-coded id",
             "ImmInstallIMEW" in code and "save_hkl(hkl)" in code and
             "E0100804" not in code)
-    steps = ["/step1", "/step2", "/step3", "/step4", "/status", "/u", "/i"]
+    steps = ["/step1", "/step2", "/step3", "/step4", "/status", "/u", "/i",
+             "/fontinstall"]
     c.check("installer exposes step-by-step registration commands",
             all(s in code for s in steps),
             ", ".join(s for s in steps if s not in code))
@@ -1193,7 +1201,7 @@ def run(root: Path) -> int:
         "VERSION ${ROSPINYIN_PROJECT_VERSION}" in root_cmake_raw and
         re.search(r"\bproject\s*\([^)]*\bVERSION\s+[0-9]", root_cmake_raw) is None and
         all(v is not None for v in nums.values()) and
-        re.fullmatch(r"(?:alpha|beta)" + ".".join(re.escape(nums[p] or "")
+        re.fullmatch(r"(?:alpha|beta|v)" + ".".join(re.escape(nums[p] or "")
                                                   for p in ("MAJOR", "MINOR", "PATCH")),
                      version_string) is not None
     )

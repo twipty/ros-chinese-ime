@@ -211,8 +211,8 @@ option(IMM_WIN3_SUPPORT "IMM Win 3.x support" ON)
 ## 7. 许可证合规
 
 - RosPinyin 代码 **MIT**，libernt **GPL-3.0**（继承代码多为 GPL-2.0+）。作为**独立第三方软件包**分发不构成衍生作品，**无冲突**——与项目现有「主形态：第三方软件包」定位一致。
-- 保持 `in-tree 友好`（引擎平台无关、只走公开 IMM32 API、CMake 可选模块目标）是既有约束，移植不破坏这一点。
-- **不承诺**直接以 `modules/optional` 并入 libernt 构建树；一旦 in-tree 则需按 GPL 合规重新评估（对应 README D5「仅评估不承诺」）。
+- 保持引擎平台无关、只走公开 IMM32 API、CMake 条件分支便于本地适配是既有约束，移植不破坏这一点。
+- 产品形态固定为独立软件包。
 
 ---
 

@@ -15,6 +15,7 @@
 #define MINIZ_IMPLEMENTATION
 #include "miniz.h"
 
+#include "droid_font.hpp"
 #include "install_steps.hpp"
 #include "payload_blob.hpp"
 #include "payload_base64.hpp"
@@ -175,6 +176,43 @@ void test_font_hint() {
           "hint warns the consequence of a missing font is unpredictable");
 }
 
+void test_droid_font_pack() {
+    namespace font = installer;
+    // The optional pack must carry the unmodified ReactOS font and must never
+    // overwrite a font the OS shipped. Both facts are pinned here so a later
+    // "convenient" replacement of the binary cannot slip through.
+    check(font::kDroidFontExpectedSize == 3081908ULL,
+          "font pack pins the original file size");
+    check(std::string_view(font::kDroidFontExpectedSha256) ==
+              "82a74d0ef369ec7979172023cfff87f04f0a617a2871c39ef6aeb0f399c5cdaf",
+          "font pack pins the original SHA-256");
+    check(std::wstring_view(font::kDroidFontFile) == L"DROID.TTF",
+          "font pack keeps the font.inf 8.3 file name");
+    check(contains(font::droid_font_state_label(font::DroidFontState::System),
+                   L"system font"),
+          "system-owned font is reported as such");
+    check(contains(font::droid_font_state_label(font::DroidFontState::Owned),
+                   L"RosPinyin"),
+          "font pack ownership is visible in /status");
+
+    check(!font::should_remove_droid_font(font::DroidFontState::Missing),
+          "missing font needs no cleanup");
+    check(!font::should_remove_droid_font(font::DroidFontState::System),
+          "system font survives /u unchanged");
+    check(font::should_remove_droid_font(font::DroidFontState::Owned),
+          "only our own font pack is removed by /u");
+
+    const auto hint = font::droid_font_status_hint(
+        font::DroidFontState::Missing, false);
+    check(contains(hint, L"/fontinstall") && contains(hint, L"重启"),
+          "missing font hint names the install command and reboot");
+    check(contains(font::droid_font_usage_line(), L"/fontinstall"),
+          "CLI usage documents the optional font command");
+    check(font::droid_font_status_hint(font::DroidFontState::System, true)
+              .empty(),
+          "healthy system font emits no warning");
+}
+
 struct IdentityInflate {
     std::size_t consume = 0;
     installer::PayloadError status = installer::PayloadError::Ok;
@@ -304,6 +342,7 @@ int main() {
     test_platform_guard();
     test_install_steps();
     test_font_hint();
+    test_droid_font_pack();
     test_payload_blob();
     test_miniz_roundtrip();
     test_embedded_payloads();

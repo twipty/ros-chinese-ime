@@ -41,6 +41,15 @@ struct TableEntry {
     std::uint8_t tier = 0;
 };
 
+// A multi-syllable word from the optional lexicon dat (M4). The text is
+// UTF-8-decoded so engines can place it straight into Candidate::text.
+struct TableWord {
+    std::u32string text;
+    std::uint32_t rank = dat::kUnknownRank;
+    std::uint32_t syl_count = 0;
+    std::uint8_t tier = 0;
+};
+
 // Maps an alternative reading ("zho4ng") to the lookup key it should answer to
 // ("zhong"). Must be a plain function pointer: the IME PE avoids std::function.
 using KeyOfReading = std::string (*)(std::string_view);
@@ -64,20 +73,46 @@ public:
     // that do not grade glyphs are unaffected.
     void add(char32_t codepoint, std::uint32_t rank, std::string reading,
              std::string key, std::uint8_t tier = 0);
+    // M4: words are indexed by the same toneless key the syllables use
+    // ("nihao" matches the LexCode key "ni3hao3" once a deriver strips tones).
+    void add_word(std::u32string text, std::uint32_t rank,
+                  std::uint32_t syl_count, std::string key,
+                  std::uint8_t tier = 0);
     void clear();
     void build_index();
 
     // Characters sharing one key, ordered by frequency rank (lower first),
     // then codepoint for a stable tie-break.
     std::vector<TableEntry> lookup(std::string_view key) const;
+    std::vector<TableWord> lookup_words(std::string_view key) const;
+
+    // Load a word-only dat on top of an already loaded character table.
+    // Returns the number of words, or 0 if the optional file is invalid.
+    // Existing characters are untouched; a previous word list is replaced.
+    std::size_t load_lexicon_dat(std::string_view bytes,
+                                 KeyOfReading key_of_reading = nullptr);
 
     bool is_code(std::string_view key) const;
     bool is_prefix(std::string_view prefix) const;
 
     std::size_t char_count() const noexcept { return entries_.size(); }
     std::size_t code_count() const noexcept { return by_code_.size(); }
+    std::size_t word_count() const noexcept { return words_.size(); }
 
 private:
+    struct WordEntry {
+        std::u32string text;
+        std::uint32_t rank = dat::kUnknownRank;
+        std::uint32_t syl_count = 0;
+        std::uint8_t tier = 0;
+        std::string key;
+    };
+
+    // Appends words from a validated lexicon; shared by load_dat and the
+    // optional word-only dat. `key_of_reading` turns "ni3hao3" into "nihao".
+    bool parse_lexicon(std::string_view bytes, const dat::Header& header,
+                       KeyOfReading key_of_reading);
+
     struct Entry {
         char32_t codepoint = 0;
         std::uint32_t rank = dat::kUnknownRank;
@@ -91,7 +126,9 @@ private:
     };
 
     std::vector<Entry> entries_;
+    std::vector<WordEntry> words_;
     std::map<std::string, std::vector<std::size_t>> by_code_;
+    std::map<std::string, std::vector<std::size_t>> by_word_;
     std::set<std::string> codes_;
     std::set<std::string> prefixes_;
 };

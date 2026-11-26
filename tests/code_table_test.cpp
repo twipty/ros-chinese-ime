@@ -378,16 +378,27 @@ int main() {
         }
     }
 
-    // ---- word list: present, well formed, not indexed yet ---------------
+    // ---- word list: present, well formed and indexed --------------------
     {
-        // M4 indexes the words; until then the parser's job is to prove the
-        // declared word list is coherent, not to silently ignore it.
         const std::string blob = make_lex_dat();
         imfw::CodeTable table;
         check(table.load_dat(blob) == 2,
               "dat with a word list still loads its characters");
         check(table.char_count() == 2, "word list does not inflate char_count");
         check(table.lookup("ni").size() == 1, "characters stay reachable");
+
+        // The deriver turns the toned LexCode key into the runtime key.
+        check(table.load_dat(blob, &toneless) == 2,
+              "word dat reloads with a key deriver");
+        check(table.word_count() == 2, "both words are indexed");
+        const auto nihao = table.lookup_words("nihao");
+        check(nihao.size() == 1 && nihao[0].text == U"你好" &&
+                  nihao[0].rank == 1 && nihao[0].syl_count == 2,
+              "ni3hao3 resolves to 你好 with rank and syllable count");
+        check(table.lookup_words("nimen").size() == 1,
+              "a second key reaches its word");
+        check(table.lookup_words("n").empty(),
+              "a non-word prefix yields no word candidate");
     }
     {
         // Words nothing can reach is a builder bug: reject, do not guess.

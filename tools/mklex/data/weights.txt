@@ -1,0 +1,9 @@
+# Hand-curated top ranks for the M4 acceptance words and a few common words.
+# Format: <simplified word><TAB><rank>. Only listed words get an explicit rank;
+# all other CC-CEDICT entries use rank 1000000 - first-seen order.
+你好	1
+计算机	1
+谢谢	2
+中国	3
+我们	4
+朋友	5

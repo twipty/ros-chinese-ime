@@ -31,7 +31,8 @@ import re
 import sys
 from pathlib import Path
 
-TAG_RE = re.compile(r"^(alpha|beta)(\d+)\.(\d+)\.(\d+)$")
+# alpha*/beta* are prereleases; v* is the formal release tag.
+TAG_RE = re.compile(r"^(alpha|beta|v)(\d+)\.(\d+)\.(\d+)$")
 
 RT_VERSION = 16
 
@@ -167,7 +168,7 @@ def main() -> int:
     tag = a.tag.strip()
     m = TAG_RE.match(tag)
     if not m:
-        print(f"[FAIL] tag {tag!r} does not look like alphaX.Y.Z / betaX.Y.Z")
+        print(f"[FAIL] tag {tag!r} does not look like alphaX.Y.Z / betaX.Y.Z / vX.Y.Z")
         return 1
 
     want = {"MAJOR": m.group(2), "MINOR": m.group(3), "PATCH": m.group(4)}

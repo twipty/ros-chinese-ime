@@ -43,7 +43,7 @@ SKIP_DIRS = {".git", "xingma", "vendor", "node_modules"}
 SKIP_BUILD_PREFIX = "build"
 
 LINK_RE = re.compile(r"\]\(([^)\s]+)")
-RELEASE_RE = re.compile(r"^(alpha|beta)\d+\.\d+\.\d+\.md$")
+RELEASE_RE = re.compile(r"^(alpha|beta|v)\d+\.\d+\.\d+\.md$")
 DOUBLE_PAREN_RE = re.compile(r"\]\([^)\s]+\.md(?:#[^)\s]*)?\)\)")
 FENCE_RE = re.compile(r"```.*?```", re.S)
 INLINE_CODE_RE = re.compile(r"`[^`\n]*`")

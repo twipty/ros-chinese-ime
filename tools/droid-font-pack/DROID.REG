@@ -1,0 +1,11 @@
+Windows Registry Editor Version 5.00
+
+; Optional RosPinyin nightly font pack. Import only on ReactOS 0.4.17-dev
+; where DroidSansFallback.ttf is absent from the original installation.
+; The ownership value lets install-rospinyin.exe /u clean up symmetrically.
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts]
+"Droid Sans Fallback (TrueType)"="DROID.TTF"
+
+[HKEY_CURRENT_USER\SOFTWARE\RosPinyin\Install]
+"DroidFontOwned"=dword:00000001

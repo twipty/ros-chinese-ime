@@ -22,7 +22,7 @@ string(REGEX MATCH
     _rpy_match "${_rpy_version_header}")
 set(_rpy_version_string "${CMAKE_MATCH_1}")
 if(NOT _rpy_version_string MATCHES
-        "^(alpha|beta)${_rpy_MAJOR}\\.${_rpy_MINOR}\\.${_rpy_PATCH}$")
+        "^(alpha|beta|v)${_rpy_MAJOR}\\.${_rpy_MINOR}\\.${_rpy_PATCH}$")
     message(FATAL_ERROR
         "ime/version.h: ROSPINYIN_VERSION_STRING '${_rpy_version_string}' "
         "does not match ${_rpy_MAJOR}.${_rpy_MINOR}.${_rpy_PATCH}")
