@@ -101,6 +101,7 @@
 | [alpha0.0.3.md](releases/alpha0.0.3.md) | alpha0.0.3 的发布说明（M3 中文标点逐键验收；CI 用它作为 release notes） |
 | [alpha0.0.4.md](releases/alpha0.0.4.md) | alpha0.0.4 的发布说明（自包含 GUI 安装器候选，已发布 prerelease） |
 | [v0.1.0.md](releases/v0.1.0.md) | v0.1 正式发布说明（已发布正式 release；仅含安装、使用与字体依赖） |
+| [alpha0.1.1.md](releases/alpha0.1.1.md) | alpha0.1.1 发布说明（M4 词组库内嵌必装 + SHA-256 双校验；CI 用它作为 release notes） |
 
 ### icos/ — 输入法图标
 

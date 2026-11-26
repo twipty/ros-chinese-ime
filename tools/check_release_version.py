@@ -6,12 +6,14 @@
 
     tools/check_release_version.py alpha0.0.2
 
-Checks three things, all of which used to be "remembered by hand":
+Checks four things, all of which used to be "remembered by hand":
 
   1. `ime/version.h` numbers equal the tag           (alpha0.0.2 -> 0,0,2)
   2. `ROSPINYIN_VERSION_STRING` equals the tag       (shows up in Explorer)
   3. `docs/releases/<tag>.md` exists                 (release notes are written
      before tagging, not improvised afterwards)
+  4. the tag does not exceed the highest ReactOS version among the currently
+     used test guests (read from the guest ISO names in `m0/vm/*.sh`)
 
 Why a gate and not a checklist: `alpha0.0.2` shipped while the version resource
 still said `0,0,1,0` / `alpha0.0.1`, because nothing compared the two. A user
@@ -154,6 +156,27 @@ def read_version_header(root: Path) -> dict[str, str]:
     return values
 
 
+# Guest ISO names are the live source of truth for the version ceiling:
+#   m0/vm/run-test-guest.sh  -> reactos-bootcd-0.4.17-dev-... / ReactOS-0.4.16-i386
+#   m0/vm/common.sh          -> ReactOS-0.4.16-i386
+# Reading the scripts means replacing a guest updates the ceiling automatically.
+GUEST_ISO_RE = re.compile(
+    r"(?i)reactos[-a-z]*[-_]v?(\d+)\.(\d+)\.(\d+)")
+
+
+def read_guest_max_version(root: Path) -> tuple[int, int, int] | None:
+    vm_dir = root / "m0" / "vm"
+    if not vm_dir.is_dir():
+        return None
+    found: list[tuple[int, int, int]] = []
+    for script in sorted(vm_dir.glob("*.sh")):
+        body = script.read_text(encoding="utf-8", errors="replace")
+        for match in GUEST_ISO_RE.finditer(body):
+            g = match.groups()
+            found.append((int(g[0]), int(g[1]), int(g[2])))
+    return max(found) if found else None
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="tag vs version.h gate")
     ap.add_argument("tag", help="release tag, e.g. alpha0.0.2")
@@ -192,6 +215,14 @@ def main() -> int:
 
     check("version string equals the full tag", got.get("STRING") == tag,
           f"tag={tag} header={got.get('STRING', '<missing>')}")
+
+    tag_version = tuple(int(want[p]) for p in ("MAJOR", "MINOR", "PATCH"))
+    guest_max = read_guest_max_version(a.root.resolve())
+    check("tag version <= current ReactOS guest max",
+          guest_max is not None and tag_version <= guest_max,
+          "tag=" + ".".join(map(str, tag_version)) + " guest_max=" +
+          (".".join(map(str, guest_max)) if guest_max
+           else "<none found in m0/vm/*.sh>"))
 
     if not a.no_notes:
         notes = a.root.resolve() / "docs" / "releases" / f"{tag}.md"

@@ -570,6 +570,8 @@ make -C build-win-trace rospinyin-ime -j4
 `m1-artifacts` 分支里的 `INFO.txt` 记录 `source commit` 与构建时间 —— **VM 验收前先核对它等于你期望的提交**。
 发版纪律：先写 `docs/releases/<tag>.md` 再打 tag（`check_release_version.py` 强制），tag 推送后 CI 自动建 release；不存在手工上传路径。
 
+**版本上限纪律（owner 2026-11-26 定）**：本项目版本号（tag 与 `ime/version.h`）**不得超过当前所使用测试 guest 的最大 ReactOS 版本号**。上限从 `m0/vm/*.sh` 中 guest ISO 文件名实时解析——当前 6081 nightly 为 `reactos-bootcd-0.4.17-dev-1398-gdbbf9a2`，6080/6082 为 `ReactOS-0.4.16-i386`，取最大值 `0.4.17`；由 `check_release_version.py` 作为硬门禁校验。guest 升级后上限自动跟随，不另写第二份版本常量。
+
 ### 8.6 VM 验收（M2）
 
 按 `docs/milestones/m2/M2-ACCEPTANCE.md` 执行：产物入 system32 → 重启 → Alt+Shift 切到「中」→ 记事本 → 15 项用例（含词组上屏 ≥2 字，这是唯一能在真机暴露 TRANSMSGLIST ABI 缺陷的用例）。结果回填表格并截图存 `m0/vm/evidence/`。
