@@ -186,6 +186,7 @@ Commit：emit_text() 逐 UTF-16 码单元生成 TRANSMSG，写入 list->TransMsg
 - **M5 整句开关语义更正**：配置项、配置后持久生效（注册表或文件，重启保留），**不是会话级热键**；与 `[快]/[全]` 字形开关（会话级、零持久化）是两套独立开关。技术路线为**自写轻量 Viterbi**，微软拼音/搜狗/libpinyin 仅作效果标杆，不引入外部引擎。
 - **M4 落地裁决**：词库内嵌 GUI 安装器；装 `system32\` 与 ime/dat 同目录并按固定 SHA-256 校验；词库缺失/损坏时 IME 拒绝加载（**明确接受 v0.1 存量用户的破坏性升级**）；宿主 + guest 实机双验收。
 - **发布口径**：产品定位为独立第三方 IMM32 软件包，已从全部文档剔除「进入 ReactOS 主线/官方树/ISO 预装」目标表述；v0.2 发布本轮不做。
+- **安装器协议按产品拆分（2026-11-27）**：GUI 安装器新增版本号显示、协议勾选（默认不勾、勾选后解锁安装按钮）与独立可滚动协议查看窗口、主界面升级叙述（独立 `whatsnew.txt` 内嵌 RCDATA 112）、安装完成后 Yes/No → 10 秒可取消倒计时 → `ExitWindowsEx`+提权重启（失败兜底给 `shutdown /r` 命令）。协议文本按产品分离：MIT `LICENSE` 共用，第三方声明各自独立——`tools/install-rospinyin/NOTICE-pinyin.txt`（删原仓库级 `NOTICE.txt` 第 6 条字体占位与第 8 条 xingma 段，UI 字体依赖提示条保留不变）与 `NOTICE-xingma.txt`（只留形码相关条款与通用条款，供未来 xingma 打包使用）；原仓库级 `NOTICE.txt` 保留不动（25 个源码头注释指向它）。`pack_payload.py --product`（默认 pinyin，选 `NOTICE-<product>.txt`；`--notice` 显式覆盖兼容 CI/诊断）按产品区别内嵌，两类协议互不串味（S2 已做 header 字节级解码验证）。
 
 ### 3.3 未完成 / 当前阻塞
 
@@ -230,8 +231,12 @@ ros-pinyin/
 ├── PLAN.md                     工作分解结构（WBS，M0–M8 逐条任务）
 ├── ROADMAP.md                  里程碑目标与工期
 ├── M0-REPORT.md / M1-REPORT.md 里程碑验收报告（含实测证据与决策记录）
-├── NOTICE.txt                  第三方与数据分层授权
-├── LICENSE                     MIT
+├── NOTICE.txt                  第三方与数据分层授权（仓库级尽调文档，不随安装器分发）
+├── LICENSE                     MIT（pinyin/xingma 两产品共用）
+├── tools/install-rospinyin/
+│   ├── NOTICE-pinyin.txt       安装器内嵌的 pinyin 协议（无字体占位/xingma 段）
+│   ├── NOTICE-xingma.txt       安装器内嵌的 xingma 协议（供未来形码打包）
+│   └── whatsnew.txt            主界面升级叙述，发版只改文本不改代码
 ├── framework/                  ★可复用 IMM32 输入法框架（imfw）
 │   ├── README.md               模块地图、Scheme 复用缝、生命周期红线
 │   ├── include/imfw/           引擎契约、Scheme 接口、emit_text、candidate_pager、utf8、code_table、dat_format、trace_stamp.hpp

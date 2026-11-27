@@ -44,3 +44,21 @@ ROSPINYIN_IDR_LEX_PAYLOAD RCDATA
 109 RCDATA { ROSPINYIN_LEX_PAYLOAD_RC_BYTES_5 }
 110 RCDATA { ROSPINYIN_LEX_PAYLOAD_RC_BYTES_6 }
 111 RCDATA { ROSPINYIN_LEX_PAYLOAD_RC_BYTES_7 }
+
+// UI whats-new text (alpha0.1.2 update points). Separate from the four
+// compressed payloads: uncompressed UTF-8 bytes, loaded as a string by the
+// GUI. Regenerate via pack_payload.py --whatsnew after editing whatsnew.txt.
+ROSPINYIN_IDR_WHATSNEW RCDATA
+{
+    ROSPINYIN_WHATSNEW_RC_BYTES
+}
+
+// AC3: license viewer reads these from the EXE itself (no side-car files).
+ROSPINYIN_IDR_LICENSE RCDATA
+{
+    ROSPINYIN_LICENSE_RC_BYTES
+}
+ROSPINYIN_IDR_NOTICE RCDATA
+{
+    ROSPINYIN_NOTICE_RC_BYTES
+}

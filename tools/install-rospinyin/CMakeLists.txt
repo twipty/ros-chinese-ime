@@ -36,7 +36,8 @@ add_executable(install-rospinyin-gui WIN32 gui.cpp gui_res.rc)
 set_source_files_properties(gui_res.rc PROPERTIES
     OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/payload_base64.hpp")
 target_include_directories(install-rospinyin-gui PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}")
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${PROJECT_SOURCE_DIR}/ime")
 target_link_libraries(install-rospinyin-gui PRIVATE
     advapi32 user32 gdi32)
 rospinyin_static_runtime(install-rospinyin-gui CXX)

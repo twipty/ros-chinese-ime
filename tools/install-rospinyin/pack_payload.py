@@ -60,7 +60,9 @@ LEX_RCDATA_SEGMENTS = 8
 
 
 def pack(ime: Path, dat: Path, cli: Path, output: Path,
-         lex: Path | None = None) -> None:
+         lex: Path | None = None,
+         whatsnew: Path | None = None,
+         license_texts: tuple[Path, Path] | None = None) -> None:
     specs = [
         ("IME", "Ime", 101, ime),
         ("DAT", "Dat", 102, dat),
@@ -106,6 +108,11 @@ def pack(ime: Path, dat: Path, cli: Path, output: Path,
         lines.append(f"#define ROSPINYIN_IDR_{p['label']}_PAYLOAD {p['id']}")
     # M4: the word list occupies SEGMENTS consecutive resource ids.
     lines.append(f"#define ROSPINYIN_LEX_RCDATA_SEGMENTS {LEX_RCDATA_SEGMENTS}")
+    # UI resources: both the RC file and gui.cpp need these IDs, so they stay
+    # outside the RC_PAYLOAD_ONLY guard (the byte macros remain inside).
+    lines.append("#define ROSPINYIN_IDR_WHATSNEW 112")
+    lines.append("#define ROSPINYIN_IDR_LICENSE 113")
+    lines.append("#define ROSPINYIN_IDR_NOTICE 114")
     lines.append("")
 
     for p in payloads:
@@ -130,6 +137,24 @@ def pack(ime: Path, dat: Path, cli: Path, output: Path,
         else:
             rc_byte_macro(lines, f"ROSPINYIN_{p['label']}_PAYLOAD_RC_BYTES",
                           p["compressed"])
+    # UI text (AC4): the whats-new note is embedded verbatim as bytes so a
+    # release only edits whatsnew.txt inside the RCDATA (no C++ change). It is
+    # not a payload: ID 112, uncompressed, and the GUI loads it as wide text.
+    if whatsnew is not None:
+        rc_byte_macro(lines, "ROSPINYIN_WHATSNEW_RC_BYTES",
+                      whatsnew.read_bytes())
+    else:
+        lines.append('#define ROSPINYIN_WHATSNEW_RC_BYTES ""')
+    # AC3: license text must travel inside the single EXE — the guest has no
+    # LICENSE/NOTICE files next to the downloaded installer.
+    if license_texts is not None:
+        rc_byte_macro(lines, "ROSPINYIN_LICENSE_RC_BYTES",
+                      license_texts[0].read_bytes())
+        rc_byte_macro(lines, "ROSPINYIN_NOTICE_RC_BYTES",
+                      license_texts[1].read_bytes())
+    else:
+        lines.append('#define ROSPINYIN_LICENSE_RC_BYTES ""')
+        lines.append('#define ROSPINYIN_NOTICE_RC_BYTES ""')
     lines.append("#endif  // ROSPINYIN_RC_PAYLOAD_ONLY")
     lines.append("")
 
@@ -206,13 +231,51 @@ def main() -> None:
         help="build the legacy 3-payload header (for compatibility checks)",
     )
     parser.add_argument(
+        "--whatsnew",
+        type=Path,
+        default=root / "tools/install-rospinyin/whatsnew.txt",
+        help="UI whats-new text embedded verbatim as RCDATA ID 112",
+    )
+    parser.add_argument(
+        "--no-whatsnew",
+        action="store_true",
+        help="build a header without the whats-new RCDATA (compat checks)",
+    )
+    parser.add_argument(
+        "--product",
+        choices=("pinyin", "xingma"),
+        default="pinyin",
+        help="product whose NOTICE is embedded (default: pinyin). "
+             "Selects NOTICE-<product>.txt unless --notice overrides.",
+    )
+    parser.add_argument(
+        "--license",
+        type=Path,
+        default=root / "LICENSE",
+        help="MIT LICENSE embedded as RCDATA ID 113 (shared by both products)",
+    )
+    parser.add_argument(
+        "--notice",
+        type=Path,
+        default=None,
+        help="explicit NOTICE override for RCDATA ID 114. When omitted, "
+             "pack_payload.py picks NOTICE-<product>.txt from this directory.",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=root / "tools/install-rospinyin/payload_base64.hpp",
     )
     args = parser.parse_args()
+    # Each product ships its own NOTICE; MIT LICENSE is shared. An explicit
+    # --notice still wins for compatibility / diagnostics.
+    notice = args.notice or (
+        root / f"tools/install-rospinyin/NOTICE-{args.product}.txt"
+    )
     pack(args.ime, args.dat, args.cli, args.output,
-         None if args.no_lex else args.lex)
+         None if args.no_lex else args.lex,
+         None if args.no_whatsnew else args.whatsnew,
+         None if args.no_whatsnew else (args.license, notice))
 
 
 if __name__ == "__main__":

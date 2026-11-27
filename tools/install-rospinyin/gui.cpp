@@ -24,6 +24,8 @@
 #define MINIZ_IMPLEMENTATION
 #include "miniz.h"
 
+#include "version.h"
+#include "gui_logic.hpp"
 #include "install_steps.hpp"
 #include "payload_blob.hpp"
 #include "payload_base64.hpp"
@@ -37,6 +39,26 @@ constexpr int kIdInstall = 1001;
 constexpr int kIdUninstall = 1002;
 constexpr int kIdStatus = 1003;
 constexpr int kIdFontHint = 1004;
+constexpr int kIdAgreement = 1005;   // AC2 consent checkbox
+constexpr int kIdViewLicense = 1006; // AC3 open the license viewer
+constexpr int kIdWhatsNew = 1007;    // AC4 update-points STATIC
+constexpr int kIdVersion = 1008;     // AC1 version STATIC
+constexpr int kIdLicenseText = 1009; // AC3 read-only EDIT in the license window
+constexpr int kIdCountdown = 1010;   // countdown label in the reboot window
+constexpr int kIdCancelReboot = 1011;// cancel button in the reboot window
+
+namespace gui = rospinyin::installer::gui;
+
+HINSTANCE g_instance = nullptr;
+
+// AC2: one agreement state per process, always re-checked on each launch.
+gui::AgreementState g_agreement;
+HWND g_install_button = nullptr;
+HWND g_countdown_label = nullptr;
+HWND g_reboot_window = nullptr;
+UINT_PTR g_countdown_timer = 0;
+int g_countdown_remaining = 0;
+gui::RebootController g_reboot;
 
 constexpr wchar_t kCliFileName[] = L"install-rospinyin.exe";
 constexpr wchar_t kImeFileName[] = L"rospinyin.ime";
@@ -312,6 +334,179 @@ bool check_platform() {
     return false;
 }
 
+// --- AC3: license viewer (self-contained: text comes from RCDATA) ---------
+
+std::wstring utf8_to_wide(const std::vector<std::uint8_t>& bytes) {
+    if (bytes.empty()) return L"(协议文本缺失)";
+    const int needed = MultiByteToWideChar(
+        CP_UTF8, 0, reinterpret_cast<const char*>(bytes.data()),
+        static_cast<int>(bytes.size()), nullptr, 0);
+    if (needed <= 0) return L"(协议文本解码失败)";
+    std::wstring out(static_cast<std::size_t>(needed), L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(bytes.data()),
+                        static_cast<int>(bytes.size()), out.data(), needed);
+    return out;
+}
+
+std::wstring load_license_text() {
+    std::vector<std::uint8_t> license_bytes, notice_bytes;
+    std::wstring out;
+    if (load_resource_bytes(ROSPINYIN_IDR_LICENSE, license_bytes)) {
+        out += utf8_to_wide(license_bytes);
+    }
+    out += L"\r\n\r\n================ NOTICE ================\r\n\r\n";
+    if (load_resource_bytes(ROSPINYIN_IDR_NOTICE, notice_bytes)) {
+        out += utf8_to_wide(notice_bytes);
+    }
+    return out;
+}
+
+LRESULT CALLBACK license_window_proc(HWND hwnd, UINT msg, WPARAM wparam,
+                                     LPARAM lparam) {
+    switch (msg) {
+        case WM_CREATE: {
+            const std::wstring text = load_license_text();
+            CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", text.c_str(),
+                            WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE |
+                                ES_READONLY | ES_AUTOVSCROLL,
+                            10, 10, 560, 360, hwnd,
+                            reinterpret_cast<HMENU>(kIdLicenseText), nullptr,
+                            nullptr);
+            CreateWindowExW(0, L"BUTTON", L"关闭",
+                            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 240, 380,
+                            100, 30, hwnd, reinterpret_cast<HMENU>(IDCANCEL),
+                            nullptr, nullptr);
+            return 0;
+        }
+        case WM_COMMAND:
+            if (LOWORD(wparam) == IDCANCEL) {
+                DestroyWindow(hwnd);
+                return 0;
+            }
+            break;
+        case WM_CLOSE:
+            DestroyWindow(hwnd);
+            return 0;
+    }
+    return DefWindowProcW(hwnd, msg, wparam, lparam);
+}
+
+void open_license_window(HINSTANCE instance) {
+    static bool registered = false;
+    if (!registered) {
+        WNDCLASSW wc{};
+        wc.style = CS_HREDRAW | CS_VREDRAW;
+        wc.lpfnWndProc = license_window_proc;
+        wc.hInstance = instance;
+        wc.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_BTNFACE + 1);
+        wc.lpszClassName = L"RosPinyinLicenseViewer";
+        if (!RegisterClassW(&wc)) return;
+        registered = true;
+    }
+    HWND hwnd = CreateWindowExW(
+        0, L"RosPinyinLicenseViewer", L"RosPinyin 许可协议",
+        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
+        CW_USEDEFAULT, CW_USEDEFAULT, 600, 450, nullptr, nullptr, instance,
+        nullptr);
+    if (hwnd) ShowWindow(hwnd, SW_SHOW);
+}
+
+// --- AC5-8: reboot countdown window --------------------------------------
+
+bool try_reboot() {
+    HANDLE token = nullptr;
+    if (OpenProcessToken(GetCurrentProcess(),
+                         TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token)) {
+        TOKEN_PRIVILEGES tp{};
+        if (LookupPrivilegeValueW(nullptr, L"SeShutdownPrivilege",
+                                  &tp.Privileges[0].Luid)) {
+            tp.PrivilegeCount = 1;
+            tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+            AdjustTokenPrivileges(token, FALSE, &tp, sizeof(tp), nullptr,
+                                  nullptr);
+        }
+        CloseHandle(token);
+    }
+    return ExitWindowsEx(EWX_REBOOT | EWX_FORCE, 0) != 0;
+}
+
+void perform_reboot() {
+    g_reboot.countdown_elapsed();
+    // countdown_elapsed() fires the registered callback (try_reboot wrapper).
+}
+
+LRESULT CALLBACK reboot_window_proc(HWND hwnd, UINT msg, WPARAM wparam,
+                                    LPARAM lparam) {
+    switch (msg) {
+        case WM_CREATE: {
+            g_countdown_label = CreateWindowExW(
+                0, L"STATIC", L"", WS_CHILD | WS_VISIBLE | SS_CENTER,
+                20, 20, 340, 40, hwnd,
+                reinterpret_cast<HMENU>(kIdCountdown), nullptr, nullptr);
+            CreateWindowExW(0, L"BUTTON", L"取消重启",
+                            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 130, 70,
+                            120, 32, hwnd,
+                            reinterpret_cast<HMENU>(kIdCancelReboot), nullptr,
+                            nullptr);
+            return 0;
+        }
+        case WM_TIMER:
+            if (wparam == 1) {
+                --g_countdown_remaining;
+                if (g_countdown_remaining <= 0) {
+                    KillTimer(hwnd, 1);
+                    g_countdown_timer = 0;
+                    perform_reboot();
+                    DestroyWindow(hwnd);
+                } else if (g_countdown_label) {
+                    std::wstring label = L"系统将在 " +
+                                         std::to_wstring(g_countdown_remaining) +
+                                         L" 秒后重启…";
+                    SetWindowTextW(g_countdown_label, label.c_str());
+                }
+                return 0;
+            }
+            break;
+        case WM_COMMAND:
+            if (LOWORD(wparam) == kIdCancelReboot) {
+                g_reboot.cancel_countdown();
+                if (g_countdown_timer) KillTimer(hwnd, 1);
+                g_countdown_timer = 0;
+                DestroyWindow(hwnd);
+                return 0;
+            }
+            break;
+        case WM_DESTROY:
+            g_reboot_window = nullptr;
+            g_countdown_label = nullptr;
+            return 0;
+    }
+    return DefWindowProcW(hwnd, msg, wparam, lparam);
+}
+
+void open_reboot_countdown(HINSTANCE instance) {
+    static bool registered = false;
+    if (!registered) {
+        WNDCLASSW wc{};
+        wc.style = CS_HREDRAW | CS_VREDRAW;
+        wc.lpfnWndProc = reboot_window_proc;
+        wc.hInstance = instance;
+        wc.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_BTNFACE + 1);
+        wc.lpszClassName = L"RosPinyinRebootCountdown";
+        if (!RegisterClassW(&wc)) return;
+        registered = true;
+    }
+    g_reboot_window = CreateWindowExW(
+        0, L"RosPinyinRebootCountdown", L"即将重启",
+        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
+        CW_USEDEFAULT, CW_USEDEFAULT, 380, 150, nullptr, nullptr, instance,
+        nullptr);
+    if (!g_reboot_window) return;
+    g_countdown_remaining = 10;
+    ShowWindow(g_reboot_window, SW_SHOW);
+    g_countdown_timer = SetTimer(g_reboot_window, 1, 1000, nullptr);
+}
+
 void do_install() {
     if (payload_installed() &&
         MessageBoxW(nullptr, L"检测到已安装 RosPinyin，是否覆盖安装？",
@@ -381,8 +576,24 @@ void do_install() {
             std::wstring(installer::error_message(result)) + L"\n\n" +
             std::wstring(installer::next_action(result)) + L"\n\n" +
             installer::font_hint_message();
-        MessageBoxW(nullptr, message.c_str(), L"RosPinyin 安装器",
-                    MB_OK | MB_ICONINFORMATION);
+        const int choice = MessageBoxW(
+            nullptr, message.c_str(), L"RosPinyin 安装器",
+            MB_YESNO | MB_ICONINFORMATION | MB_DEFBUTTON2);
+        // AC5: No keeps the manual hint and never touches the reboot API.
+        g_reboot.run_choice(
+            choice == IDYES ? gui::RebootChoice::Yes : gui::RebootChoice::No,
+            [] {
+                // AC8: failure is surfaced but never downgrades the install.
+                if (!try_reboot()) {
+                    g_reboot.note_reboot_failed();
+                    MessageBoxW(nullptr, gui::reboot_failure_message().c_str(),
+                                L"RosPinyin 安装器", MB_OK | MB_ICONWARNING);
+                }
+            });
+        if (choice == IDYES) {
+            // AC6/AC7: Yes enters a cancellable 10-second countdown.
+            open_reboot_countdown(g_instance);
+        }
     } else {
         std::wstring message =
             std::wstring(installer::error_message(result)) + L"\n\n" +
@@ -440,30 +651,78 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam,
                              LPARAM lparam) {
     switch (msg) {
         case WM_CREATE: {
+            // AC1: version label from the single version.h source.
+            const auto texts = gui::make_window_texts(
+                ROSPINYIN_VERSION_STRING);
+            CreateWindowExW(0, L"STATIC", texts.version_label.c_str(),
+                            WS_CHILD | WS_VISIBLE | SS_LEFT, 20, 12, 430, 22,
+                            hwnd, reinterpret_cast<HMENU>(kIdVersion), nullptr,
+                            nullptr);
             CreateWindowExW(0, L"BUTTON", L"安装 RosPinyin",
-                            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 20, 20,
-                            180, 40, hwnd, reinterpret_cast<HMENU>(kIdInstall),
-                            nullptr, nullptr);
+                            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_DISABLED,
+                            20, 44, 180, 36, hwnd,
+                            reinterpret_cast<HMENU>(kIdInstall), nullptr,
+                            nullptr);
+            g_install_button = GetDlgItem(hwnd, kIdInstall);
             CreateWindowExW(0, L"BUTTON", L"卸载 RosPinyin",
-                            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 220, 20,
-                            180, 40, hwnd,
+                            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 220, 44,
+                            180, 36, hwnd,
                             reinterpret_cast<HMENU>(kIdUninstall), nullptr,
                             nullptr);
+            // AC2/AC3: consent gate + license viewer.
+            CreateWindowExW(0, L"BUTTON", L"我已阅读并同意许可协议",
+                            WS_CHILD | WS_VISIBLE | BS_CHECKBOX, 20, 92, 240,
+                            22, hwnd, reinterpret_cast<HMENU>(kIdAgreement),
+                            nullptr, nullptr);
+            CreateWindowExW(0, L"BUTTON", L"查看协议",
+                            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 270, 92,
+                            130, 24, hwnd,
+                            reinterpret_cast<HMENU>(kIdViewLicense), nullptr,
+                            nullptr);
+            // AC4: whats-new text from RCDATA (UTF-8 -> wide).
+            std::vector<std::uint8_t> whatsnew_bytes;
+            std::wstring whatsnew_text = L"(无更新说明)";
+            if (load_resource_bytes(ROSPINYIN_IDR_WHATSNEW, whatsnew_bytes)) {
+                whatsnew_text = gui::format_whatsnew(
+                    utf8_to_wide(whatsnew_bytes));
+            }
+            CreateWindowExW(0, L"STATIC", whatsnew_text.c_str(),
+                            WS_CHILD | WS_VISIBLE | SS_LEFT, 20, 126, 440, 80,
+                            hwnd, reinterpret_cast<HMENU>(kIdWhatsNew), nullptr,
+                            nullptr);
             g_status = CreateWindowExW(
-                0, L"STATIC", L"请选择「安装」或「卸载」。",
-                WS_CHILD | WS_VISIBLE | SS_LEFT, 20, 80, 380, 60, hwnd,
+                0, L"STATIC", L"请先勾选同意许可协议后再安装。",
+                WS_CHILD | WS_VISIBLE | SS_LEFT, 20, 214, 440, 44, hwnd,
                 reinterpret_cast<HMENU>(kIdStatus), nullptr, nullptr);
-            // Permanent reminder: [全] needs a font pack that is not part of
-            // this exe. Kept as a second STATIC so it survives status updates
-            // (which rewrite g_status) and stays visible before installing.
             CreateWindowExW(
                 0, L"STATIC", installer::kFontHintBanner.data(),
-                WS_CHILD | WS_VISIBLE | SS_LEFT, 20, 150, 400, 44, hwnd,
+                WS_CHILD | WS_VISIBLE | SS_LEFT, 20, 264, 440, 66, hwnd,
                 reinterpret_cast<HMENU>(kIdFontHint), nullptr, nullptr);
             return 0;
         }
         case WM_COMMAND:
-            if (LOWORD(wparam) == kIdInstall) do_install();
+            if (LOWORD(wparam) == kIdAgreement) {
+                const bool checked =
+                    SendMessageW(reinterpret_cast<HWND>(lparam), BM_GETCHECK,
+                                 0, 0) == BST_CHECKED;
+                g_agreement.set_checked(checked);
+                if (g_install_button) {
+                    EnableWindow(g_install_button,
+                                 g_agreement.install_enabled() ? TRUE
+                                                               : FALSE);
+                }
+                set_status(g_agreement.install_enabled()
+                               ? L"已同意协议，可以安装。"
+                               : L"请先勾选同意许可协议后再安装。");
+                return 0;
+            }
+            if (LOWORD(wparam) == kIdViewLicense) {
+                open_license_window(g_instance);
+                return 0;
+            }
+            if (LOWORD(wparam) == kIdInstall && g_agreement.install_enabled()) {
+                do_install();
+            }
             if (LOWORD(wparam) == kIdUninstall) do_uninstall();
             return 0;
         case WM_DESTROY:
@@ -476,6 +735,7 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam,
 }  // namespace
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
+    g_instance = instance;
     WNDCLASSW wc{};
     wc.style = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = window_proc;
@@ -487,10 +747,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     wc.lpszClassName = L"RosPinyinInstallerGUI";
     if (!RegisterClassW(&wc)) return 1;
 
+    const auto texts = gui::make_window_texts(ROSPINYIN_VERSION_STRING);
     HWND hwnd = CreateWindowExW(
-        0, wc.lpszClassName, L"RosPinyin 安装器",
+        0, wc.lpszClassName, texts.title.c_str(),
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, CW_USEDEFAULT,
-        CW_USEDEFAULT, 440, 250, nullptr, nullptr, instance, nullptr);
+        CW_USEDEFAULT, 480, 400, nullptr, nullptr, instance, nullptr);
     if (!hwnd) return 1;
     ShowWindow(hwnd, show);
     UpdateWindow(hwnd);

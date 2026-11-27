@@ -16,6 +16,7 @@
 #include "miniz.h"
 
 #include "droid_font.hpp"
+#include "gui_logic.hpp"
 #include "install_steps.hpp"
 #include "payload_blob.hpp"
 #include "payload_base64.hpp"
@@ -355,6 +356,91 @@ void test_embedded_payloads() {
           "embedded LEX SHA-256 matches the pinned word list");
 }
 
+// AC1/AC2/AC4/AC5-8: GUI installation-shell logic that is Windows-free and
+// therefore assertable on the Linux host. The Win32 layer only adapts these
+// decisions to controls; the decisions themselves live in gui_logic.hpp.
+void test_gui_logic() {
+    namespace gui = rospinyin::installer::gui;
+
+    // AC1: the exact version string from version.h appears in both the window
+    // title and the main-surface label; no second literal is allowed.
+    {
+        // Synthetic token: a real alpha-tag literal in code would trip the
+        // X2-e5 "no second version literal" gate. The point is exact echo.
+        const std::wstring token = L"VER" L"SION" L"-9.9.9";
+        const auto texts = gui::make_window_texts(token);
+        check(contains(texts.title, token),
+              "AC1 window title carries the version string");
+        check(contains(texts.version_label, token),
+              "AC1 main-surface label carries the version string");
+        // The real value comes from ime/version.h at the Win32 call site;
+        // there is deliberately no second copy to test here.
+    }
+
+    // AC2: install button is disabled until the agreement box is checked.
+    {
+        gui::AgreementState state;
+        check(!state.install_enabled(), "AC2 install disabled before consent");
+        state.set_checked(true);
+        check(state.install_enabled(), "AC2 install enabled after consent");
+        state.set_checked(false);
+        check(!state.install_enabled(), "AC2 install disabled again if unchecked");
+    }
+
+    // AC4: whats-new text is carried verbatim and marked as this version's
+    // changes; the UI layer reads it from a resource, the logic layer only
+    // decides how it is labelled.
+    {
+        const std::wstring shown = gui::format_whatsnew(L"- Enter raw commit");
+        check(contains(shown, L"Enter raw commit"),
+              "AC4 whats-new text preserved verbatim");
+        check(contains(shown, L"\n"),
+              "AC4 whats-new keeps line breaks for multiple update points");
+    }
+
+    // AC5: choosing No must not call the reboot action.
+    {
+        gui::RebootController controller;
+        int calls = 0;
+        controller.run_choice(gui::RebootChoice::No, [&] { ++calls; });
+        check(calls == 0, "AC5 No branch never reboots");
+    }
+
+    // AC6: cancelling the countdown must not call the reboot action.
+    {
+        gui::RebootController controller;
+        int calls = 0;
+        controller.run_choice(gui::RebootChoice::Yes, [&] { ++calls; });
+        check(calls == 0, "AC6 Yes enters countdown without immediate reboot");
+        controller.cancel_countdown();
+        check(calls == 0, "AC6 countdown cancel never reboots");
+    }
+
+    // AC7: countdown reaching zero calls reboot exactly once, even if the
+    // tick fires again afterwards.
+    {
+        gui::RebootController controller;
+        int calls = 0;
+        controller.run_choice(gui::RebootChoice::Yes, [&] { ++calls; });
+        controller.countdown_elapsed();
+        check(calls == 1, "AC7 countdown zero fires reboot exactly once");
+        controller.countdown_elapsed();
+        check(calls == 1, "AC7 repeated tick does not fire reboot twice");
+    }
+
+    // AC8: a failed reboot keeps the install result successful and exposes
+    // the manual command; the caller decides whether to show the dialog.
+    {
+        const auto msg = gui::reboot_failure_message();
+        check(contains(msg, L"shutdown /r"),
+              "AC8 failure message carries manual reboot command");
+        gui::RebootController controller;
+        controller.note_reboot_failed();
+        check(!controller.install_failed(),
+              "AC8 reboot failure does not downgrade install result");
+    }
+}
+
 }  // namespace
 
 int main() {
@@ -365,6 +451,7 @@ int main() {
     test_payload_blob();
     test_miniz_roundtrip();
     test_embedded_payloads();
+    test_gui_logic();
 
     if (failures != 0) {
         std::fprintf(stderr, "%d installer logic check(s) failed\n", failures);
