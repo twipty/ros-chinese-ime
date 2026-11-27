@@ -387,6 +387,17 @@ void test_gui_logic() {
         check(!state.install_enabled(), "AC2 install disabled again if unchecked");
     }
 
+    // DEF-001: the agreement checkbox must toggle itself (the Win32 layer
+    // derives BS_AUTOCHECKBOX from this) and be keyboard reachable (WS_TABSTOP
+    // plus dialog navigation). Kept as a contract so it is assertable here.
+    {
+        const auto spec = gui::agreement_control_spec();
+        check(spec.auto_toggle,
+              "DEF-001 checkbox toggles without manual BM_SETCHECK");
+        check(spec.keyboard_focusable,
+              "DEF-001 checkbox is keyboard reachable");
+    }
+
     // AC4: whats-new text is carried verbatim and marked as this version's
     // changes; the UI layer reads it from a resource, the logic layer only
     // decides how it is labelled.

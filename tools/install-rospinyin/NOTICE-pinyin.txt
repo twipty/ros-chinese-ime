@@ -1,55 +1,85 @@
-RosPinyin — Third-party notices / 第三方许可声明
+RosPinyin - 第三方许可声明 / Third-party notices
 ================================================
 
-本文件说明 RosPinyin 各组成部分的授权边界。代码与数据是**分层授权**的，
-不能把整包当作单一授权单元看待。本声明随 RosPinyin 安装器分发，
-不包含形码（RosXingMa）相关条款——形码产品使用其独立的许可声明。
+[中文]
 
-1. 本项目自身代码（engine/ ime/ ui/ tools/ tests/、构建脚本、安装器、文档）
-   ------------------------------------------------------------------------
-   MIT License（见 LICENSE）。
-   选 MIT 而非纯公共领域献辞，是为取得 OSI 认证、跨法域可执行性，
+本声明说明 RosPinyin 各部分的授权边界。代码与数据采用分层授权，
+不能把整个安装包当作单一授权单元。本声明随 RosPinyin 安装器分发。
+
+1. 本项目自身代码（engine / ime / ui / tools / tests、构建脚本、安装器、文档）
+   MIT License，见 LICENSE。
+   选择 MIT 是为了取得 OSI 认证、跨法域可执行性，
    以及与 ReactOS（GPLv2-or-later）合并时的确定性兼容。
 
-2. 只读蓝本 vendor/mzimeja-ref/（不随发行包分发、不链接、不构建）
-   ------------------------------------------------------------------------
-   katahiromz/mzimeja v1.0.0.3（2026-01-03），Public Domain Software (PDS)。
-   详见 vendor/LICENSE-NOTICE.txt 与该目录内 LICENSE.txt。
-   上游自 2026-01-12 起改为 GPLv3；本仓库**不含任何 GPLv3 代码**，
-   也不得从 v1.0.0.7+ / v1.0.1.1 复制源码、资源或词典。
-   蓝本通过 vendor/fetch-vendor.sh 可复现获取（带 SHA256 校验）。
-
-3. 字级拼音映射（M2）：Unicode Unihan kMandarin
-   ------------------------------------------------------------------------
+2. 字级拼音映射（M2）：Unicode Unihan kMandarin
    Unicode License / Unicode Terms of Use：允许自由使用与再分发，
    要求在分发物中保留 Unicode 版权声明与许可文本。
    https://www.unicode.org/license.txt
    生成的 rospinyin.dat 须随附本声明。
 
-4. 字频表（M2，D2 已定 = A，2026-11-16）
-   ------------------------------------------------------------------------
+3. 字频表（M2，D2 已定 = A，2026-11-16）
    主源：hanziDB.csv（MIT License，Copyright (c) 2017 Rudd Fawcett），
-   仓库 https://github.com/rtang18/hanziDB.csv ，文件 data/hanziDB.csv。
-   辅源：Unicode Unihan kHanyuPinlu（Unicode License，见第 3 条）。
-
+   https://github.com/rtang18/hanziDB.csv ，文件 data/hanziDB.csv。
+   辅源：Unicode Unihan kHanyuPinlu（Unicode License，见第 2 条）。
    hanziDB 的排名衍生自 Jun Da 现代汉语字频表。Jun Da 原始表官方声明
    "research and teaching/learning purposes only"，商用需作者书面许可，
-   因此**不直接分发 Jun Da 原始表**；发行包内只并入 hanziDB 的 MIT 衍生 CSV
+   因此不直接分发 Jun Da 原始表；发行包内只并入 hanziDB 的 MIT 衍生 CSV
    与其编译产物 rospinyin.dat，并在此标注底层来源。
    https://lingua.mtsu.edu/chinese-computing/copyright.html
-
-   数据可替换设计：字频编译为独立 rospinyin.dat，未来若改用自算语料字频，
+   数据可替换：字频编译为独立 rospinyin.dat，未来改用自算语料字频时
    只需替换 mkdat 输入文件，不动 MIT 代码。
 
-5. 词组词典（M4）：CC-CEDICT
-   ------------------------------------------------------------------------
-   CC-BY-SA（署名-相同方式共享）。必须作为**独立数据文件**
+4. 词组词典（M4）：CC-CEDICT
+   CC-BY-SA（署名-相同方式共享）。必须作为独立数据文件
    rospinyin-lexicon.dat 单独分发，单独附出处、署名与许可文本；
    不得与 MIT 代码的授权单元合并，也不改变代码的 MIT 授权。
 
-6. 目标平台
-   ------------------------------------------------------------------------
-   ReactOS 是 GPLv2-or-later 项目。本仓库为**独立软件包**，只调用公开的
-   IMM32 API，不链接也不复制 ReactOS 源码；MIT 与 GPLv2+ 兼容。
+5. 目标平台
+   ReactOS 是 GPLv2-or-later 项目。本仓库为独立软件包，
+   只调用公开的 IMM32 API，不链接也不复制 ReactOS 源码；MIT 与 GPLv2+ 兼容。
 
 本节为工程级尽调结论，不构成法律意见；商业发布前须经执业律师复核。
+
+[English]
+
+This notice explains the licensing boundaries of RosPinyin components.
+Code and data are licensed in separate layers; the installer as a whole is
+not a single licensing unit. This notice ships with the RosPinyin installer.
+
+1. Project code (engine / ime / ui / tools / tests, build scripts, installer,
+   documentation): MIT License (see LICENSE). MIT was chosen for OSI
+   recognition, cross-jurisdiction enforceability, and deterministic
+   compatibility when merging with ReactOS (GPLv2-or-later).
+
+2. Character-to-pinyin mapping (M2): Unicode Unihan kMandarin.
+   Unicode License / Unicode Terms of Use permits free use and redistribution,
+   provided the Unicode copyright and license text are retained.
+   https://www.unicode.org/license.txt
+   The generated rospinyin.dat must be accompanied by this notice.
+
+3. Character frequency table (M2):
+   Primary: hanziDB.csv (MIT License, Copyright (c) 2017 Rudd Fawcett),
+   https://github.com/rtang18/hanziDB.csv , file data/hanziDB.csv.
+   Secondary: Unicode Unihan kHanyuPinlu (Unicode License, see item 2).
+   hanziDB ranks derive from Jun Da's modern Chinese frequency list. The
+   original Jun Da table states "research and teaching/learning purposes
+   only"; commercial use requires written permission, so the original table
+   is not distributed. Only the MIT-derived CSV and its compiled product
+   rospinyin.dat are shipped, with this attribution.
+   https://lingua.mtsu.edu/chinese-computing/copyright.html
+   The data is replaceable: frequencies are compiled into a separate
+   rospinyin.dat, so a future self-computed corpus only changes mkdat input.
+
+4. Phrase dictionary (M4): CC-CEDICT.
+   CC-BY-SA (Attribution-ShareAlike). It must be distributed as a separate
+   data file rospinyin-lexicon.dat with its own source, attribution, and
+   license text; it is not merged into the MIT code licensing unit and does
+   not change the MIT license of the code.
+
+5. Target platform
+   ReactOS is GPLv2-or-later. This repository is an independent software
+   package that only calls public IMM32 APIs; it neither links nor copies
+   ReactOS source. MIT is compatible with GPLv2+.
+
+This section is an engineering due-diligence conclusion, not legal advice.
+Commercial releases must be reviewed by a qualified lawyer.

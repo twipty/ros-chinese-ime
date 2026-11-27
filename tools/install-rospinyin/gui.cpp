@@ -659,24 +659,35 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam,
                             hwnd, reinterpret_cast<HMENU>(kIdVersion), nullptr,
                             nullptr);
             CreateWindowExW(0, L"BUTTON", L"安装 RosPinyin",
-                            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_DISABLED,
+                            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON |
+                                WS_TABSTOP | WS_DISABLED,
                             20, 44, 180, 36, hwnd,
                             reinterpret_cast<HMENU>(kIdInstall), nullptr,
                             nullptr);
             g_install_button = GetDlgItem(hwnd, kIdInstall);
             CreateWindowExW(0, L"BUTTON", L"卸载 RosPinyin",
-                            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 220, 44,
-                            180, 36, hwnd,
+                            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP,
+                            220, 44, 180, 36, hwnd,
                             reinterpret_cast<HMENU>(kIdUninstall), nullptr,
                             nullptr);
-            // AC2/AC3: consent gate + license viewer.
+            // AC2/AC3: consent gate + license viewer. DEF-001: the checkbox
+            // toggles itself; the message handler only reads the resulting
+            // state. WS_TABSTOP plus IsDialogMessage in the message loop makes
+            // it reachable by Tab, and a focused auto-checkbox toggles on Space.
+            const auto agreement_spec = gui::agreement_control_spec();
+            UINT agreement_style = WS_CHILD | WS_VISIBLE;
+            agreement_style |=
+                agreement_spec.auto_toggle ? BS_AUTOCHECKBOX : BS_CHECKBOX;
+            if (agreement_spec.keyboard_focusable) {
+                agreement_style |= WS_TABSTOP;
+            }
             CreateWindowExW(0, L"BUTTON", L"我已阅读并同意许可协议",
-                            WS_CHILD | WS_VISIBLE | BS_CHECKBOX, 20, 92, 240,
-                            22, hwnd, reinterpret_cast<HMENU>(kIdAgreement),
-                            nullptr, nullptr);
+                            agreement_style, 20, 92, 240, 22, hwnd,
+                            reinterpret_cast<HMENU>(kIdAgreement), nullptr,
+                            nullptr);
             CreateWindowExW(0, L"BUTTON", L"查看协议",
-                            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 270, 92,
-                            130, 24, hwnd,
+                            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP,
+                            270, 92, 130, 24, hwnd,
                             reinterpret_cast<HMENU>(kIdViewLicense), nullptr,
                             nullptr);
             // AC4: whats-new text from RCDATA (UTF-8 -> wide).
@@ -756,8 +767,16 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     ShowWindow(hwnd, show);
     UpdateWindow(hwnd);
 
+    // DEF-001: WS_TABSTOP alone does not move focus in a plain (non-dialog)
+    // window. IsDialogMessage walks the tab chain; unrelated top-level windows
+    // (license viewer / countdown) are passed through to DispatchMessage.
+    const bool dialog_navigation =
+        gui::agreement_control_spec().keyboard_focusable;
     MSG msg{};
     while (GetMessageW(&msg, nullptr, 0, 0)) {
+        if (dialog_navigation && IsDialogMessageW(hwnd, &msg)) {
+            continue;
+        }
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
     }

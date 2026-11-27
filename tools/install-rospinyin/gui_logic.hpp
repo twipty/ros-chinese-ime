@@ -61,6 +61,20 @@ private:
     bool checked_ = false;
 };
 
+// DEF-001: the agreement checkbox used BS_CHECKBOX (manual toggle) while the
+// Win32 adapter never wrote BM_SETCHECK back, so clicks could not be seen.
+// Style bits themselves are Win32-only, so keep the *decision* here: gui.cpp
+// derives BS_AUTOCHECKBOX / WS_TABSTOP from it and the Linux host test can
+// assert that neither property is silently dropped in a later edit.
+struct AgreementControlSpec {
+    bool auto_toggle;         // BS_AUTOCHECKBOX, not BS_CHECKBOX
+    bool keyboard_focusable;  // WS_TABSTOP + dialog navigation in message loop
+};
+
+inline constexpr AgreementControlSpec agreement_control_spec() noexcept {
+    return {true, true};
+}
+
 // AC4: whats-new text is carried verbatim under a fixed heading. The text
 // itself comes from the whatsnew RCDATA, so a release only edits that file.
 inline std::wstring format_whatsnew(std::wstring_view body) {
