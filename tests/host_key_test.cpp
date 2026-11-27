@@ -85,6 +85,17 @@ public:
 
     void on_select(bool) override {}
 
+    // S2: raw commit emits the typed letters verbatim and clears the buffer.
+    int raw_commits = 0;
+    imfw::Result commit_raw() override {
+        ++raw_commits;
+        imfw::Result result;
+        result.action = imfw::Action::Commit;
+        result.commit_text = typed_;
+        typed_.clear();
+        return result;
+    }
+
     const std::u32string& typed() const { return typed_; }
 
 private:
@@ -235,6 +246,10 @@ imfw::KeyEvent shift_event(bool key_up) {
     imfw::KeyEvent event = kind_event(imfw::KeyKind::Shift, 0x10);
     event.key_up = key_up;
     return event;
+}
+
+imfw::KeyEvent enter_event() {
+    return kind_event(imfw::KeyKind::Enter, 0x0D /* VK_RETURN */);
 }
 
 }  // namespace
@@ -675,6 +690,56 @@ int main() {
               "the current candidates are rebuilt under [全] immediately");
         check(mode_host.show_calls > shows_before,
               "the rebuilt candidate list is pushed to the UI immediately");
+    }
+
+    // S2 Enter raw commit (AC5/AC6): the framework claims Enter only when
+    // Chinese mode is open AND a composition is in flight; handle_key consumes
+    // the RawCommit intent once and emits the engine's raw text.
+    {
+        imfw::ImeSessionState session;
+        session.engine = std::make_unique<FakeEngine>();
+        SpyHost host;
+
+        // AC5a: empty composition -> Enter passes through to the application.
+        check(!imfw::wants_key(session, enter_event(), host),
+              "AC5: Enter with no composition passes through");
+
+        // Start a composition.
+        imfw::handle_key(session, letter_event('N'), host);
+        check(session.composing, "letter starts composition before Enter");
+
+        // AC5b: composing in Chinese mode -> claimed.
+        check(imfw::wants_key(session, enter_event(), host),
+              "AC5: Enter while composing in Chinese mode is claimed");
+
+        // AC6: handled once -> engine.commit_raw() emits raw text and closes.
+        FakeEngine* fake = static_cast<FakeEngine*>(session.engine.get());
+        const int commits_before = fake->raw_commits;
+        const imfw::KeyResult enter_result =
+            imfw::handle_key(session, enter_event(), host);
+        check(fake->raw_commits == commits_before + 1,
+              "AC6: handle_key calls commit_raw exactly once");
+        check(enter_result.commit == U"n",
+              "AC6: raw commit emits the engine's typed text");
+        check(!session.composing, "AC6: raw commit clears the composition");
+
+        // AC5c: a second Enter (composition now empty) passes through.
+        check(!imfw::wants_key(session, enter_event(), host),
+              "AC5: second Enter with empty composition passes through");
+
+        // AC5d: English mode -> Enter passes through even with a composition.
+        // The pass-through is an ownership decision made in wants_key(); a
+        // pass-through key never reaches ImeToAsciiEx/handle_key at all (the
+        // router/handler deliberately do not re-check fOpen). Verify the gate
+        // and that claiming has no commit side effect.
+        imfw::handle_key(session, letter_event('A'), host);
+        check(session.composing, "composition exists before English-mode check");
+        host.open = false;
+        const int commits_before_english = fake->raw_commits;
+        check(!imfw::wants_key(session, enter_event(), host),
+              "AC5: Enter in English mode passes through");
+        check(fake->raw_commits == commits_before_english,
+              "AC5: a pass-through Enter never triggers a raw commit");
     }
 
     if (failures == 0) {

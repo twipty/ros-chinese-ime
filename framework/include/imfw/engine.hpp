@@ -66,6 +66,12 @@ public:
         result.commit_text = text;
         return result;
     }
+    // Raw-commit: emit exactly what the user typed (no candidate conversion).
+    // Used when Enter is pressed mid-composition in Chinese mode. The default
+    // is Passthrough so schemes that have no raw buffer (toy, glyph probe) are
+    // unaffected; a stateful engine overrides it to emit its typed letters and
+    // clear the composition. The host only calls this for the RawCommit intent.
+    virtual Result commit_raw() { return Result{}; }
     // Called on ImeSelect / ImeSetActiveContext. Implementations must be
     // idempotent: IMM32 issues these repeatedly during layout switches.
     virtual void on_select(bool selected) = 0;

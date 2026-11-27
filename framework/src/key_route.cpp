@@ -72,6 +72,15 @@ Intent route_key(const Scheme& scheme, const KeyEvent& event, bool composing) {
         intent.kind = IntentKind::Escape;
         return intent;
     }
+    // S2: Enter mid-composition means "give me the letters I typed" rather
+    // than converting a candidate. wants_key() has already decided ownership
+    // (Chinese mode + non-empty composition), so the router only names it;
+    // when composing is false it is never claimed and falls through to None.
+    if (event.kind == KeyKind::Enter && composing) {
+        Intent intent;
+        intent.kind = IntentKind::RawCommit;
+        return intent;
+    }
 
     // Text last: a key that is not a policy key is only ours if the scheme's
     // alphabet claims it.

@@ -68,6 +68,7 @@ KeyEvent key_event_from(UINT vk, unsigned long lParam,
                  : vk == VK_BACK     ? KeyKind::Backspace
                  : vk == VK_ESCAPE   ? KeyKind::Escape
                  : vk == VK_SHIFT    ? KeyKind::Shift
+                 : vk == VK_RETURN   ? KeyKind::Enter
                                      : KeyKind::Other;
     event.key_up = (lParam & kKeyUpBit) != 0;
     event.ctrl = ctrl;

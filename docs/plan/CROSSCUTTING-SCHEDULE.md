@@ -16,7 +16,7 @@
 
 | 编号 | 工作项 | 状态 | 排期位置 | 前置 / 依赖 | 退出判据 | 估时 | 依据 |
 |---|---|---|---|---|---|---|---|
-| K0 | **M4 部署链路**：词库内嵌 GUI 安装器 → `system32\` 固定 SHA-256 → 缺失/损坏拒绝加载 → `/status` → guest `nihao→你好` | ✅ 宿主完成 / ✅ 6080 实机闭环 / ⏳ 6081-6082 对照待补 | 先于 M5 | 安装器、release 资产、guest 步骤、加载链已同步改 | 宿主哈希校验 + 四类硬失败用例全绿（ctest 24/24、check_m1 120/120）；README / mklex README / ROADMAP / PLAN / HANDOVER 口径已二次同步；6080 实机截图 `check-install-20261126-2015.png`、`m4-phrase-6080-20261126-2026.png` 已归档 | 计入 M4 | `HANDOVER.md:192`、`PLAN.md:112`、`ROADMAP.md:172`、`.devloop/归档/第08轮/S2-实现.md` |
+| K0 | **M4 部署链路**：词库内嵌 GUI 安装器 → `system32\` 固定 SHA-256 → 缺失/损坏拒绝加载 → `/status` → guest `nihao→你好` | ✅ 宿主完成 / ✅ 6080 + 6081 实机闭环 / ⏳ 仅 6082 对照待补 | 先于 M5 | 安装器、release 资产、guest 步骤、加载链已同步改 | 宿主哈希校验 + 四类硬失败用例全绿（ctest 24/24、check_m1 120/120）；README / mklex README / ROADMAP / PLAN / HANDOVER 口径已二次同步；6080 实机截图 `check-install-20261126-2015.png`、`m4-phrase-6080-20261126-2026.png`、6081 实机截图 `m4-pass-6081-20261126-2224.png` 已归档 | 计入 M4 | `HANDOVER.md:192`、`PLAN.md:112`、`ROADMAP.md:172`、`.devloop/归档/第08轮/S2-实现.md` |
 
 K0 的两个 S1 待定假设已由 owner 拍板并落地：**CLI `/step1..4` 同步写词库（含 SHA 双校验）**、**卸载清理词库**（2026-11-26 S0 裁决「CLI 同步 + 卸载清理」）。不单独排期。
 

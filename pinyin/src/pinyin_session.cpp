@@ -234,6 +234,7 @@ Result PinyinSession::commit_text(const std::u32string& text) {
 
     if (syllables_.empty()) {
         composition_.clear();
+        raw_composition_.clear();
     } else {
         // Pick up how many syllables this candidate covers. Words from the
         // optional lexicon consume their whole key; characters consume one.
@@ -263,13 +264,19 @@ Result PinyinSession::commit_text(const std::u32string& text) {
             }
         }
         composition_.erase(0, cursor);
+        // raw_composition_ is code-point-parallel to composition_ (one entry
+        // per accepted letter/quote), so the same erase position applies.
+        if (cursor <= raw_composition_.size()) raw_composition_.erase(0, cursor);
+        else raw_composition_.clear();
         // A trailing separator would leave segmentation with a leading quote.
         while (!composition_.empty() && composition_[0] == '\'') {
             composition_.erase(0, 1);
+            if (!raw_composition_.empty()) raw_composition_.erase(0, 1);
         }
     }
 
     if (composition_.empty()) {
+        raw_composition_.clear();
         candidates_.clear();
         candidate_syllable_counts_.clear();
         syllables_.clear();
@@ -292,10 +299,14 @@ Result PinyinSession::feed(char32_t codepoint) {
                 ? codepoint - U'A' + U'a'
                 : codepoint);
         composition_.push_back(typed);
+        // Keep the code point exactly as typed in the parallel raw buffer.
+        // S2 raw commit emits this, so case and separator must not be lost.
+        raw_composition_.push_back(codepoint);
         // A partial prefix or a completed-syllable-plus-prefix is legal
         // input; only strings that can never become pinyin are rejected.
         if (!can_extend(composition_, *table_)) {
             composition_.pop_back();
+            raw_composition_.pop_back();
             return Result{Action::Absorb, composition_, candidates_, syllables_, {}};
         }
         recompute();
@@ -321,12 +332,30 @@ Result PinyinSession::feed(char32_t codepoint) {
 Result PinyinSession::backspace() {
     if (composition_.empty()) return Result{};
     composition_.pop_back();
+    if (!raw_composition_.empty()) raw_composition_.pop_back();
     recompute();
     return Result{Action::Absorb, composition_, candidates_, syllables_, {}};
 }
 
+// S2: emit the typed original verbatim (uppercase, apostrophes, unfinished
+// prefix -- everything) and clear every buffer. Unlike commit_text() this
+// does not consult candidates at all, so it works even with an empty list.
+Result PinyinSession::commit_raw() {
+    if (raw_composition_.empty()) return Result{};
+    Result result;
+    result.action = Action::Commit;
+    result.commit_text = raw_composition_;
+    raw_composition_.clear();
+    composition_.clear();
+    candidates_.clear();
+    candidate_syllable_counts_.clear();
+    syllables_.clear();
+    return result;
+}
+
 Result PinyinSession::cancel() {
     composition_.clear();
+    raw_composition_.clear();
     candidates_.clear();
     syllables_.clear();
     return Result{Action::Absorb, {}, {}, {}, {}};
@@ -336,6 +365,7 @@ void PinyinSession::on_select(bool selected) {
     active_ = selected;
     if (!selected) {
         composition_.clear();
+        raw_composition_.clear();
         candidates_.clear();
         syllables_.clear();
     }

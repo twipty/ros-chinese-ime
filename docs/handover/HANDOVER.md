@@ -3,7 +3,7 @@
 > 面向对象：接手的维护者 / 新协作者
 > 版本基线：`main` = `d6a03d4`（2026-11-26）；发布线 `v0.1.0` 正式版已发布（tag `93e75f9`）
 > 阅读顺序建议：第 1–3 章了解"是什么、到哪了"→ 第 6 章跑起来 → 第 5/8 章读代码 → 第 10 章避开坑
-> **2026-11-26 状态快照见 §3**：M0–M3 完成、v0.1 发布；M4 **宿主代码与部署链路已完成**（词库内嵌必装、硬失败，宿主门禁全绿），6080 开发机实机验收已闭环（owner 截图裁定：`zhongwen` 代 `jisuanji`、安装截图覆盖 `/status`）；6081/6082 milestone 对照截图仍待补；M5 可开工。
+> **2026-11-26 状态快照见 §3**：M0–M3 完成、v0.1 发布；M4 **宿主代码与部署链路已完成**（词库内嵌必装、硬失败，宿主门禁全绿），6080 开发机实机验收已闭环（owner 截图裁定：`zhongwen` 代 `jisuanji`、安装截图覆盖 `/status`）；6081 nightly 对照已通过（`m4-pass-6081-20261126-2224.png`：`cizu` 候选含「词组」），仅 6082 stable 对照待补；M5 可开工。
 
 ---
 
@@ -44,7 +44,7 @@ TSF/Cicero 支持、云候选/账号/皮肤、繁体与其他方言、真实 Win
 | M1 | 骨架替换：16 个 IMM32 导出、分步注册、托盘图标 | ✅ 2026-11-16，见 `M1-REPORT.md` |
 | **M2** | **单字拼音引擎（核心里程碑）** | ✅ 2026-11-18 完成（15/15 实机验收）；首页覆盖率 96.8%，首选率 46.2%，见 `docs/milestones/m2/` |
 | M3 | 中文体验补齐（标点、全角、Shift 临时英文） | ✅ 2026-11-23 主体完成：中文标点 + shift + 多码点 guest 实机 PASS；`[快]/[全]` 字形开关 P1 完成（2026-11-26）；全角/半角独立开关与 100 字段落实机验收**待确认** |
-| M4 | 词组与词频 | ✅ **宿主实现 + 部署链路完成**（2026-11-26）：词库内嵌 GUI/CLI 安装器（第 4 RCDATA）、system32 固定 SHA-256 校验、四类失败拒绝加载；宿主 ctest 两配置 24/24、`check_m1` 120/120。**6080 开发机实机验收已闭环（owner 裁定），6081/6082 对照待补** |
+| M4 | 词组与词频 | ✅ **宿主实现 + 部署链路完成**（2026-11-26）：词库内嵌 GUI/CLI 安装器（第 4 RCDATA）、system32 固定 SHA-256 校验、四类失败拒绝加载；宿主 ctest 两配置 24/24、`check_m1` 120/120。**6080 开发机 + 6081 nightly 实机验收已闭环（owner 裁定），仅 6082 stable 对照待补** |
 | M5 | 整句与自学习 | 未开工；前置依赖 M4 落地。文档口径已更正（整句开关为配置持久，非会话级；自写 Viterbi） |
 | M6 | 设置 UI | 未开始 |
 | M7 | 遗留场景修复（含上游往返） | 未开始 |
@@ -113,7 +113,7 @@ ImeProcessKey(hIMC, vk, lParam, lpbKeyState)
   → TRUE = 这个键归 IME
   ↓
 ImmTranslateMessage → ImeToAsciiEx(vk, sc, keyState, TRANSMSGLIST*, fuState, hIMC)
-  → process_key()：选字键/翻页键（策略来自 Scheme）→ 退格 → Esc → 字母 feed 给 Engine
+  → process_key()：选字键/翻页键（策略来自 Scheme）→ 退格 → Esc → Enter（仅中文+组合非空：RawCommit 原文上屏）→ 字母 feed 给 Engine
   ↓
 Engine::feed(cp) → Result{action, composition, segments, candidates, commit_text}
   ↓
@@ -181,7 +181,8 @@ Commit：emit_text() 逐 UTF-16 码单元生成 TRANSMSG，写入 list->TransMsg
 
 ### 3.2 关键变更与决策（2026-11-26）
 
-- **M4 状态纠错 → 已闭环（宿主侧）**：此前代码与宿主测试完成 ≠ 用户可用（安装器不拷词库、release 不含、guest 步骤无指引，`try_load_lexicon()` 找不到文件直接返回）。2026-11-26 打通部署链路：词库作为第 4 RCDATA 内嵌、安装期 SHA 双校验、加载链四类失败拒绝加载、CI release 含词库与 SHA256SUMS。宿主侧闭环；6080 开发机实机已由 owner 截图验收闭环（安装截图含词库 SHA 校验，词组截图 `zhongwen` 首选「中文」按裁定替代 `jisuanji`），6081/6082 milestone 对照仍待补。
+- **M4 状态纠错 → 已闭环（宿主侧）**：此前代码与宿主测试完成 ≠ 用户可用（安装器不拷词库、release 不含、guest 步骤无指引，`try_load_lexicon()` 找不到文件直接返回）。2026-11-26 打通部署链路：词库作为第 4 RCDATA 内嵌、安装期 SHA 双校验、加载链四类失败拒绝加载、CI release 含词库与 SHA256SUMS。宿主侧闭环；6080 开发机与 6081 nightly 实机已由 owner 截图验收闭环（6080 安装截图含词库 SHA 校验，词组截图 `zhongwen` 首选「中文」按裁定替代 `jisuanji`；6081 `cizu` 候选含「词组」），仅 6082 milestone 对照仍待补。
+- **M4 同阶段追加需求（2026-11-26）：Enter 原文上屏**：中文模式且组合非空时，Enter 由 IME 认领，按用户键入的英文字母原文整串上屏（大小写/撇号原样、不设长度上限、候选为空也上屏），上屏后清空组合；空组合/英文模式/已提交后的第二次 Enter 透传给应用（换行）。链路 `VK_RETURN → KeyKind::Enter → IntentKind::RawCommit → Engine::commit_raw()`，`PinyinSession` 以 `raw_composition_` 并行缓冲保留原文。`tools/seams.py` engine 调用点上限 4→5 是登记新增合法调用点，不是放宽门禁。S0–S3 已批准，宿主两配置 ctest 24/24、`check_m1` 120/120、`check_docs` 7/7、交叉编译通过；实机待 owner 截图验收。
 - **M5 整句开关语义更正**：配置项、配置后持久生效（注册表或文件，重启保留），**不是会话级热键**；与 `[快]/[全]` 字形开关（会话级、零持久化）是两套独立开关。技术路线为**自写轻量 Viterbi**，微软拼音/搜狗/libpinyin 仅作效果标杆，不引入外部引擎。
 - **M4 落地裁决**：词库内嵌 GUI 安装器；装 `system32\` 与 ime/dat 同目录并按固定 SHA-256 校验；词库缺失/损坏时 IME 拒绝加载（**明确接受 v0.1 存量用户的破坏性升级**）；宿主 + guest 实机双验收。
 - **发布口径**：产品定位为独立第三方 IMM32 软件包，已从全部文档剔除「进入 ReactOS 主线/官方树/ISO 预装」目标表述；v0.2 发布本轮不做。
@@ -190,8 +191,8 @@ Commit：emit_text() 逐 UTF-16 码单元生成 TRANSMSG，写入 list->TransMsg
 
 | 项 | 状态 | 说明 |
 |---|---|---|
-| **M4 部署链路** | ✅ 宿主完成 + 6080 实机闭环 / ⏳ 6081/6082 对照待补 | 词库内嵌（第 4 RCDATA）、安装期 size+SHA 双校验、四类失败拒绝加载、`/status` 词库行、CI release 资产；宿主 ctest 24/24、`check_m1` 120/120。6080 证据：`check-install-20261126-2015.png`（词库 verified + 三文件 rhash）、`m4-phrase-6080-20261126-2026.png`（`zhongwen`→「中文」首选，owner 裁定替代 `jisuanji`） |
-| M5 整句与自学习 | ✅ 前置满足，可开工（代码未动） | 词库底座已就绪；文档口径已更正（配置持久开关、自写 Viterbi），代码未开工；6081/6082 对照属并行验收，不阻塞 M5 |
+| **M4 部署链路** | ✅ 宿主完成 + 6080/6081 实机闭环 / ⏳ 仅 6082 对照待补 | 词库内嵌（第 4 RCDATA）、安装期 size+SHA 双校验、四类失败拒绝加载、`/status` 词库行、CI release 资产；宿主 ctest 24/24、`check_m1` 120/120。6080 证据：`check-install-20261126-2015.png`（词库 verified + 三文件 rhash）、`m4-phrase-6080-20261126-2026.png`（`zhongwen`→「中文」首选，owner 裁定替代 `jisuanji`）；6081 证据：`m4-pass-6081-20261126-2224.png`（nightly 0.4.17-dev，`cizu`→「词组」候选生效） |
+| M5 整句与自学习 | ✅ 前置满足，可开工（代码未动） | 词库底座已就绪；文档口径已更正（配置持久开关、自写 Viterbi），代码未开工；6082 对照属并行验收，不阻塞 M5 |
 | M3 全角/半角独立开关、100 字段落实机 | ⏳ 待确认 | — |
 | M6/M7/M8 | 未开始 | 见 `docs/plan/ROADMAP.md` |
 | `xingma/` 形码产品线 | W1 编码未开始 | 框架缺口已全关，可直接复用宿主层 |
@@ -205,7 +206,7 @@ Commit：emit_text() 逐 UTF-16 码单元生成 TRANSMSG，写入 list->TransMsg
 
 ### 3.5 后续计划
 
-1. M4 落地 S0→S7 宿主侧已完成（方案、TDD 实现、审计、门禁全绿）；**6080 开发机实机验收已闭环**（owner 截图裁定：`zhongwen` 代替 `jisuanji`、安装截图覆盖 `/status`），证据在 `m0/vm/evidence/`。6081 nightly / 6082 stable 对照截图仍待补，属并行验收。
+1. M4 落地 S0→S7 宿主侧已完成（方案、TDD 实现、审计、门禁全绿）；**6080 开发机 + 6081 nightly 实机验收已闭环**（owner 截图裁定：`zhongwen` 代替 `jisuanji`、安装截图覆盖 `/status`；6081 用 `cizu` 验词组），证据在 `m0/vm/evidence/`。6082 stable 对照截图仍待补，属并行验收。
 2. **M5 前置已满足，可开 M5**：Viterbi 整句解码 + 用户词典（配置持久开关），仍按研发闭环逐阶段过目；建议把 `zhongwenshurufa → 中文输入法` 列为验收用例。
 3. 视需要另立发版轮次（v0.2 不在本轮范围）。
 4. 按 `docs/plan/CROSSCUTTING-SCHEDULE.md` 的 P1–P14 并行车道推进非 xingma 横切项：P1–P8 与 K0 同窗口，P9–P12 在 M4 闭环后、M6/M5 前，P13–P14 并入 M8；G1–G7 只登记门控，不擅自启动。
@@ -533,12 +534,14 @@ make -C build-win-trace rospinyin-ime -j4
    - Ctrl/Alt 按下 → 放行（应用快捷键可用）；
    - `Scheme::input_char(vk)` 命中字母表 → 返回 TRUE；
    - 退格/Esc → 仅组合中才拦截；
+   - Enter → 仅"中文模式 + 组合非空"才拦截（原文上屏）；空组合/英文模式透传给应用换行；
    - 选字/翻页键 → 仅"组合中且有候选"才拦截。
 2. `ImeToAsciiEx` → `process_key()`：
    - 选字键 → `pager.select(digit)` 取候选 → `finish_composition()` → `emit_text()`；
    - 翻页键 → `pager.next/prev_page()` → 刷新 UI，返回 0；
    - 退格 → `engine->backspace()`；
    - Esc → `finish_composition()`；
+   - Enter → `engine->commit_raw(session.raw_composition())`：`Result.action=Commit`，按原文提交并清空组合（大小写/撇号原样，候选为空也上屏；第二次 Enter 透传）；
    - 字母 → `engine->feed(cp)`，按 `Result.action` 分派。
 3. `Commit` → `emit_text()` 写入 `list->TransMsg`，返回条数 → IMM32 逐条投递 `WM_IME_CHAR`。
 
@@ -2434,8 +2437,8 @@ w2（连续输入 `nihao` 候选窗不闪）、w3（翻到第 2 页后继续打�
 
 - ~~**`'` 硬边界在交互输入路径失效（2026-11-17 接手加固时发现）**~~ **已修复（2026-11-17）**：`segment_syllables()` 本就把 `'` 当硬边界，但 `PinyinSession::feed()` 收到 `'` 后走 `can_extend()`，而 `CodeTable` 的前缀集合里没有 `'` → 分隔符被丢弃，敲 `xi'an` 得不到 `[xi][an]`。修法：`can_extend()` 显式处理撇号——引号前须为完整音节、引号后须仍可扩展（空串合法，即刚敲完分隔符的中间态），与 `segment_syllables()` 语义一致；并补 `feed("xi'an")` 保留分隔符与 `[xi][an]` 分段断言、尾随分隔符断言、分隔符后非法前缀拒收断言（`pinyin_session_test.cpp`）。
 - ~~M3：中文标点、全角/半角~~：中文标点与 Shift 已做（§11.14）；**全角/半角独立开关待确认**，100 字段落实机验收待做；
-- ~~**M4 部署链路**~~ **宿主侧已闭环（2026-11-26）**：词库内嵌 GUI/CLI 安装器（第 4 RCDATA）、system32 固定 SHA-256 校验、四类失败拒绝加载、CI release 含词库与 SHA256SUMS；宿主 ctest 24/24、check_m1 120/120。**6080 实机已由 owner 截图验收闭环，6081/6082 对照待补**，见 §3.3 与 `.devloop/`；
-- **M5 前置已满足（6080 实机闭环），可开工**：自写 Viterbi 整句解码 + 用户词典；整句开关为配置持久（非会话级），见 §3.2；
+- ~~**M4 部署链路**~~ **宿主侧已闭环（2026-11-26）**：词库内嵌 GUI/CLI 安装器（第 4 RCDATA）、system32 固定 SHA-256 校验、四类失败拒绝加载、CI release 含词库与 SHA256SUMS；宿主 ctest 24/24、check_m1 120/120。**6080、6081 实机已由 owner 截图验收闭环，仅 6082 stable 对照待补**，见 §3.3 与 `.devloop/`；
+- **M5 前置已满足（6080/6081 实机闭环），可开工**：自写 Viterbi 整句解码 + 用户词典；整句开关为配置持久（非会话级），见 §3.2；
 - 语言栏菜单项（属性/关于）留待 M6；
 - `xingma/` W1 编码（`ShapeScheme`/`ShapeStore`/`ShapeDatLoader`）尚未开始，框架侧缺口已全部关闭，可直接复用宿主层；
 - 历史遗留空目录 `engine/include/` 已于 2026-11-17 清理（实体已并入 `framework/`）。
@@ -2548,7 +2551,7 @@ python3 tools/push_via_api.py <repo> main <expected_remote_sha> <sha1> <sha2> ..
 | `docs/releases/v0.1.0.md` | v0.1.0 正式发布说明（安装、使用、字体依赖；已同步线上 release 正文） |
 | `docs/reviews/WINDOWS-GUI-COMPATIBILITY-ASSESSMENT.md` | P3 Windows GUI 兼容评估：不登记白名单、CLI 例外保留 |
 | `tools/droid-font-pack/README.md` | nightly Droid 字体包：制作、安装、清理与验证范围 |
-| `tools/mklex/README.md` | M4 词组库 `rospinyin-lexicon.dat`：构建、许可、运行时行为与内嵌必装部署链（宿主已落地，6080 实机已验，6081/6082 对照待补） |
+| `tools/mklex/README.md` | M4 词组库 `rospinyin-lexicon.dat`：构建、许可、运行时行为与内嵌必装部署链（宿主已落地，6080/6081 实机已验，仅 6082 对照待补） |
 | `M0-REPORT.md` | ReactOS/QEMU 环境、IMM32 可行性、BSOD 根因、许可证时间线 |
 | `M1-REPORT.md` | 16 导出骨架、分步注册、动态 HKL、托盘图标修复、MinGW 切换 |
 | `framework/README.md` | 框架模块地图、Scheme 复用缝、G1–G4 处置、生命周期红线 |

@@ -169,7 +169,7 @@ v0.1「墨」→ v0.2「联」→ v0.3「全」→ v1.0「正」
 
 **M4 实现结果（2026-11-26）**：`tools/mklex/build_lexicon_dat.py` 从固定哈希的 CC-CEDICT 快照生成 `rospinyin-lexicon.dat`（109,428 词 / 6,530,601 B，CC-BY-SA），词组候选优先、整词提交。`code-table` 与 `pinyin-session` 测试覆盖「你好」「计算机」2/2 首选命中；单字基线 46.2% 不变。**部署链路已打通（同日）**：词库作为第 4 个 RCDATA payload 内嵌 GUI/CLI 安装器，写入 `system32\` 并做 size + SHA-256 双校验（`a89ec5e5…c1c6a`）；缺失/截断/结构损坏/哈希不符四类失败时 `load_system_table()` 返回 nullptr、release 构建不回退内置表、返回空表不崩溃（trace 写明原因）。宿主 ctest 两配置 24/24，`check_m1` 120/120。`v0.1.0.md` 是已发布版本的历史记录，其「词库可选」口径不改写。
 
-> **破坏性升级**：v0.1.0 存量安装无词库，覆盖安装后必须重启；若词库未正确写入，IME 不产候选而非退回单字。owner 已接受。6080 开发机实机已由 owner 截图闭环（安装校验 + `zhongwen→中文`）；6081/6082 milestone 对照仍待补。
+> **破坏性升级**：v0.1.0 存量安装无词库，覆盖安装后必须重启；若词库未正确写入，IME 不产候选而非退回单字。owner 已接受。6080 开发机与 6081 nightly 实机已由 owner 截图闭环（6080 安装校验 + `zhongwen→中文`；6081 `cizu→词组`）；仅 6082 milestone 对照待补。
 
 ## M5 整句与自学习（3-5 周）
 

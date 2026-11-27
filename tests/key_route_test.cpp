@@ -50,6 +50,7 @@ const char* kind_name(imfw::IntentKind kind) {
     case imfw::IntentKind::Punctuation: return "Punctuation";
     case imfw::IntentKind::Backspace: return "Backspace";
     case imfw::IntentKind::Escape: return "Escape";
+    case imfw::IntentKind::RawCommit: return "RawCommit";
     }
     return "?";
 }
@@ -265,6 +266,19 @@ int main() {
            plain('1', U'1'), imfw::IntentKind::Select, U'1', 0, false);
     expect("a scheme with no punctuation policy pages as before", classic,
            plain(',', U','), imfw::IntentKind::PagePrev, U',', 0, false);
+
+    // ---- S2: Enter is RawCommit, but only mid-composition ------------------
+    {
+        imfw::KeyEvent enter;
+        enter.vk = 0x0D;  // VK_RETURN
+        enter.kind = imfw::KeyKind::Enter;
+        expect("Enter while composing routes to RawCommit", classic, enter,
+               imfw::IntentKind::RawCommit, 0, 0, true);
+        // Idle Enter is not an intent here: wants_key() already lets it reach
+        // the application, so the router simply finds no text for VK_RETURN.
+        expect("Enter while idle is not RawCommit", classic, enter,
+               imfw::IntentKind::None, 0, 0, false);
+    }
 
     // ---- the default Intent is None ---------------------------------------
     {

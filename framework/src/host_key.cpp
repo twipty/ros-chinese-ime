@@ -191,6 +191,12 @@ bool wants_key(ImeSessionState& session, const KeyEvent& event, Host& host) {
     if (event.kind == KeyKind::Backspace || event.kind == KeyKind::Escape) {
         return session.composing;
     }
+    // S2: Enter is only ours mid-composition in Chinese mode. With an empty
+    // composition (or in English mode) it must reach the application as a
+    // newline — the same pass-through rule as selection/backspace keys.
+    if (event.kind == KeyKind::Enter) {
+        return session.composing;
+    }
     if (event.ch == 0) return false;
     // Selection and paging keys (policy owned by the Scheme, G4) are only
     // meaningful mid-composition with candidates on screen; otherwise they
@@ -307,6 +313,16 @@ KeyResult handle_key(ImeSessionState& session, const KeyEvent& event, Host& host
     case IntentKind::Escape:
         finish_composition(host, session);
         return {};
+
+    case IntentKind::RawCommit: {
+        // IMM32 double path: ImeProcessKey claims Enter in wants_key(); IMM32
+        // then calls ImeToAsciiEx with the SAME key. Only that second path
+        // performs the commit, exactly like ModeToggle/LanguageToggle — never
+        // commit from wants_key() itself, or the letters would be emitted
+        // twice. apply_commit sees an empty remainder and closes the session.
+        const Result result = session.engine->commit_raw();
+        return {apply_commit(host, session, result)};
+    }
 
     case IntentKind::Input: {
         const Result result = session.engine->feed(intent.ch);

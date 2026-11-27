@@ -28,10 +28,13 @@ from pathlib import Path
 # (name, glob paths relative to root, call-site pattern, ceiling)
 SEAMS = (
     (
+        # S2 raised the cap 4 -> 5: Enter raw-commit adds one engine call site
+        # (commit_raw()) beside cancel/backspace/commit_text/feed. Recording it
+        # here instead of working around the counter keeps the seam visible.
         "engine",
         ("framework/src/host_key.cpp",),
         r"(?:state|session)\.engine->",
-        4,
+        5,
     ),
     (
         # M3 raised the cap 12 -> 15: punctuation() is a new Scheme policy call,

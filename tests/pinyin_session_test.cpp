@@ -8,6 +8,7 @@
 #include <rospinyin/pinyin_session.hpp>
 
 #include <cstdio>
+#include <initializer_list>
 #include <memory>
 #include <string>
 #include <vector>
@@ -55,10 +56,33 @@ std::shared_ptr<const imfw::CodeTable> make_shared_table() {
     return std::make_shared<const imfw::CodeTable>(make_table());
 }
 
+// S2 raw-commit table: ni/hao cover the continuous "nihao" prefix, xi/an
+// cover the apostrophe case, zhong gives an extendable prefix with no
+// completed syllable (the empty-candidate boundary AC4).
+imfw::CodeTable make_raw_table() {
+    imfw::CodeTable table;
+    rospinyin::add_reading(table, U'你', 5, "ni3");
+    rospinyin::add_reading(table, U'好', 9, "hao3");
+    rospinyin::add_reading(table, U'西', 100, "xi1");
+    rospinyin::add_reading(table, U'安', 200, "an1");
+    rospinyin::add_reading(table, U'中', 7, "zho1ng");
+    table.build_index();
+    return table;
+}
+
+std::shared_ptr<const imfw::CodeTable> make_shared_raw_table() {
+    return std::make_shared<const imfw::CodeTable>(make_raw_table());
+}
+
 void feed_string(rospinyin::PinyinSession& session, const char* text) {
     for (const char* p = text; *p != '\0'; ++p) {
         session.feed(static_cast<char32_t>(static_cast<unsigned char>(*p)));
     }
+}
+
+void feed_cps(rospinyin::PinyinSession& session,
+              std::initializer_list<char32_t> cps) {
+    for (const char32_t cp : cps) session.feed(cp);
 }
 
 }  // namespace
@@ -398,6 +422,61 @@ int main() {
         check(!session.candidates().empty() &&
                   session.candidates()[0].text == U"你",
               "single-syllable input keeps the M2 character path");
+    }
+
+    // S2 Enter raw commit (AC1-AC4). The engine keeps a parallel UTF-32 buffer
+    // of the letters exactly as typed; composition_ stays lowercase for pinyin
+    // segmentation. commit_raw() emits the original code points and clears both.
+    {
+        const auto raw_table = make_shared_raw_table();
+        rospinyin::PinyinSession session(raw_table);
+        session.on_select(true);
+
+        // AC1: typed uppercase must survive (Nihao -> Nihao), composition_
+        // itself stays canonical lowercase.
+        feed_cps(session, {U'N', U'i', U'h', U'a', U'o'});
+        check_equal(session.composition(), "nihao",
+                    "raw commit does not change canonical lowercase composition");
+        const Result upper = session.commit_raw();
+        check(upper.action == Action::Commit && upper.commit_text == U"Nihao",
+              "AC1: Enter commits typed case verbatim (Nihao)");
+        check(session.composition().empty() && session.candidates().empty() &&
+                  session.syllables().empty(),
+              "AC1: raw commit clears composition and candidates");
+
+        // AC2: apostrophe is part of the original and stays.
+        feed_cps(session, {U'x', U'i', U'\'', U'a', U'n'});
+        const Result apostrophe = session.commit_raw();
+        check(apostrophe.commit_text == U"xi'an",
+              "AC2: Enter keeps the separator verbatim (xi'an)");
+
+        // AC3: unfinished prefix "nih" is committed whole, not truncated to ni.
+        feed_cps(session, {U'n', U'i', U'h'});
+        const Result partial = session.commit_raw();
+        check(partial.commit_text == U"nih",
+              "AC3: unfinished prefix is committed whole");
+
+        // AC4: composition non-empty but candidate list empty (bare prefix "z").
+        session.feed(U'z');
+        check(session.composition() == "z" && session.candidates().empty(),
+              "AC4 precondition: prefix 'z' composes with zero candidates");
+        const Result no_candidates = session.commit_raw();
+        check(no_candidates.action == Action::Commit &&
+                  no_candidates.commit_text == U"z",
+              "AC4: raw commit works with an empty candidate list");
+
+        // Raw buffer follows backspace / cancel / ordinary commit.
+        feed_cps(session, {U'N', U'i'});
+        session.backspace();
+        check(session.commit_raw().commit_text == U"N",
+              "backspace removes one raw code point");
+        feed_cps(session, {U'N', U'i'});
+        session.cancel();
+        check(session.commit_raw().action == Action::Passthrough,
+              "cancel clears raw buffer; commit_raw becomes a no-op");
+        session.on_select(false);
+        check(session.commit_raw().action == Action::Passthrough,
+              "on_select(false) clears raw buffer too");
     }
 
     if (failures != 0) {

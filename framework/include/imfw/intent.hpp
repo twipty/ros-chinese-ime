@@ -51,6 +51,7 @@ enum class IntentKind : std::uint8_t {
     Punctuation,// commit `ch`, an already-mapped fullwidth code point (M3)
     Backspace,  // engine.backspace()
     Escape,     // discard the composition
+    RawCommit,  // engine.commit_raw(): emit typed letters verbatim (Enter)
 };
 
 struct Intent {

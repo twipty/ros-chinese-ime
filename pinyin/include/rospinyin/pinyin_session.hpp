@@ -43,9 +43,16 @@ public:
     imfw::Result backspace() override;
     imfw::Result cancel() override;
     imfw::Result commit_text(const std::u32string& text) override;
+    // Emit the exact code points typed (case and apostrophes preserved) and
+    // clear both buffers. The canonical lowercase composition_ is only used
+    // for pinyin segmentation; it must not leak case into the candidate path.
+    imfw::Result commit_raw() override;
     void on_select(bool selected) override;
 
     const std::string& composition() const noexcept { return composition_; }
+    const std::u32string& raw_composition() const noexcept {
+        return raw_composition_;
+    }
     const std::vector<imfw::Candidate>& candidates() const noexcept {
         return candidates_;
     }
@@ -59,6 +66,9 @@ private:
 
     std::shared_ptr<const imfw::CodeTable> table_;
     std::string composition_;
+    // Parallel to composition_: the code points as typed (uppercase and
+    // apostrophes intact). Every buffer edit must update both.
+    std::u32string raw_composition_;
     std::vector<imfw::Candidate> candidates_;
     // Parallel to candidates_: how many completed syllables each candidate
     // consumes when committed. Characters consume one; words consume their

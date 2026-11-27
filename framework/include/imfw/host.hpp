@@ -46,6 +46,9 @@ enum class KeyKind : std::uint8_t {
     ModeToggle,     // Ctrl+Shift+G: flip [快]/[全], owned by the framework
     LanguageToggle, // Ctrl+Shift+Space: backup hotkey for Chinese/English
                     // (the primary Ctrl+Space is unreliable — CORE-19455)
+    Enter,          // VK_RETURN: raw-commit the typed letters mid-composition
+                    // (Chinese mode + non-empty composition only; otherwise
+                    // the adapter lets it reach the application as newline)
 };
 
 // One key message, already translated.
