@@ -45,7 +45,8 @@
 | [ROADMAP.md](plan/ROADMAP.md) | 路线图与每个里程碑的退出标准（含 M2 首次实测注记、横切并行泳道） |
 | [CROSSCUTTING-SCHEDULE.md](plan/CROSSCUTTING-SCHEDULE.md) | 非 xingma 横切与并行工作详表：K0 锚点、P1–P14 排期、G1–G7 门控、并行关系图与估时口径 |
 | [PLAN-MODULARIZATION.md](plan/PLAN-MODULARIZATION.md) | 框架抽取（引擎宿主 / UI / 工具条独立成可复用模块）的分步计划 |
-| [DAT-FORMAT-V2.md](plan/DAT-FORMAT-V2.md) | **码表 dat 统一格式 v2 冻结规范（拼音侧落地文本）**：64B 头 / 24B 条目 / `flags` bit1 = tier、v1 兼容读法、拼音三条校验红线；上位文本见 `xingma/docs/glyph-tier/UNIFIED-DAT-FORMAT.md` |
+| [DAT-FORMAT-V2.md](plan/DAT-FORMAT-V2.md) | **码表 dat 统一格式 v2 冻结规范（拼音侧落地文本）**：80B 自描述头 / 24B 条目 / 16B 编码项 / `flags` bit1 = tier、v1 完全不兼容、拼音三条校验红线；上位文本见 `xingma/docs/glyph-tier/UNIFIED-DAT-FORMAT.md` |
+| [COMPATIBILITY-TEST-PLAN.md](plan/COMPATIBILITY-TEST-PLAN.md) | 兼容性与可用性测试计划：平台/应用控件/输入功能/数据字体/稳定性五轴用例，C0–C3 兼容性等级与 U0–U2 可用性等级，6081+6082 成对验收口径 |
 
 ### handover/ — 交接与历史
 
@@ -102,6 +103,7 @@
 | [alpha0.0.4.md](releases/alpha0.0.4.md) | alpha0.0.4 的发布说明（自包含 GUI 安装器候选，已发布 prerelease） |
 | [v0.1.0.md](releases/v0.1.0.md) | v0.1 正式发布说明（已发布正式 release；仅含安装、使用与字体依赖） |
 | [alpha0.1.1.md](releases/alpha0.1.1.md) | alpha0.1.1 发布说明（M4 词组库内嵌必装 + SHA-256 双校验；CI 用它作为 release notes） |
+| [alpha0.1.2.md](releases/alpha0.1.2.md) | alpha0.1.2 发布说明（Enter 原文上屏；CI 用它作为 release notes） |
 
 ### icos/ — 输入法图标
 
